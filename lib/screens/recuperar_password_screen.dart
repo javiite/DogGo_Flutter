@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 
-class ConfirmarCorreoScreen extends StatefulWidget {
-  const ConfirmarCorreoScreen({super.key});
+class RecuperarPasswordScreen extends StatefulWidget {
+  const RecuperarPasswordScreen({super.key});
 
   @override
-  State<ConfirmarCorreoScreen> createState() => _ConfirmarCorreoScreenState();
+  State<RecuperarPasswordScreen> createState() =>
+      _RecuperarPasswordScreenState();
 }
 
-class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
+class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _codigoController = TextEditingController();
 
   @override
   void dispose() {
     _emailController.dispose();
-    _codigoController.dispose();
     super.dispose();
   }
 
@@ -32,7 +31,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Confirmar correo'),
+        title: const Text('Recuperar contraseña'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(18),
@@ -48,7 +47,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '📩 ACTIVAR CUENTA',
+                  '🔐 RECUPERACIÓN',
                   style: TextStyle(
                     fontSize: 12,
                     color: Color(0xFF14A89A),
@@ -57,7 +56,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Confirmar correo',
+                  'Recuperar contraseña',
                   style: TextStyle(
                     fontSize: 28,
                     color: Color(0xFF25324A),
@@ -66,7 +65,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Escribe tu correo y el código de confirmación.',
+                  'Ingresa tu correo y te enviaremos instrucciones.',
                   style: TextStyle(
                     fontSize: 14,
                     color: Color(0xFF6B7280),
@@ -83,36 +82,18 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: const Color(0xFFE7E2D9)),
             ),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Correo electrónico',
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    filled: true,
-                    fillColor: const Color(0xFFF8F4EC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
+            child: TextField(
+              controller: _emailController,
+              decoration: InputDecoration(
+                labelText: 'Correo electrónico',
+                prefixIcon: const Icon(Icons.email_outlined),
+                filled: true,
+                fillColor: const Color(0xFFF8F4EC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _codigoController,
-                  decoration: InputDecoration(
-                    labelText: 'Código',
-                    prefixIcon: const Icon(Icons.verified_outlined),
-                    filled: true,
-                    fillColor: const Color(0xFFF8F4EC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 22),
@@ -120,7 +101,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
             height: 50,
             child: ElevatedButton(
               onPressed: () {
-                _mostrarMensaje('Confirmación real después');
+                _mostrarMensaje('Recuperación real después');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF14A89A),
@@ -130,7 +111,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
                 elevation: 0,
               ),
               child: const Text(
-                'Confirmar',
+                'Enviar instrucciones',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,

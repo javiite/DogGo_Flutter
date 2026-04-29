@@ -1,9 +1,84 @@
 import 'package:flutter/material.dart';
+import '../services/perfil_service.dart';
+import '../services/storage_service.dart';
+import 'login_screen.dart';
 
-class PerfilScreen extends StatelessWidget {
+class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
 
-  void _mostrarMensaje(BuildContext context, String texto) {
+  @override
+  State<PerfilScreen> createState() => _PerfilScreenState();
+}
+
+class _PerfilScreenState extends State<PerfilScreen> {
+  bool _cargando = true;
+  String? _error;
+
+  String _nombre = '';
+  String _apellido = '';
+  String _email = '';
+  String _telefono = '';
+  String _rol = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPerfil();
+  }
+
+  Future<void> _cargarPerfil() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+
+    try {
+      final result = await PerfilService.obtenerPerfil();
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        final data = result['data'];
+
+        setState(() {
+          _nombre = data['nombre'] ?? '';
+          _apellido = data['apellido'] ?? '';
+          _email = data['email'] ?? '';
+          _telefono = data['telefono'] ?? '';
+          _rol = data['rol'] ?? '';
+          _cargando = false;
+        });
+      } else {
+        setState(() {
+          _error = result['message'];
+          _cargando = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = 'Error de conexión: $e';
+        _cargando = false;
+      });
+    }
+  }
+
+  Future<void> _cerrarSesion() async {
+    await StorageService.limpiarToken();
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(),
+      ),
+      (route) => false,
+    );
+  }
+
+  void _mostrarMensaje(String texto) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(texto)),
     );
@@ -41,121 +116,152 @@ class PerfilScreen extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4EDE3),
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: const Color(0xFFE7E0D5)),
-            ),
-            child: Column(
-              children: const [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.white,
-                  child: Icon(
-                    Icons.person,
-                    size: 42,
-                    color: Color(0xFF14A89A),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 70,
+                          color: Colors.redAccent,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _cargarPerfil,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
+                    ),
                   ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF4EDE3),
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(color: const Color(0xFFE7E0D5)),
+                      ),
+                      child: Column(
+                        children: [
+                          const CircleAvatar(
+                            radius: 40,
+                            backgroundColor: Colors.white,
+                            child: Icon(
+                              Icons.person,
+                              size: 42,
+                              color: Color(0xFF14A89A),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            '${_nombre.trim()} ${_apellido.trim()}'.trim(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 28,
+                              color: Color(0xFF25324A),
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _rol,
+                            style: const TextStyle(
+                              color: Color(0xFF14A89A),
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _PerfilCard(
+                      child: Column(
+                        children: [
+                          _DatoPerfil(
+                            icon: Icons.person_outline,
+                            titulo: 'Nombre',
+                            valor: _nombre,
+                          ),
+                          const Divider(),
+                          _DatoPerfil(
+                            icon: Icons.badge_outlined,
+                            titulo: 'Apellido',
+                            valor: _apellido,
+                          ),
+                          const Divider(),
+                          _DatoPerfil(
+                            icon: Icons.email_outlined,
+                            titulo: 'Correo',
+                            valor: _email,
+                          ),
+                          const Divider(),
+                          _DatoPerfil(
+                            icon: Icons.phone_outlined,
+                            titulo: 'Teléfono',
+                            valor: _telefono.isEmpty ? 'No registrado' : _telefono,
+                          ),
+                          const Divider(),
+                          _DatoPerfil(
+                            icon: Icons.verified_user_outlined,
+                            titulo: 'Rol',
+                            valor: _rol,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _PerfilCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Acciones',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Color(0xFF25324A),
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _BotonPerfil(
+                            texto: 'Recargar perfil',
+                            icono: Icons.refresh,
+                            onTap: _cargarPerfil,
+                          ),
+                          const SizedBox(height: 10),
+                          _BotonPerfil(
+                            texto: 'Editar perfil',
+                            icono: Icons.edit_outlined,
+                            onTap: () {
+                              _mostrarMensaje('Editar perfil después');
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          _BotonPerfil(
+                            texto: 'Cerrar sesión',
+                            icono: Icons.logout,
+                            rojo: true,
+                            onTap: _cerrarSesion,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 14),
-                Text(
-                  'Mi perfil',
-                  style: TextStyle(
-                    fontSize: 30,
-                    color: Color(0xFF25324A),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Administra tu información personal y tu cuenta.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          _PerfilCard(
-            child: Column(
-              children: const [
-                _DatoPerfil(
-                  icon: Icons.person_outline,
-                  titulo: 'Nombre',
-                  valor: 'Javier Terrones',
-                ),
-                Divider(),
-                _DatoPerfil(
-                  icon: Icons.email_outlined,
-                  titulo: 'Correo',
-                  valor: 'javier@doggo.com',
-                ),
-                Divider(),
-                _DatoPerfil(
-                  icon: Icons.phone_outlined,
-                  titulo: 'Teléfono',
-                  valor: '8112345678',
-                ),
-                Divider(),
-                _DatoPerfil(
-                  icon: Icons.badge_outlined,
-                  titulo: 'Rol',
-                  valor: 'Cliente',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _PerfilCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Acciones',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF25324A),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _BotonPerfil(
-                  texto: 'Editar perfil',
-                  icono: Icons.edit_outlined,
-                  onTap: () {
-                    _mostrarMensaje(context, 'Editar perfil después');
-                  },
-                ),
-                const SizedBox(height: 10),
-                _BotonPerfil(
-                  texto: 'Cambiar contraseña',
-                  icono: Icons.lock_outline,
-                  onTap: () {
-                    _mostrarMensaje(context, 'Cambiar contraseña después');
-                  },
-                ),
-                const SizedBox(height: 10),
-                _BotonPerfil(
-                  texto: 'Cerrar sesión',
-                  icono: Icons.logout,
-                  rojo: true,
-                  onTap: () {
-                    _mostrarMensaje(context, 'Cerrar sesión después');
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

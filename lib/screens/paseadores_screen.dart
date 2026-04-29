@@ -1,45 +1,117 @@
 import 'package:flutter/material.dart';
+import '../services/paseadores_service.dart';
 
-class PaseadoresScreen extends StatelessWidget {
+class PaseadoresScreen extends StatefulWidget {
   const PaseadoresScreen({super.key});
 
-  void _mostrarMensaje(BuildContext context, String texto) {
+  @override
+  State<PaseadoresScreen> createState() => _PaseadoresScreenState();
+}
+
+class _PaseadoresScreenState extends State<PaseadoresScreen> {
+  bool _cargando = true;
+  String? _error;
+  List<dynamic> _paseadores = [];
+
+  final TextEditingController _busquedaController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPaseadores();
+  }
+
+  @override
+  void dispose() {
+    _busquedaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarPaseadores() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+
+    try {
+      final result = await PaseadoresService.obtenerPaseadores();
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        setState(() {
+          _paseadores = result['data'] as List<dynamic>;
+          _cargando = false;
+        });
+      } else {
+        setState(() {
+          _error = result['message'];
+          _cargando = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = 'Error de conexión: $e';
+        _cargando = false;
+      });
+    }
+  }
+
+  void _mostrarMensaje(String texto) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(texto)),
     );
   }
 
+  String _textoSeguro(dynamic valor, [String fallback = 'Sin dato']) {
+    if (valor == null) return fallback;
+    final texto = valor.toString().trim();
+    return texto.isEmpty ? fallback : texto;
+  }
+
+  String _tarifaTexto(dynamic tarifa) {
+    if (tarifa == null) return 'Tarifa no disponible';
+    return '\$${tarifa.toString()} / hora';
+  }
+
+  String _calificacionTexto(dynamic calificacion) {
+    if (calificacion == null) return 'Sin calificación';
+    return '⭐ ${calificacion.toString()}';
+  }
+
+  String _experienciaTexto(dynamic experiencia) {
+    if (experiencia == null) return 'Sin experiencia';
+    return '$experiencia año(s) exp.';
+  }
+
+  List<dynamic> get _paseadoresFiltrados {
+    final texto = _busquedaController.text.trim().toLowerCase();
+
+    if (texto.isEmpty) return _paseadores;
+
+    return _paseadores.where((item) {
+      final paseador = item as Map<String, dynamic>;
+      final nombre = _textoSeguro(paseador['nombre']).toLowerCase();
+      final descripcion = _textoSeguro(
+        paseador['descripcion'],
+        '',
+      ).toLowerCase();
+      final zona = _textoSeguro(
+        paseador['zonaServicio'] ?? paseador['zona'],
+        '',
+      ).toLowerCase();
+
+      return nombre.contains(texto) ||
+          descripcion.contains(texto) ||
+          zona.contains(texto);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final paseadores = [
-      {
-        'nombre': 'Javier Terrones',
-        'precio': '\$70.00 / hora',
-        'descripcion': 'Buena persona, amistosa y le gustan los animales.',
-        'zonas': ['Centro', 'Cumbres'],
-        'experiencia': '4 años(s) exp.',
-        'disponible': true,
-        'rating': '5.0',
-      },
-      {
-        'nombre': 'Javier 5 5',
-        'precio': '\$60.00 / hora',
-        'descripcion': 'Paseador con disponibilidad entre semana.',
-        'zonas': ['Centro', 'Cumbres'],
-        'experiencia': '6 años(s) exp.',
-        'disponible': true,
-        'rating': '4.8',
-      },
-      {
-        'nombre': 'pru3ba paseador',
-        'precio': '\$60.00 / hora',
-        'descripcion': 'fwferuo´+p',
-        'zonas': ['Centro', 'Cumbres'],
-        'experiencia': '6 años(s) exp.',
-        'disponible': true,
-        'rating': '4.6',
-      },
-    ];
+    final lista = _paseadoresFiltrados;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F6EF),
@@ -73,210 +145,200 @@ class PaseadoresScreen extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF4EDE3),
-              border: Border(
-                bottom: BorderSide(color: Color(0xFFE7E0D5)),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  '🦴 ENCUENTRA TU PASEADOR',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF14A89A),
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Paseadores disponibles',
-                  style: TextStyle(
-                    fontSize: 30,
-                    height: 1.1,
-                    color: Color(0xFF25324A),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Elige al paseador ideal para tu mascota.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(18),
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.94),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: const Color(0xFFE7E2D9)),
-                  ),
-                  child: Column(
-                    children: [
-                      TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Nombre o descripción',
-                          filled: true,
-                          fillColor: const Color(0xFFF8F4EC),
-                          prefixIcon: const Icon(Icons.search),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 72,
+                          color: Colors.redAccent,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _FiltroFake(
-                              texto: 'Todas las zonas',
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _FiltroFake(
-                              texto: 'Mejor calificación',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 44,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  _mostrarMensaje(context, 'Filtrar después');
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF14A89A),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: const Text(
-                                  'Buscar',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: SizedBox(
-                              height: 44,
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  _mostrarMensaje(context, 'Limpiar después');
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(
-                                    color: Color(0xFF14A89A),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Limpiar',
-                                  style: TextStyle(
-                                    color: Color(0xFF14A89A),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ...paseadores.map(
-                  (p) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _PaseadorCard(
-                      nombre: p['nombre'] as String,
-                      precio: p['precio'] as String,
-                      descripcion: p['descripcion'] as String,
-                      zonas: p['zonas'] as List<String>,
-                      experiencia: p['experiencia'] as String,
-                      disponible: p['disponible'] as bool,
-                      rating: p['rating'] as String,
-                      onVerPerfil: () {
-                        _mostrarMensaje(
-                          context,
-                          'Ver perfil de ${p['nombre']} después',
-                        );
-                      },
-                      onSolicitar: () {
-                        _mostrarMensaje(
-                          context,
-                          'Solicitar paseo a ${p['nombre']} después',
-                        );
-                      },
+                        const SizedBox(height: 14),
+                        Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _cargarPaseadores,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
                     ),
                   ),
+                )
+              : Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF4EDE3),
+                        border: Border(
+                          bottom: BorderSide(color: Color(0xFFE7E0D5)),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '🦴 ENCUENTRA TU PASEADOR',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF14A89A),
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Paseadores disponibles',
+                            style: TextStyle(
+                              fontSize: 30,
+                              height: 1.1,
+                              color: Color(0xFF25324A),
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Se encontraron ${lista.length} paseadores.',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _busquedaController,
+                            onChanged: (_) {
+                              setState(() {});
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Buscar por nombre, zona o descripción',
+                              filled: true,
+                              fillColor: Colors.white,
+                              prefixIcon: const Icon(Icons.search),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: lista.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.person_search,
+                                      size: 76,
+                                      color: Color(0xFFB8B3AA),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    const Text(
+                                      'No se encontraron paseadores',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Color(0xFF25324A),
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Prueba con otra búsqueda o vuelve a cargar.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Color(0xFF6B7280),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: _cargarPaseadores,
+                                      child: const Text('Recargar'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _cargarPaseadores,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.all(18),
+                                itemCount: lista.length,
+                                itemBuilder: (context, index) {
+                                  final paseador =
+                                      lista[index] as Map<String, dynamic>;
+
+                                  final nombre = _textoSeguro(
+                                    paseador['nombre'],
+                                  );
+                                  final tarifa = _tarifaTexto(
+                                    paseador['tarifaPorHora'] ??
+                                        paseador['tarifa'],
+                                  );
+                                  final descripcion = _textoSeguro(
+                                    paseador['descripcion'],
+                                    'Sin descripción',
+                                  );
+                                  final zona = _textoSeguro(
+                                    paseador['zonaServicio'] ??
+                                        paseador['zona'],
+                                    'Sin zona',
+                                  );
+                                  final experiencia = _experienciaTexto(
+                                    paseador['experienciaAnios'] ??
+                                        paseador['experiencia'],
+                                  );
+                                  final rating = _calificacionTexto(
+                                    paseador['calificacionPromedio'] ??
+                                        paseador['rating'],
+                                  );
+                                  final disponible =
+                                      paseador['disponible'] == true;
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 14),
+                                    child: _PaseadorCard(
+                                      nombre: nombre,
+                                      precio: tarifa,
+                                      descripcion: descripcion,
+                                      zonas: [zona],
+                                      experiencia: experiencia,
+                                      disponible: disponible,
+                                      rating: rating,
+                                      onVerPerfil: () {
+                                        _mostrarMensaje(
+                                          'Detalle de $nombre después',
+                                        );
+                                      },
+                                      onSolicitar: () {
+                                        _mostrarMensaje(
+                                          'Solicitar paseo a $nombre después',
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FiltroFake extends StatelessWidget {
-  final String texto;
-
-  const _FiltroFake({
-    required this.texto,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F4EC),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              texto,
-              style: const TextStyle(
-                color: Color(0xFF6B7280),
-              ),
-            ),
-          ),
-          const Icon(Icons.keyboard_arrow_down),
-        ],
-      ),
     );
   }
 }
@@ -364,25 +426,13 @@ class _PaseadorCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      '★★★★★',
-                      style: TextStyle(
-                        color: Color(0xFFE3A72F),
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      rating,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B7280),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                Text(
+                  rating,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF6B7280),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -416,8 +466,12 @@ class _PaseadorCard extends StatelessWidget {
                 ),
                 _TagChip(
                   texto: disponible ? 'Disponible' : 'No disponible',
-                  colorFondo: const Color(0xFFE6F6E9),
-                  colorTexto: const Color(0xFF4AA564),
+                  colorFondo: disponible
+                      ? const Color(0xFFE6F6E9)
+                      : const Color(0xFFFBE4E6),
+                  colorTexto: disponible
+                      ? const Color(0xFF4AA564)
+                      : const Color(0xFFE56B6F),
                 ),
               ],
             ),
