@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 
 class RecuperarPasswordScreen extends StatefulWidget {
   const RecuperarPasswordScreen({super.key});
@@ -10,6 +11,7 @@ class RecuperarPasswordScreen extends StatefulWidget {
 
 class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
+  bool _cargando = false;
 
   @override
   void dispose() {
@@ -21,6 +23,35 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(texto)),
     );
+  }
+
+  Future<void> _recuperar() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      _mostrarMensaje('Escribe tu correo');
+      return;
+    }
+
+    setState(() {
+      _cargando = true;
+    });
+
+    try {
+      final result = await AuthService.solicitarRecuperacion(email: email);
+
+      if (!mounted) return;
+
+      _mostrarMensaje(result['message']);
+    } catch (e) {
+      _mostrarMensaje('Error de conexión: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+        });
+      }
+    }
   }
 
   @override
@@ -84,6 +115,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
             ),
             child: TextField(
               controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: 'Correo electrónico',
                 prefixIcon: const Icon(Icons.email_outlined),
@@ -100,9 +132,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
           SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                _mostrarMensaje('Recuperación real después');
-              },
+              onPressed: _cargando ? null : _recuperar,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF14A89A),
                 shape: RoundedRectangleBorder(
@@ -110,13 +140,22 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                 ),
                 elevation: 0,
               ),
-              child: const Text(
-                'Enviar instrucciones',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              child: _cargando
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.4,
+                      ),
+                    )
+                  : const Text(
+                      'Enviar instrucciones',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
             ),
           ),
         ],

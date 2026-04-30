@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'crear_paseo_screen.dart';
 
 class DetallePaseadorScreen extends StatelessWidget {
   final Map<String, dynamic> paseador;
@@ -159,13 +160,28 @@ class DetallePaseadorScreen extends StatelessWidget {
           SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(
-                  context,
-                  '/crear-paseo',
-                  arguments: paseador,
-                );
-              },
+              onPressed: disponible
+                  ? () async {
+                      final creado = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CrearPaseoScreen(
+                            paseador: paseador,
+                          ),
+                        ),
+                      );
+
+                      if (!context.mounted) return;
+
+                      if (creado == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Paseo creado correctamente'),
+                          ),
+                        );
+                      }
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF14A89A),
                 shape: RoundedRectangleBorder(

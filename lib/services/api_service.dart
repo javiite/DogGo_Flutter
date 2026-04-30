@@ -32,23 +32,7 @@ class ApiService {
       body: jsonEncode(body),
     );
 
-    dynamic responseBody;
-
-    try {
-      responseBody = response.body.isNotEmpty
-          ? jsonDecode(response.body)
-          : {};
-    } catch (_) {
-      responseBody = {
-        'success': false,
-        'message': response.body,
-      };
-    }
-
-    return {
-      'statusCode': response.statusCode,
-      'body': responseBody,
-    };
+    return _armarRespuesta(response);
   }
 
   static Future<Map<String, dynamic>> getAuth(String endpoint) async {
@@ -69,12 +53,60 @@ class ApiService {
       },
     );
 
+    return _armarRespuesta(response);
+  }
+
+  static Future<Map<String, dynamic>> putAuth(
+    String endpoint, [
+    Map<String, dynamic>? body,
+  ]) async {
+    final baseUrl = await obtenerBaseUrl();
+    final token = await obtenerToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception('No hay token guardado. Inicia sesión otra vez.');
+    }
+
+    final url = Uri.parse('$baseUrl$endpoint');
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: body != null ? jsonEncode(body) : null,
+    );
+
+    return _armarRespuesta(response);
+  }
+
+  static Future<Map<String, dynamic>> deleteAuth(String endpoint) async {
+    final baseUrl = await obtenerBaseUrl();
+    final token = await obtenerToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception('No hay token guardado. Inicia sesión otra vez.');
+    }
+
+    final url = Uri.parse('$baseUrl$endpoint');
+
+    final response = await http.delete(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    return _armarRespuesta(response);
+  }
+
+  static Map<String, dynamic> _armarRespuesta(http.Response response) {
     dynamic responseBody;
 
     try {
-      responseBody = response.body.isNotEmpty
-          ? jsonDecode(response.body)
-          : {};
+      responseBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
     } catch (_) {
       responseBody = {
         'success': false,

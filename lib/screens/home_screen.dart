@@ -4,6 +4,7 @@ import 'mis_paseos_screen.dart';
 import 'paseadores_screen.dart';
 import 'server_config_screen.dart';
 import 'perfil_screen.dart';
+import 'configuracion_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -36,6 +37,20 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ConfiguracionScreen(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.settings_outlined,
+              color: Color(0xFF25324A),
+            ),
+          ),
           TextButton(
             onPressed: () {
               Navigator.push(
@@ -184,67 +199,55 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Tus mascotas',
-                            style: TextStyle(
-                              fontSize: 22,
-                              color: Color(0xFF25324A),
-                              fontWeight: FontWeight.w900,
-                            ),
+                    const Text(
+                      'Accesos rápidos',
+                      style: TextStyle(
+                        fontSize: 22,
+                        color: Color(0xFF25324A),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _QuickTile(
+                      icon: Icons.map_outlined,
+                      titulo: 'Ver mis paseos',
+                      subtitulo: 'Consulta tus paseos y sus estados',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MisPaseosScreen(),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            _mostrarMensaje(context, 'Añadir después');
-                          },
-                          child: const Text(
-                            '+ Añadir',
-                            style: TextStyle(
-                              color: Color(0xFF14A89A),
-                              fontWeight: FontWeight.w800,
-                            ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _QuickTile(
+                      icon: Icons.pets_outlined,
+                      titulo: 'Ver mis perros',
+                      subtitulo: 'Administra tus mascotas registradas',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MisPerrosScreen(),
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      height: 220,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDCEEEE),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          '🐶',
-                          style: TextStyle(fontSize: 82),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Center(
-                      child: Text(
-                        'CHOCOROL',
-                        style: TextStyle(
-                          fontSize: 24,
-                          color: Color(0xFF25324A),
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Center(
-                      child: Text(
-                        'CHIHUAHUA',
-                        style: TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                    const SizedBox(height: 10),
+                    _QuickTile(
+                      icon: Icons.person_search_outlined,
+                      titulo: 'Buscar paseadores',
+                      subtitulo: 'Encuentra paseadores disponibles',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PaseadoresScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -266,20 +269,20 @@ class HomeScreen extends StatelessWidget {
                 children: const [
                   Expanded(
                     child: _BottomStat(
-                      numero: '3',
-                      texto: 'Mascotas registradas',
+                      numero: 'App',
+                      texto: 'Conectada',
                     ),
                   ),
                   Expanded(
                     child: _BottomStat(
-                      numero: '1',
-                      texto: 'Paseo completado',
+                      numero: 'API',
+                      texto: 'Lista',
                     ),
                   ),
                   Expanded(
                     child: _BottomStat(
-                      numero: 'Activo',
-                      texto: 'Paseo pendiente',
+                      numero: 'JWT',
+                      texto: 'Activo',
                     ),
                   ),
                 ],
@@ -356,6 +359,67 @@ class _ActionButton extends StatelessWidget {
         texto,
         style: const TextStyle(
           color: Color(0xFF25324A),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickTile extends StatelessWidget {
+  final IconData icon;
+  final String titulo;
+  final String subtitulo;
+  final VoidCallback onTap;
+
+  const _QuickTile({
+    required this.icon,
+    required this.titulo,
+    required this.subtitulo,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF8F4EC),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(icon, color: const Color(0xFF14A89A)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titulo,
+                      style: const TextStyle(
+                        color: Color(0xFF25324A),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitulo,
+                      style: const TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: Color(0xFF6B7280),
+              ),
+            ],
+          ),
         ),
       ),
     );

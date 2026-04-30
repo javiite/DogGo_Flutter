@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/paseadores_service.dart';
+import 'detalle_paseador_screen.dart';
 
 class PaseadoresScreen extends StatefulWidget {
   const PaseadoresScreen({super.key});
@@ -321,14 +322,26 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
                                       experiencia: experiencia,
                                       disponible: disponible,
                                       rating: rating,
-                                      onVerPerfil: () {
-                                        _mostrarMensaje(
-                                          'Detalle de $nombre después',
+                                      onVerPerfil: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                DetallePaseadorScreen(
+                                              paseador: paseador,
+                                            ),
+                                          ),
                                         );
                                       },
-                                      onSolicitar: () {
-                                        _mostrarMensaje(
-                                          'Solicitar paseo a $nombre después',
+                                      onSolicitar: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                DetallePaseadorScreen(
+                                              paseador: paseador,
+                                            ),
+                                          ),
                                         );
                                       },
                                     ),

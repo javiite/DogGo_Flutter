@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/perros_service.dart';
+import 'detalle_perro_screen.dart';
+import 'editar_perro_screen.dart';
+import 'registrar_perro_screen.dart';
 
 class MisPerrosScreen extends StatefulWidget {
   const MisPerrosScreen({super.key});
@@ -65,6 +68,47 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
   String _edadTexto(dynamic edad) {
     if (edad == null) return 'Sin edad';
     return '${edad.toString()} años';
+  }
+
+  Future<void> _confirmarEliminar(Map<String, dynamic> perro) async {
+    final nombre = _textoSeguro(perro['nombre'], 'este perro');
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Eliminar perro'),
+          content: Text('¿Seguro que quieres eliminar a $nombre?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmar != true) return;
+
+    try {
+      final result = await PerrosService.eliminarPerro(perro['id'] as int);
+
+      if (!mounted) return;
+
+      _mostrarMensaje(result['message']);
+
+      if (result['success'] == true) {
+        await _cargarPerros();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _mostrarMensaje('Error de conexión: $e');
+    }
   }
 
   @override
@@ -179,8 +223,20 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
                             width: double.infinity,
                             height: 46,
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                _mostrarMensaje('Registrar perro después');
+                              onPressed: () async {
+                                final creado = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const RegistrarPerroScreen(),
+                                  ),
+                                );
+
+                                if (!mounted) return;
+
+                                if (creado == true) {
+                                  await _cargarPerros();
+                                }
                               },
                               icon: const Icon(Icons.add, color: Colors.white),
                               label: const Text(
@@ -233,13 +289,6 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
                                         color: Color(0xFF6B7280),
                                       ),
                                     ),
-                                    const SizedBox(height: 18),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        _mostrarMensaje('Registrar perro después');
-                                      },
-                                      child: const Text('Agregar primero'),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -250,16 +299,22 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
                                 padding: const EdgeInsets.all(18),
                                 itemCount: _perros.length,
                                 itemBuilder: (context, index) {
-                                  final perro = _perros[index] as Map<String, dynamic>;
+                                  final perro =
+                                      _perros[index] as Map<String, dynamic>;
 
                                   final nombre = _textoSeguro(perro['nombre']);
-                                  final raza = _textoSeguro(perro['raza'], 'Sin raza');
+                                  final raza = _textoSeguro(
+                                    perro['raza'],
+                                    'Sin raza',
+                                  );
                                   final tamano = _textoSeguro(
                                     perro['tamano'] ?? perro['tamaño'],
                                     'Sin tamaño',
                                   );
                                   final notas = _textoSeguro(
-                                    perro['notas'] ?? perro['nota'] ?? perro['descripcion'],
+                                    perro['notas'] ??
+                                        perro['nota'] ??
+                                        perro['descripcion'],
                                     '',
                                   );
                                   final edad = _edadTexto(perro['edad']);
@@ -272,14 +327,34 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
                                       raza: raza,
                                       tamano: tamano,
                                       nota: notas,
-                                      onVerPerfil: () {
-                                        _mostrarMensaje('Detalle de $nombre después');
+                                      onVerPerfil: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DetallePerroScreen(
+                                              perro: perro,
+                                            ),
+                                          ),
+                                        );
                                       },
-                                      onEditar: () {
-                                        _mostrarMensaje('Editar $nombre después');
+                                      onEditar: () async {
+                                        final editado = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => EditarPerroScreen(
+                                              perro: perro,
+                                            ),
+                                          ),
+                                        );
+
+                                        if (!mounted) return;
+
+                                        if (editado == true) {
+                                          await _cargarPerros();
+                                        }
                                       },
                                       onEliminar: () {
-                                        _mostrarMensaje('Eliminar $nombre después');
+                                        _confirmarEliminar(perro);
                                       },
                                     ),
                                   );

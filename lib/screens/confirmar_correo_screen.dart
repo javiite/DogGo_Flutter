@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import 'login_screen.dart';
 
 class ConfirmarCorreoScreen extends StatefulWidget {
   const ConfirmarCorreoScreen({super.key});
@@ -11,6 +13,8 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _codigoController = TextEditingController();
 
+  bool _cargando = false;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -22,6 +26,54 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(texto)),
     );
+  }
+
+  Future<void> _confirmarCorreo() async {
+    final email = _emailController.text.trim();
+    final codigo = _codigoController.text.trim();
+
+    if (email.isEmpty || codigo.isEmpty) {
+      _mostrarMensaje('Completa correo y código');
+      return;
+    }
+
+    setState(() {
+      _cargando = true;
+    });
+
+    try {
+      final result = await AuthService.confirmarCorreo(
+        email: email,
+        codigo: codigo,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        _mostrarMensaje(result['message']);
+
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LoginScreen(),
+          ),
+        );
+      } else {
+        _mostrarMensaje(result['message']);
+      }
+    } catch (e) {
+      _mostrarMensaje('Error de conexión: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+        });
+      }
+    }
   }
 
   @override
@@ -87,6 +139,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
               children: [
                 TextField(
                   controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Correo electrónico',
                     prefixIcon: const Icon(Icons.email_outlined),
@@ -101,6 +154,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _codigoController,
+                  keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: 'Código',
                     prefixIcon: const Icon(Icons.verified_outlined),
@@ -119,9 +173,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
           SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                _mostrarMensaje('Confirmación real después');
-              },
+              onPressed: _cargando ? null : _confirmarCorreo,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF14A89A),
                 shape: RoundedRectangleBorder(
@@ -129,13 +181,22 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
                 ),
                 elevation: 0,
               ),
-              child: const Text(
-                'Confirmar',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              child: _cargando
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.4,
+                      ),
+                    )
+                  : const Text(
+                      'Confirmar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
             ),
           ),
         ],

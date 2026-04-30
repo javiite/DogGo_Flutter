@@ -1,21 +1,51 @@
 import 'package:flutter/material.dart';
 import '../services/perros_service.dart';
 
-class RegistrarPerroScreen extends StatefulWidget {
-  const RegistrarPerroScreen({super.key});
+class EditarPerroScreen extends StatefulWidget {
+  final Map<String, dynamic> perro;
+
+  const EditarPerroScreen({
+    super.key,
+    required this.perro,
+  });
 
   @override
-  State<RegistrarPerroScreen> createState() => _RegistrarPerroScreenState();
+  State<EditarPerroScreen> createState() => _EditarPerroScreenState();
 }
 
-class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
-  final TextEditingController _nombreController = TextEditingController();
-  final TextEditingController _razaController = TextEditingController();
-  final TextEditingController _edadController = TextEditingController();
-  final TextEditingController _tamanoController = TextEditingController();
-  final TextEditingController _notasController = TextEditingController();
+class _EditarPerroScreenState extends State<EditarPerroScreen> {
+  late final TextEditingController _nombreController;
+  late final TextEditingController _razaController;
+  late final TextEditingController _edadController;
+  late final TextEditingController _tamanoController;
+  late final TextEditingController _notasController;
 
   bool _guardando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nombreController = TextEditingController(
+      text: widget.perro['nombre']?.toString() ?? '',
+    );
+    _razaController = TextEditingController(
+      text: widget.perro['raza']?.toString() ?? '',
+    );
+    _edadController = TextEditingController(
+      text: widget.perro['edad']?.toString() ?? '',
+    );
+    _tamanoController = TextEditingController(
+      text: widget.perro['tamano']?.toString() ??
+          widget.perro['tamaño']?.toString() ??
+          '',
+    );
+    _notasController = TextEditingController(
+      text: widget.perro['notas']?.toString() ??
+          widget.perro['nota']?.toString() ??
+          widget.perro['descripcion']?.toString() ??
+          '',
+    );
+  }
 
   @override
   void dispose() {
@@ -33,7 +63,7 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
     );
   }
 
-  Future<void> _guardarPerro() async {
+  Future<void> _guardar() async {
     final nombre = _nombreController.text.trim();
     final raza = _razaController.text.trim();
     final edadTexto = _edadController.text.trim();
@@ -56,7 +86,8 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
     });
 
     try {
-      final result = await PerrosService.registrarPerro(
+      final result = await PerrosService.editarPerro(
+        id: widget.perro['id'] as int,
         nombre: nombre,
         raza: raza,
         edad: edad,
@@ -93,50 +124,11 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Registrar perro'),
+        title: const Text('Editar perro'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4EDE3),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFE7E0D5)),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '🐶 NUEVO PELUDO',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF14A89A),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Registrar perro',
-                  style: TextStyle(
-                    fontSize: 28,
-                    color: Color(0xFF25324A),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Agrega la información básica de tu mascota.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
           _FormCard(
             titulo: 'Datos del perro',
             child: Column(
@@ -189,7 +181,7 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
           SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: _guardando ? null : _guardarPerro,
+              onPressed: _guardando ? null : _guardar,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF14A89A),
                 shape: RoundedRectangleBorder(
@@ -207,7 +199,7 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
                       ),
                     )
                   : const Text(
-                      'Guardar perro',
+                      'Guardar cambios',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,

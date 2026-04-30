@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/perros_service.dart';
+import '../services/paseos_service.dart';
 
 class CrearPaseoScreen extends StatefulWidget {
   final Map<String, dynamic>? paseador;
@@ -13,21 +15,55 @@ class CrearPaseoScreen extends StatefulWidget {
 }
 
 class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
-  String? _perroSeleccionado;
+  List<dynamic> _perros = [];
+  bool _cargandoPerros = true;
+  bool _guardando = false;
+
+  int? _perroIdSeleccionado;
   int _duracion = 30;
   DateTime? _fechaSeleccionada;
   final TextEditingController _notasController = TextEditingController();
 
-  final List<Map<String, dynamic>> perrosDemo = [
-    {'id': 1, 'nombre': 'CHOCOROL'},
-    {'id': 2, 'nombre': 'Luna'},
-    {'id': 3, 'nombre': 'Max'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _cargarPerros();
+  }
 
   @override
   void dispose() {
     _notasController.dispose();
     super.dispose();
+  }
+
+  Future<void> _cargarPerros() async {
+    setState(() {
+      _cargandoPerros = true;
+    });
+
+    try {
+      final result = await PerrosService.obtenerMisPerros();
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        setState(() {
+          _perros = result['data'] as List<dynamic>;
+          _cargandoPerros = false;
+        });
+      } else {
+        setState(() {
+          _cargandoPerros = false;
+        });
+        _mostrarMensaje(result['message']);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cargandoPerros = false;
+      });
+      _mostrarMensaje('Error de conexión: $e');
+    }
   }
 
   Future<void> _seleccionarFecha() async {
@@ -40,7 +76,6 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
     );
 
     if (fecha == null) return;
-
     if (!mounted) return;
 
     final hora = await showTimePicker(
@@ -65,6 +100,63 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(texto)),
     );
+  }
+
+  String _textoSeguro(dynamic valor, [String fallback = 'Sin dato']) {
+    if (valor == null) return fallback;
+    final texto = valor.toString().trim();
+    return texto.isEmpty ? fallback : texto;
+  }
+
+  Future<void> _crearPaseo() async {
+    final paseadorId = widget.paseador?['id'];
+
+    if (paseadorId == null) {
+      _mostrarMensaje('No se encontró el paseador seleccionado');
+      return;
+    }
+
+    if (_perroIdSeleccionado == null) {
+      _mostrarMensaje('Selecciona un perro');
+      return;
+    }
+
+    if (_fechaSeleccionada == null) {
+      _mostrarMensaje('Selecciona fecha y hora');
+      return;
+    }
+
+    setState(() {
+      _guardando = true;
+    });
+
+    try {
+      final result = await PaseosService.crearPaseo(
+        paseadorId: paseadorId,
+        perroId: _perroIdSeleccionado!,
+        fechaProgramada: _fechaSeleccionada!,
+        duracionMinutos: _duracion,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        _mostrarMensaje(result['message']);
+        await Future.delayed(const Duration(milliseconds: 700));
+        if (!mounted) return;
+        Navigator.pop(context, true);
+      } else {
+        _mostrarMensaje(result['message']);
+      }
+    } catch (e) {
+      _mostrarMensaje('Error de conexión: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _guardando = false;
+        });
+      }
+    }
   }
 
   @override
@@ -124,30 +216,34 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
           const SizedBox(height: 16),
           _FormCard(
             titulo: 'Selecciona tu perro',
-            child: DropdownButtonFormField<String>(
-              value: _perroSeleccionado,
-              items: perrosDemo
-                  .map(
-                    (perro) => DropdownMenuItem<String>(
-                      value: perro['nombre'].toString(),
-                      child: Text(perro['nombre'].toString()),
-                    ),
+            child: _cargandoPerros
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Center(child: CircularProgressIndicator()),
                   )
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _perroSeleccionado = value;
-                });
-              },
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: const Color(0xFFF8F4EC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
+                : DropdownButtonFormField<int>(
+                    value: _perroIdSeleccionado,
+                    items: _perros.map((perro) {
+                      final item = perro as Map<String, dynamic>;
+                      return DropdownMenuItem<int>(
+                        value: item['id'] as int,
+                        child: Text(_textoSeguro(item['nombre'])),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _perroIdSeleccionado = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFFF8F4EC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(height: 16),
           _FormCard(
@@ -219,9 +315,7 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
           SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                _mostrarMensaje('Crear paseo real después');
-              },
+              onPressed: _guardando ? null : _crearPaseo,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF14A89A),
                 shape: RoundedRectangleBorder(
@@ -229,13 +323,22 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
                 ),
                 elevation: 0,
               ),
-              child: const Text(
-                'Confirmar paseo',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              child: _guardando
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.4,
+                      ),
+                    )
+                  : const Text(
+                      'Confirmar paseo',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
             ),
           ),
         ],
