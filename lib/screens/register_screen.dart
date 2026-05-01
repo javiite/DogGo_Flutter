@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
+import 'confirmar_correo_screen.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -16,6 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String _rolSeleccionado = 'Dueño';
   bool _ocultarPassword = true;
+  bool _registrando = false;
 
   @override
   void dispose() {
@@ -31,6 +35,108 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(texto)),
     );
+  }
+
+  String _rolApi() {
+    if (_rolSeleccionado == 'Dueño') {
+      return 'Duenio';
+    }
+
+    return 'Paseador';
+  }
+
+  bool _validarFormulario() {
+    final nombre = _nombreController.text.trim();
+    final apellido = _apellidoController.text.trim();
+    final email = _emailController.text.trim();
+    final telefono = _telefonoController.text.trim();
+    final password = _passwordController.text;
+
+    if (nombre.isEmpty) {
+      _mostrarMensaje('Escribe tu nombre.');
+      return false;
+    }
+
+    if (apellido.isEmpty) {
+      _mostrarMensaje('Escribe tu apellido.');
+      return false;
+    }
+
+    if (email.isEmpty || !email.contains('@')) {
+      _mostrarMensaje('Escribe un correo válido.');
+      return false;
+    }
+
+    if (telefono.isEmpty) {
+      _mostrarMensaje('Escribe tu teléfono.');
+      return false;
+    }
+
+    if (password.length < 6) {
+      _mostrarMensaje('La contraseña debe tener al menos 6 caracteres.');
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _registrarUsuario() async {
+    if (_registrando) return;
+
+    if (!_validarFormulario()) return;
+
+    setState(() {
+      _registrando = true;
+    });
+
+    final email = _emailController.text.trim();
+
+    try {
+      final result = await AuthService.registrar(
+        nombre: _nombreController.text.trim(),
+        apellido: _apellidoController.text.trim(),
+        email: email,
+        password: _passwordController.text,
+        telefono: _telefonoController.text.trim(),
+        rol: _rolApi(),
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        _mostrarMensaje(
+          result['message']?.toString() ??
+              'Usuario registrado correctamente. Revisa tu correo.',
+        );
+
+        await Future.delayed(const Duration(milliseconds: 650));
+
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ConfirmarCorreoScreen(
+              email: email,
+            ),
+          ),
+        );
+      } else {
+        _mostrarMensaje(
+          result['message']?.toString() ?? 'No se pudo registrar el usuario.',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      _mostrarMensaje('Error de conexión: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _registrando = false;
+        });
+      }
+    }
   }
 
   InputDecoration _decoracionCampo({
@@ -57,8 +163,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.pets, color: Color(0xFF14A89A)),
             SizedBox(width: 8),
             Text(
@@ -72,9 +178,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
+            onPressed: _registrando
+                ? null
+                : () {
+                    Navigator.pop(context);
+                  },
             child: const Text(
               'Volver',
               style: TextStyle(color: Color(0xFF25324A)),
@@ -93,8 +201,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               borderRadius: BorderRadius.circular(26),
               border: Border.all(color: const Color(0xFFE7E0D5)),
             ),
-            child: Column(
-              children: const [
+            child: const Column(
+              children: [
                 CircleAvatar(
                   radius: 34,
                   backgroundColor: Colors.white,
@@ -154,6 +262,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 TextField(
                   controller: _nombreController,
+                  enabled: !_registrando,
+                  textInputAction: TextInputAction.next,
                   decoration: _decoracionCampo(
                     label: 'Nombre',
                     icon: Icons.person_outline,
@@ -162,6 +272,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: _apellidoController,
+                  enabled: !_registrando,
+                  textInputAction: TextInputAction.next,
                   decoration: _decoracionCampo(
                     label: 'Apellido',
                     icon: Icons.badge_outlined,
@@ -170,7 +282,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: _emailController,
+                  enabled: !_registrando,
                   keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
                   decoration: _decoracionCampo(
                     label: 'Correo electrónico',
                     icon: Icons.email_outlined,
@@ -179,7 +293,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: _telefonoController,
+                  enabled: !_registrando,
                   keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
                   decoration: _decoracionCampo(
                     label: 'Teléfono',
                     icon: Icons.phone_outlined,
@@ -188,18 +304,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: _passwordController,
+                  enabled: !_registrando,
                   obscureText: _ocultarPassword,
+                  textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
                     prefixIcon: const Icon(Icons.lock_outline),
                     filled: true,
                     fillColor: const Color(0xFFF8F4EC),
                     suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _ocultarPassword = !_ocultarPassword;
-                        });
-                      },
+                      onPressed: _registrando
+                          ? null
+                          : () {
+                              setState(() {
+                                _ocultarPassword = !_ocultarPassword;
+                              });
+                            },
                       icon: Icon(
                         _ocultarPassword
                             ? Icons.visibility_off
@@ -233,13 +353,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: Text('Paseador'),
                         ),
                       ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _rolSeleccionado = value;
-                          });
-                        }
-                      },
+                      onChanged: _registrando
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _rolSeleccionado = value;
+                                });
+                              }
+                            },
                     ),
                   ),
                 ),
@@ -248,23 +370,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () {
-                      _mostrarMensaje('Registro visual por ahora');
-                    },
+                    onPressed: _registrando ? null : _registrarUsuario,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF14A89A),
+                      disabledBackgroundColor:
+                          const Color(0xFF14A89A).withOpacity(0.45),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(26),
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'Crear cuenta',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    child: _registrando
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.3,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Crear cuenta',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                   ),
                 ),
               ],

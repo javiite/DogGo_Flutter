@@ -7,16 +7,19 @@ class PerrosService {
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if (statusCode == 200 && body['success'] == true) {
+    if (statusCode == 200 && body is Map && body['success'] == true) {
       return {
         'success': true,
-        'data': body['data'],
+        'data': _normalizarLista(body['data']),
       };
     }
 
     return {
       'success': false,
-      'message': body['message'] ?? 'No se pudieron obtener los perros.',
+      'message': body is Map
+          ? body['message'] ?? 'No se pudieron obtener los perros.'
+          : 'No se pudieron obtener los perros.',
+      'statusCode': statusCode,
     };
   }
 
@@ -26,16 +29,19 @@ class PerrosService {
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if (statusCode == 200 && body['success'] == true) {
+    if (statusCode == 200 && body is Map && body['success'] == true) {
       return {
         'success': true,
-        'data': body['data'],
+        'data': _normalizarMapa(body['data']),
       };
     }
 
     return {
       'success': false,
-      'message': body['message'] ?? 'No se pudo obtener el perro.',
+      'message': body is Map
+          ? body['message'] ?? 'No se pudo obtener el perro.'
+          : 'No se pudo obtener el perro.',
+      'statusCode': statusCode,
     };
   }
 
@@ -45,22 +51,37 @@ class PerrosService {
     required int edad,
     required String tamano,
     required String notas,
+    String? fotoUrl,
   }) async {
-    final response = await ApiService.post(
+    final data = {
+      'nombre': nombre.trim(),
+      'raza': raza.trim(),
+      'edad': edad,
+      'tamano': tamano.trim(),
+      'tamanio': tamano.trim(),
+      'tamaño': tamano.trim(),
+      'notas': notas.trim(),
+      'observaciones': notas.trim(),
+    };
+
+    if (fotoUrl != null && fotoUrl.trim().isNotEmpty) {
+      data['fotoUrl'] = fotoUrl.trim();
+      data['FotoUrl'] = fotoUrl.trim();
+      data['imagenUrl'] = fotoUrl.trim();
+      data['urlFoto'] = fotoUrl.trim();
+    }
+
+    final response = await ApiService.postAuth(
       '/api/perros',
-      {
-        'nombre': nombre,
-        'raza': raza,
-        'edad': edad,
-        'tamano': tamano,
-        'notas': notas,
-      },
+      data,
     );
 
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if ((statusCode == 200 || statusCode == 201) && body['success'] == true) {
+    if ((statusCode == 200 || statusCode == 201) &&
+        body is Map &&
+        body['success'] == true) {
       return {
         'success': true,
         'message': body['message'] ?? 'Perro registrado correctamente.',
@@ -70,7 +91,11 @@ class PerrosService {
 
     return {
       'success': false,
-      'message': body['message'] ?? 'No se pudo registrar el perro.',
+      'message': body is Map
+          ? body['message'] ??
+              'No se pudo registrar el perro. Verifica que hayas iniciado sesión.'
+          : 'No se pudo registrar el perro. Verifica que hayas iniciado sesión.',
+      'statusCode': statusCode,
     };
   }
 
@@ -81,22 +106,35 @@ class PerrosService {
     required int edad,
     required String tamano,
     required String notas,
+    String? fotoUrl,
   }) async {
+    final data = {
+      'nombre': nombre.trim(),
+      'raza': raza.trim(),
+      'edad': edad,
+      'tamano': tamano.trim(),
+      'tamanio': tamano.trim(),
+      'tamaño': tamano.trim(),
+      'notas': notas.trim(),
+      'observaciones': notas.trim(),
+    };
+
+    if (fotoUrl != null && fotoUrl.trim().isNotEmpty) {
+      data['fotoUrl'] = fotoUrl.trim();
+      data['FotoUrl'] = fotoUrl.trim();
+      data['imagenUrl'] = fotoUrl.trim();
+      data['urlFoto'] = fotoUrl.trim();
+    }
+
     final response = await ApiService.putAuth(
       '/api/perros/$id',
-      {
-        'nombre': nombre,
-        'raza': raza,
-        'edad': edad,
-        'tamano': tamano,
-        'notas': notas,
-      },
+      data,
     );
 
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if (statusCode == 200 && body['success'] == true) {
+    if (statusCode == 200 && body is Map && body['success'] == true) {
       return {
         'success': true,
         'message': body['message'] ?? 'Perro actualizado correctamente.',
@@ -106,7 +144,10 @@ class PerrosService {
 
     return {
       'success': false,
-      'message': body['message'] ?? 'No se pudo actualizar el perro.',
+      'message': body is Map
+          ? body['message'] ?? 'No se pudo actualizar el perro.'
+          : 'No se pudo actualizar el perro.',
+      'statusCode': statusCode,
     };
   }
 
@@ -116,7 +157,7 @@ class PerrosService {
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if (statusCode == 200 && body['success'] == true) {
+    if (statusCode == 200 && body is Map && body['success'] == true) {
       return {
         'success': true,
         'message': body['message'] ?? 'Perro eliminado correctamente.',
@@ -125,7 +166,32 @@ class PerrosService {
 
     return {
       'success': false,
-      'message': body['message'] ?? 'No se pudo eliminar el perro.',
+      'message': body is Map
+          ? body['message'] ?? 'No se pudo eliminar el perro.'
+          : 'No se pudo eliminar el perro.',
+      'statusCode': statusCode,
     };
+  }
+
+  static List<dynamic> _normalizarLista(dynamic data) {
+    if (data is List) return data;
+
+    if (data is Map) {
+      final posibleLista = data['items'] ??
+          data['perros'] ??
+          data['data'] ??
+          data['result'] ??
+          data['resultado'];
+
+      if (posibleLista is List) return posibleLista;
+    }
+
+    return [];
+  }
+
+  static Map<String, dynamic> _normalizarMapa(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return {};
   }
 }

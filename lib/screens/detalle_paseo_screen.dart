@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../services/paseos_service.dart';
+import '../services/session_service.dart';
 import 'mapa_paseo_screen.dart';
+import 'calificar_paseo_screen.dart';
+import 'chat_paseo_screen.dart';
+import 'evidencia_paseo_screen.dart';
+import 'tracking_paseo_screen.dart';
 
 class DetallePaseoScreen extends StatefulWidget {
   final int? id;
   final int? paseoId;
   final Map<String, dynamic>? paseo;
+  final String? rol;
   final VoidCallback? onPaseoActualizado;
 
   const DetallePaseoScreen({
@@ -14,6 +20,7 @@ class DetallePaseoScreen extends StatefulWidget {
     this.id,
     this.paseoId,
     this.paseo,
+    this.rol,
     this.onPaseoActualizado,
   });
 
@@ -22,11 +29,10 @@ class DetallePaseoScreen extends StatefulWidget {
 }
 
 class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
-  final PaseosService _paseosService = PaseosService();
-
   Map<String, dynamic>? _paseo;
   bool _cargando = true;
   bool _accionando = false;
+  String? _rolReal;
 
   @override
   void initState() {
@@ -36,7 +42,42 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
       _paseo = Map<String, dynamic>.from(widget.paseo!);
     }
 
-    _cargarDetalle();
+    _inicializar();
+  }
+
+  Future<void> _inicializar() async {
+    await _cargarRol();
+    await _cargarDetalle();
+  }
+
+  Future<void> _cargarRol() async {
+    try {
+      final rol = await SessionService.obtenerRol();
+
+      if (!mounted) return;
+
+      setState(() {
+        _rolReal = rol ?? widget.rol;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _rolReal = widget.rol;
+      });
+    }
+  }
+
+  String get _rolUsuario {
+    return _rolReal ?? widget.rol ?? '';
+  }
+
+  bool get _esPaseador {
+    return SessionService.esPaseadorRol(_rolUsuario);
+  }
+
+  bool get _esDuenio {
+    return SessionService.esDuenioRol(_rolUsuario);
   }
 
   int? get _idPaseo {
@@ -54,8 +95,13 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
 
   String _texto(dynamic valor, {String fallback = 'No disponible'}) {
     if (valor == null) return fallback;
+
     final texto = valor.toString().trim();
-    if (texto.isEmpty || texto.toLowerCase() == 'null') return fallback;
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return fallback;
+    }
+
     return texto;
   }
 
@@ -75,6 +121,36 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
   bool get _esEnCurso => _normalizarEstado() == 'encurso';
   bool get _esFinalizado => _normalizarEstado() == 'finalizado';
   bool get _esCancelado => _normalizarEstado() == 'cancelado';
+
+  bool get _puedeAceptar => _esPaseador && _esPendiente;
+  bool get _puedeRechazar => _esPaseador && _esPendiente;
+  bool get _puedeIniciar => _esPaseador && _esAceptado;
+  bool get _puedeFinalizar => _esPaseador && _esEnCurso;
+
+  bool get _puedeCancelar {
+    if (_esFinalizado || _esCancelado) return false;
+    return _esPaseador || _esDuenio;
+  }
+
+  bool get _puedeCalificar {
+    return _esDuenio && _esFinalizado;
+  }
+
+  bool get _puedeSubirFotoInicio {
+    if (!_esPaseador) return false;
+    if (_esCancelado || _esFinalizado) return false;
+    return _fotoInicio() == null;
+  }
+
+  bool get _puedeSubirFotoFin {
+    if (!_esPaseador) return false;
+    if (!_esEnCurso && !_esFinalizado) return false;
+    return _fotoFin() == null;
+  }
+
+  bool get _puedeAbrirTrackingGps {
+    return _esPaseador && _esEnCurso;
+  }
 
   Color _colorEstado() {
     switch (_normalizarEstado()) {
@@ -115,17 +191,37 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
     return '\$${numero.toStringAsFixed(2)}';
   }
 
+  double? _doubleSeguro(dynamic valor) {
+    if (valor == null) return null;
+
+    if (valor is double) return valor;
+    if (valor is int) return valor.toDouble();
+
+    final texto = valor.toString().trim();
+    if (texto.isEmpty || texto.toLowerCase() == 'null') return null;
+
+    return double.tryParse(texto);
+  }
+
   Map<String, dynamic> _normalizarDetalle(dynamic respuesta) {
     dynamic datos = respuesta;
 
     if (respuesta is Map) {
-      datos = respuesta['data'] ??
-          respuesta['paseo'] ??
-          respuesta['detalle'] ??
-          respuesta['resultado'] ??
-          respuesta['result'] ??
-          respuesta['value'] ??
-          respuesta;
+      if (respuesta.containsKey('statusCode') && respuesta.containsKey('body')) {
+        datos = respuesta['body'];
+      } else {
+        datos = respuesta;
+      }
+    }
+
+    if (datos is Map) {
+      datos = datos['data'] ??
+          datos['paseo'] ??
+          datos['detalle'] ??
+          datos['resultado'] ??
+          datos['result'] ??
+          datos['value'] ??
+          datos;
     }
 
     if (datos is Map) {
@@ -136,157 +232,48 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
   }
 
   Future<Map<String, dynamic>> _obtenerDetalleCompatible(int id) async {
-    final dynamic service = _paseosService;
-    dynamic respuesta;
-
-    try {
-      respuesta = await service.obtenerDetallePaseo(id);
-      return _normalizarDetalle(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.obtenerDetalle(id);
-      return _normalizarDetalle(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.detallePaseo(id);
-      return _normalizarDetalle(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.detalle(id);
-      return _normalizarDetalle(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.getDetallePaseo(id);
-      return _normalizarDetalle(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.getPaseoById(id);
-      return _normalizarDetalle(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.obtenerPaseoPorId(id);
-      return _normalizarDetalle(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.obtenerPaseo(id);
-      return _normalizarDetalle(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    throw Exception(
-      'No encontré método compatible para obtener detalle del paseo.',
-    );
+    final respuesta = await PaseosService.obtenerPaseoPorId(id);
+    return _normalizarDetalle(respuesta);
   }
 
   Future<void> _aceptarCompatible(int id) async {
-    final dynamic service = _paseosService;
+    final result = await PaseosService.aceptarPaseo(id);
 
-    try {
-      await service.aceptarPaseo(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.aceptar(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.aceptarSolicitud(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    throw Exception('No encontré método compatible para aceptar paseo.');
+    if (result['success'] != true) {
+      throw Exception(result['message'] ?? 'No se pudo aceptar el paseo.');
+    }
   }
 
   Future<void> _rechazarCompatible(int id) async {
-    final dynamic service = _paseosService;
+    final result = await PaseosService.rechazarPaseo(id);
 
-    try {
-      await service.rechazarPaseo(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.rechazar(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.rechazarSolicitud(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    throw Exception('No encontré método compatible para rechazar paseo.');
+    if (result['success'] != true) {
+      throw Exception(result['message'] ?? 'No se pudo rechazar el paseo.');
+    }
   }
 
   Future<void> _iniciarCompatible(int id) async {
-    final dynamic service = _paseosService;
+    final result = await PaseosService.iniciarPaseo(id);
 
-    try {
-      await service.iniciarPaseo(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.iniciar(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.iniciarTracking(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    throw Exception('No encontré método compatible para iniciar paseo.');
+    if (result['success'] != true) {
+      throw Exception(result['message'] ?? 'No se pudo iniciar el paseo.');
+    }
   }
 
   Future<void> _finalizarCompatible(int id) async {
-    final dynamic service = _paseosService;
+    final result = await PaseosService.finalizarPaseo(id);
 
-    try {
-      await service.finalizarPaseo(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.finalizar(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.terminarPaseo(id);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    throw Exception('No encontré método compatible para finalizar paseo.');
+    if (result['success'] != true) {
+      throw Exception(result['message'] ?? 'No se pudo finalizar el paseo.');
+    }
   }
 
   Future<void> _cancelarCompatible(int id, String motivo) async {
-    final dynamic service = _paseosService;
+    final result = await PaseosService.cancelarPaseo(id);
 
-    try {
-      await service.cancelarPaseo(id, motivo);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.cancelar(id, motivo);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      await service.cancelarPaseoConMotivo(id, motivo);
-      return;
-    } on NoSuchMethodError catch (_) {}
-
-    throw Exception('No encontré método compatible para cancelar paseo.');
+    if (result['success'] != true) {
+      throw Exception(result['message'] ?? 'No se pudo cancelar el paseo.');
+    }
   }
 
   Future<void> _cargarDetalle() async {
@@ -362,7 +349,7 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
 
   Future<void> _aceptarPaseo() async {
     final id = _idPaseo;
-    if (id == null) return;
+    if (id == null || !_puedeAceptar) return;
 
     await _ejecutarAccion(
       accion: () => _aceptarCompatible(id),
@@ -372,7 +359,7 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
 
   Future<void> _rechazarPaseo() async {
     final id = _idPaseo;
-    if (id == null) return;
+    if (id == null || !_puedeRechazar) return;
 
     await _ejecutarAccion(
       accion: () => _rechazarCompatible(id),
@@ -382,7 +369,7 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
 
   Future<void> _iniciarPaseo() async {
     final id = _idPaseo;
-    if (id == null) return;
+    if (id == null || !_puedeIniciar) return;
 
     await _ejecutarAccion(
       accion: () => _iniciarCompatible(id),
@@ -392,7 +379,7 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
 
   Future<void> _finalizarPaseo() async {
     final id = _idPaseo;
-    if (id == null) return;
+    if (id == null || !_puedeFinalizar) return;
 
     await _ejecutarAccion(
       accion: () => _finalizarCompatible(id),
@@ -402,7 +389,7 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
 
   Future<void> _cancelarPaseo() async {
     final id = _idPaseo;
-    if (id == null) return;
+    if (id == null || !_puedeCancelar) return;
 
     final motivoController = TextEditingController();
 
@@ -416,6 +403,7 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
             maxLines: 3,
             decoration: const InputDecoration(
               labelText: 'Motivo de cancelación',
+              hintText: 'Ej. Cambio de horario, lluvia, emergencia...',
               border: OutlineInputBorder(),
             ),
           ),
@@ -453,6 +441,105 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
     await _ejecutarAccion(
       accion: () => _cancelarCompatible(id, motivo),
       mensajeExito: 'Paseo cancelado correctamente.',
+    );
+  }
+
+  Future<void> _abrirCalificarPaseo() async {
+    final id = _idPaseo;
+
+    if (id == null || !_puedeCalificar) return;
+
+    final actualizado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CalificarPaseoScreen(
+          paseoId: id,
+          nombrePerro: _nombrePerro(),
+          nombrePaseador: _nombrePaseador(),
+        ),
+      ),
+    );
+
+    if (actualizado == true) {
+      await _cargarDetalle();
+      widget.onPaseoActualizado?.call();
+    }
+  }
+
+  Future<void> _abrirChatPaseo() async {
+    final id = _idPaseo;
+
+    if (id == null) return;
+
+    final nombreOtroUsuario = _esPaseador ? _nombreDuenio() : _nombrePaseador();
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatPaseoScreen(
+          paseoId: id,
+          nombrePerro: _nombrePerro(),
+          nombreOtroUsuario: nombreOtroUsuario,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _abrirEvidencia(String tipo) async {
+    final id = _idPaseo;
+
+    if (id == null) return;
+
+    final actualizado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvidenciaPaseoScreen(
+          paseoId: id,
+          tipo: tipo,
+          nombrePerro: _nombrePerro(),
+          nombrePaseador: _nombrePaseador(),
+        ),
+      ),
+    );
+
+    if (actualizado == true) {
+      await _cargarDetalle();
+      widget.onPaseoActualizado?.call();
+    }
+  }
+
+  Future<void> _abrirTrackingGps() async {
+    final id = _idPaseo;
+
+    if (id == null || !_puedeAbrirTrackingGps) return;
+
+    final actualizado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TrackingPaseoScreen(
+          paseoId: id,
+          nombrePerro: _nombrePerro(),
+          nombrePaseador: _nombrePaseador(),
+        ),
+      ),
+    );
+
+    if (actualizado == true) {
+      await _cargarDetalle();
+      widget.onPaseoActualizado?.call();
+    }
+  }
+
+  Future<void> _abrirMapaPaseo() async {
+    if (_paseo == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapaPaseoScreen(
+          paseo: _paseo!,
+        ),
+      ),
     );
   }
 
@@ -512,10 +599,56 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
       _paseo?['ubicacionTexto'] ??
           _paseo?['ubicacionRecogidaTexto'] ??
           _paseo?['direccionRecogida'] ??
+          _paseo?['direccion'] ??
           _paseo?['UbicacionTexto'] ??
-          _paseo?['DireccionRecogida'],
+          _paseo?['UbicacionRecogidaTexto'] ??
+          _paseo?['DireccionRecogida'] ??
+          _paseo?['Direccion'],
       fallback: 'Ubicación de recogida no definida',
     );
+  }
+
+  double? _latitudRecogida() {
+    return _doubleSeguro(
+      _paseo?['latitudRecogida'] ??
+          _paseo?['latRecogida'] ??
+          _paseo?['ubicacionLatitud'] ??
+          _paseo?['latitud'] ??
+          _paseo?['LatitudRecogida'] ??
+          _paseo?['LatRecogida'] ??
+          _paseo?['UbicacionLatitud'] ??
+          _paseo?['Latitud'],
+    );
+  }
+
+  double? _longitudRecogida() {
+    return _doubleSeguro(
+      _paseo?['longitudRecogida'] ??
+          _paseo?['lngRecogida'] ??
+          _paseo?['lonRecogida'] ??
+          _paseo?['ubicacionLongitud'] ??
+          _paseo?['longitud'] ??
+          _paseo?['LongitudRecogida'] ??
+          _paseo?['LngRecogida'] ??
+          _paseo?['LonRecogida'] ??
+          _paseo?['UbicacionLongitud'] ??
+          _paseo?['Longitud'],
+    );
+  }
+
+  bool _tieneCoordenadasRecogida() {
+    return _latitudRecogida() != null && _longitudRecogida() != null;
+  }
+
+  String _coordenadasRecogida() {
+    final latitud = _latitudRecogida();
+    final longitud = _longitudRecogida();
+
+    if (latitud == null || longitud == null) {
+      return 'Coordenadas no disponibles';
+    }
+
+    return '${latitud.toStringAsFixed(6)}, ${longitud.toStringAsFixed(6)}';
   }
 
   dynamic _fechaProgramada() {
@@ -539,6 +672,32 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
 
   dynamic _precioPaseo() {
     return _paseo?['precio'] ?? _paseo?['Precio'];
+  }
+
+  String? _motivoCancelacion() {
+    final valor = _paseo?['motivoCancelacion'] ?? _paseo?['MotivoCancelacion'];
+    final texto = valor?.toString().trim();
+
+    if (texto == null || texto.isEmpty || texto.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return texto;
+  }
+
+  String? _canceladoPor() {
+    final valor = _paseo?['canceladoPor'] ?? _paseo?['CanceladoPor'];
+    final texto = valor?.toString().trim();
+
+    if (texto == null || texto.isEmpty || texto.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return texto;
+  }
+
+  dynamic _fechaCancelacion() {
+    return _paseo?['fechaCancelacion'] ?? _paseo?['FechaCancelacion'];
   }
 
   String? _fotoInicio() {
@@ -587,14 +746,20 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
                     padding: const EdgeInsets.all(16),
                     children: [
                       _buildHeader(colorEstado),
+                      const SizedBox(height: 12),
+                      _buildRolCard(),
                       const SizedBox(height: 16),
                       _buildInfoPrincipal(),
                       const SizedBox(height: 16),
-                      _buildMapaButton(),
+                      _buildBotonesPrincipales(),
                       const SizedBox(height: 16),
                       _buildUbicacionCard(),
                       const SizedBox(height: 16),
                       _buildFechasCard(),
+                      if (_esCancelado) ...[
+                        const SizedBox(height: 16),
+                        _buildCancelacionCard(),
+                      ],
                       const SizedBox(height: 16),
                       _buildEvidenciasCard(),
                       const SizedBox(height: 16),
@@ -718,6 +883,48 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
     );
   }
 
+  Widget _buildRolCard() {
+    final rolTexto = SessionService.normalizarRol(_rolUsuario);
+    final color = _esPaseador
+        ? Colors.green
+        : _esDuenio
+            ? Colors.blue
+            : Colors.orange;
+
+    final descripcion = _esPaseador
+        ? 'Puedes gestionar este paseo, subir evidencias, usar chat y activar GPS.'
+        : _esDuenio
+            ? 'Puedes consultar el paseo, ver mapa, usar chat y calificar al finalizar.'
+            : 'No se detectó un rol claro. Algunas acciones estarán ocultas.';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.09),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.badge_rounded,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$rolTexto: $descripcion',
+              style: TextStyle(
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoPrincipal() {
     return _CardSeccion(
       titulo: 'Información del paseo',
@@ -741,7 +948,8 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
         _InfoRow(
           icono: Icons.timer_rounded,
           titulo: 'Duración',
-          valor: _duracion() == null ? 'No disponible' : '${_duracion()} minutos',
+          valor:
+              _duracion() == null ? 'No disponible' : '${_duracion()} minutos',
         ),
         _InfoRow(
           icono: Icons.attach_money_rounded,
@@ -752,61 +960,196 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
     );
   }
 
-  Widget _buildMapaButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: ElevatedButton.icon(
-        onPressed: _paseo == null
-            ? null
-            : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MapaPaseoScreen(
-                      paseo: _paseo!,
+  Widget _buildBotonesPrincipales() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _paseo == null ? null : _abrirMapaPaseo,
+                  icon: const Icon(Icons.map_rounded),
+                  label: const Text('Mapa'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1F8A70),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    disabledForegroundColor: Colors.grey.shade600,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(17),
                     ),
                   ),
-                );
-              },
-        icon: const Icon(Icons.map_rounded),
-        label: const Text(
-          'Ver mapa del paseo',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-          ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _abrirChatPaseo,
+                  icon: const Icon(Icons.chat_rounded),
+                  label: const Text('Chat'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                    side: const BorderSide(
+                      color: Colors.blue,
+                      width: 1.3,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1F8A70),
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.grey.shade300,
-          disabledForegroundColor: Colors.grey.shade600,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(17),
+        if (_puedeAbrirTrackingGps) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _abrirTrackingGps,
+              icon: const Icon(Icons.my_location_rounded),
+              label: const Text('Abrir tracking GPS'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(17),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 
   Widget _buildUbicacionCard() {
+    final tieneCoordenadas = _tieneCoordenadasRecogida();
+
     return _CardSeccion(
       titulo: 'Ubicación',
       icono: Icons.location_on_rounded,
       children: [
-        _InfoRow(
-          icono: Icons.home_rounded,
-          titulo: 'Punto de recogida',
-          valor: _direccionRecogida(),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1F8A70).withOpacity(0.07),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: const Color(0xFF1F8A70).withOpacity(0.18),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F8A70).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(
+                  Icons.home_rounded,
+                  color: Color(0xFF1F8A70),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Punto de recogida',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF1F8A70),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _direccionRecogida(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (tieneCoordenadas) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        _coordenadasRecogida(),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(height: 12),
+        if (tieneCoordenadas)
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: _abrirMapaPaseo,
+              icon: const Icon(Icons.map_rounded),
+              label: const Text('Ver punto de recogida en mapa'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF1F8A70),
+                side: const BorderSide(
+                  color: Color(0xFF1F8A70),
+                  width: 1.2,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          )
+        else
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Text(
+              'Este paseo todavía no tiene coordenadas de recogida registradas.',
+              style: TextStyle(
+                color: Colors.orange.shade900,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        const SizedBox(height: 13),
         _InfoRow(
           icono: Icons.my_location_rounded,
           titulo: 'Tracking',
           valor: _esEnCurso
-              ? 'El paseo está en curso. Puedes revisar el mapa.'
+              ? 'El paseo está en curso. Puedes revisar el mapa y activar GPS.'
               : _esFinalizado
                   ? 'El paseo ya finalizó. Puedes revisar la última ubicación.'
-                  : 'El tracking se activa cuando inicia el paseo.',
+                  : _esCancelado
+                      ? 'El paseo fue cancelado. El tracking no está activo.'
+                      : 'El tracking se activa cuando inicia el paseo.',
         ),
       ],
     );
@@ -831,6 +1174,30 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           icono: Icons.flag_circle_rounded,
           titulo: 'Fin',
           valor: _fechaBonita(_fechaFin()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCancelacionCard() {
+    return _CardSeccion(
+      titulo: 'Cancelación',
+      icono: Icons.cancel_rounded,
+      children: [
+        _InfoRow(
+          icono: Icons.person_off_rounded,
+          titulo: 'Cancelado por',
+          valor: _canceladoPor() ?? 'No disponible',
+        ),
+        _InfoRow(
+          icono: Icons.calendar_today_rounded,
+          titulo: 'Fecha de cancelación',
+          valor: _fechaBonita(_fechaCancelacion()),
+        ),
+        _InfoRow(
+          icono: Icons.notes_rounded,
+          titulo: 'Motivo',
+          valor: _motivoCancelacion() ?? 'Sin motivo registrado',
         ),
       ],
     );
@@ -863,6 +1230,27 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
             titulo: 'Foto de fin',
             url: fotoFin,
           ),
+        if (_puedeSubirFotoInicio || _puedeSubirFotoFin) ...[
+          const SizedBox(height: 14),
+          if (_puedeSubirFotoInicio)
+            _BotonAccion(
+              texto: 'Subir foto de inicio',
+              icono: Icons.add_a_photo_rounded,
+              color: Colors.green,
+              cargando: false,
+              onPressed: () => _abrirEvidencia('inicio'),
+            ),
+          if (_puedeSubirFotoInicio && _puedeSubirFotoFin)
+            const SizedBox(height: 10),
+          if (_puedeSubirFotoFin)
+            _BotonAccion(
+              texto: 'Subir foto de fin',
+              icono: Icons.photo_camera_back_rounded,
+              color: Colors.purple,
+              cargando: false,
+              onPressed: () => _abrirEvidencia('fin'),
+            ),
+        ],
       ],
     );
   }
@@ -870,7 +1258,31 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
   Widget _buildAcciones() {
     final acciones = <Widget>[];
 
-    if (_esPendiente) {
+    acciones.addAll([
+      _BotonAccion(
+        texto: 'Abrir chat del paseo',
+        icono: Icons.chat_rounded,
+        color: Colors.blue,
+        cargando: false,
+        onPressed: _abrirChatPaseo,
+      ),
+      const SizedBox(height: 10),
+    ]);
+
+    if (_puedeAbrirTrackingGps) {
+      acciones.addAll([
+        _BotonAccion(
+          texto: 'Abrir tracking GPS',
+          icono: Icons.my_location_rounded,
+          color: Colors.green,
+          cargando: false,
+          onPressed: _abrirTrackingGps,
+        ),
+        const SizedBox(height: 10),
+      ]);
+    }
+
+    if (_puedeAceptar) {
       acciones.addAll([
         _BotonAccion(
           texto: 'Aceptar paseo',
@@ -880,6 +1292,11 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           onPressed: _aceptarPaseo,
         ),
         const SizedBox(height: 10),
+      ]);
+    }
+
+    if (_puedeRechazar) {
+      acciones.addAll([
         _BotonAccion(
           texto: 'Rechazar paseo',
           icono: Icons.close_rounded,
@@ -887,11 +1304,12 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           cargando: _accionando,
           onPressed: _rechazarPaseo,
         ),
+        const SizedBox(height: 10),
       ]);
     }
 
-    if (_esAceptado) {
-      acciones.add(
+    if (_puedeIniciar) {
+      acciones.addAll([
         _BotonAccion(
           texto: 'Iniciar paseo',
           icono: Icons.play_arrow_rounded,
@@ -899,11 +1317,12 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           cargando: _accionando,
           onPressed: _iniciarPaseo,
         ),
-      );
+        const SizedBox(height: 10),
+      ]);
     }
 
-    if (_esEnCurso) {
-      acciones.add(
+    if (_puedeFinalizar) {
+      acciones.addAll([
         _BotonAccion(
           texto: 'Finalizar paseo',
           icono: Icons.flag_rounded,
@@ -911,13 +1330,12 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           cargando: _accionando,
           onPressed: _finalizarPaseo,
         ),
-      );
+        const SizedBox(height: 10),
+      ]);
     }
 
-    if (!_esFinalizado && !_esCancelado) {
-      if (acciones.isNotEmpty) acciones.add(const SizedBox(height: 10));
-
-      acciones.add(
+    if (_puedeCancelar) {
+      acciones.addAll([
         _BotonAccion(
           texto: 'Cancelar paseo',
           icono: Icons.cancel_rounded,
@@ -926,28 +1344,25 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           onPressed: _cancelarPaseo,
           outlined: true,
         ),
-      );
+        const SizedBox(height: 10),
+      ]);
     }
 
-    if (acciones.isEmpty) {
-      acciones.add(
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Text(
-            _esFinalizado
-                ? 'Este paseo ya fue finalizado.'
-                : 'Este paseo fue cancelado.',
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+    if (_puedeCalificar) {
+      acciones.addAll([
+        _BotonAccion(
+          texto: 'Calificar paseo',
+          icono: Icons.star_rounded,
+          color: Colors.amber.shade700,
+          cargando: _accionando,
+          onPressed: _abrirCalificarPaseo,
         ),
-      );
+        const SizedBox(height: 10),
+      ]);
+    }
+
+    if (acciones.isNotEmpty && acciones.last is SizedBox) {
+      acciones.removeLast();
     }
 
     return _CardSeccion(
@@ -1003,11 +1418,13 @@ class _CardSeccion extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                titulo,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
+              Expanded(
+                child: Text(
+                  titulo,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -1085,6 +1502,27 @@ class _FotoEvidencia extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final esUrlAbsoluta =
+        url.startsWith('http://') || url.startsWith('https://');
+
+    if (!esUrlAbsoluta) {
+      return Container(
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          '$titulo: imagen registrada, pero falta URL absoluta.',
+          style: TextStyle(
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w700,
+            fontSize: 12.5,
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -1,4 +1,5 @@
 import 'api_service.dart';
+import 'session_service.dart';
 import 'storage_service.dart';
 
 class AuthService {
@@ -9,56 +10,36 @@ class AuthService {
     final response = await ApiService.post(
       '/api/auth/login',
       {
-        'email': email,
+        'email': email.trim(),
         'password': password,
       },
     );
 
     final statusCode = response['statusCode'];
-    final body = response['body'];
+    final body = _bodyComoMapa(response['body']);
 
     if (statusCode == 200 && body['success'] == true) {
-      final token = body['data']['token'];
-      await StorageService.guardarToken(token);
+      final data = body['data'];
+
+      if (data is Map<String, dynamic>) {
+        await SessionService.guardarSesionDesdeLogin(data);
+      } else if (data is Map) {
+        await SessionService.guardarSesionDesdeLogin(
+          Map<String, dynamic>.from(data),
+        );
+      }
 
       return {
         'success': true,
-        'message': body['message'],
+        'message': body['message'] ?? 'Inicio de sesión correcto.',
         'data': body['data'],
       };
     }
 
     return {
       'success': false,
-      'message': body['message'] ?? 'Error al iniciar sesión',
-    };
-  }
-
-  static Future<Map<String, dynamic>> confirmarCorreo({
-    required String email,
-    required String codigo,
-  }) async {
-    final response = await ApiService.post(
-      '/api/auth/confirmar-correo',
-      {
-        'email': email,
-        'codigo': codigo,
-      },
-    );
-
-    final statusCode = response['statusCode'];
-    final body = response['body'];
-
-    if (statusCode == 200 && body['success'] == true) {
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Correo confirmado correctamente.',
-      };
-    }
-
-    return {
-      'success': false,
-      'message': body['message'] ?? 'No se pudo confirmar el correo.',
+      'message': body['message'] ?? 'Error al iniciar sesión.',
+      'statusCode': statusCode,
     };
   }
 
@@ -73,28 +54,59 @@ class AuthService {
     final response = await ApiService.post(
       '/api/auth/register',
       {
-        'nombre': nombre,
-        'apellido': apellido,
-        'email': email,
+        'nombre': nombre.trim(),
+        'apellido': apellido.trim(),
+        'email': email.trim(),
         'password': password,
-        'telefono': telefono,
-        'rol': rol,
+        'telefono': telefono.trim(),
+        'rol': _rolParaApi(rol),
       },
     );
 
     final statusCode = response['statusCode'];
-    final body = response['body'];
+    final body = _bodyComoMapa(response['body']);
 
     if ((statusCode == 200 || statusCode == 201) && body['success'] == true) {
       return {
         'success': true,
         'message': body['message'] ?? 'Usuario registrado correctamente.',
+        'data': body['data'],
       };
     }
 
     return {
       'success': false,
       'message': body['message'] ?? 'No se pudo registrar el usuario.',
+      'statusCode': statusCode,
+    };
+  }
+
+  static Future<Map<String, dynamic>> confirmarCorreo({
+    required String email,
+    required String codigo,
+  }) async {
+    final response = await ApiService.post(
+      '/api/auth/confirmar-correo',
+      {
+        'email': email.trim(),
+        'codigo': codigo.trim(),
+      },
+    );
+
+    final statusCode = response['statusCode'];
+    final body = _bodyComoMapa(response['body']);
+
+    if (statusCode == 200 && body['success'] == true) {
+      return {
+        'success': true,
+        'message': body['message'] ?? 'Correo confirmado correctamente.',
+      };
+    }
+
+    return {
+      'success': false,
+      'message': body['message'] ?? 'No se pudo confirmar el correo.',
+      'statusCode': statusCode,
     };
   }
 
@@ -104,12 +116,12 @@ class AuthService {
     final response = await ApiService.post(
       '/api/auth/forgot-password',
       {
-        'email': email,
+        'email': email.trim(),
       },
     );
 
     final statusCode = response['statusCode'];
-    final body = response['body'];
+    final body = _bodyComoMapa(response['body']);
 
     if ((statusCode == 200 || statusCode == 201) && body['success'] == true) {
       return {
@@ -121,6 +133,75 @@ class AuthService {
     return {
       'success': false,
       'message': body['message'] ?? 'No se pudo iniciar la recuperación.',
+      'statusCode': statusCode,
+    };
+  }
+
+  static Future<Map<String, dynamic>> recuperarPassword({
+    required String email,
+    required String codigo,
+    required String nuevaPassword,
+  }) async {
+    final response = await ApiService.post(
+      '/api/auth/reset-password',
+      {
+        'email': email.trim(),
+        'codigo': codigo.trim(),
+        'nuevaPassword': nuevaPassword,
+      },
+    );
+
+    final statusCode = response['statusCode'];
+    final body = _bodyComoMapa(response['body']);
+
+    if ((statusCode == 200 || statusCode == 201) && body['success'] == true) {
+      return {
+        'success': true,
+        'message': body['message'] ?? 'Contraseña actualizada correctamente.',
+      };
+    }
+
+    return {
+      'success': false,
+      'message':
+          '${body['message'] ?? 'No se pudo actualizar la contraseña.'} Código: $statusCode',
+      'statusCode': statusCode,
+      'data': body,
+    };
+  }
+
+  static Future<void> cerrarSesion() async {
+    await StorageService.limpiarSesion();
+  }
+
+  static String _rolParaApi(String rol) {
+    final normalizado = rol.trim().toLowerCase();
+
+    if (normalizado == 'dueño' ||
+        normalizado == 'duenio' ||
+        normalizado == 'cliente') {
+      return 'Duenio';
+    }
+
+    if (normalizado == 'paseador') {
+      return 'Paseador';
+    }
+
+    return rol.trim();
+  }
+
+  static Map<String, dynamic> _bodyComoMapa(dynamic body) {
+    if (body is Map<String, dynamic>) {
+      return body;
+    }
+
+    if (body is Map) {
+      return Map<String, dynamic>.from(body);
+    }
+
+    return {
+      'success': false,
+      'message': body?.toString() ?? 'Respuesta inválida del servidor.',
     };
   }
 }

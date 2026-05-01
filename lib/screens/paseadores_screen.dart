@@ -40,13 +40,16 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
+        final data = result['data'];
+
         setState(() {
-          _paseadores = result['data'] as List<dynamic>;
+          _paseadores = data is List ? data : [];
           _cargando = false;
         });
       } else {
         setState(() {
-          _error = result['message'];
+          _error = result['message']?.toString() ??
+              'No se pudieron obtener los paseadores.';
           _cargando = false;
         });
       }
@@ -60,31 +63,382 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
     }
   }
 
-  void _mostrarMensaje(String texto) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(texto)),
+  String _textoSeguro(dynamic valor, [String fallback = 'Sin dato']) {
+    if (valor == null) return fallback;
+
+    final texto = valor.toString().trim();
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return fallback;
+    }
+
+    return texto;
+  }
+
+  Map<String, dynamic> _mapaSeguro(dynamic valor) {
+    if (valor is Map<String, dynamic>) {
+      return valor;
+    }
+
+    if (valor is Map) {
+      return Map<String, dynamic>.from(valor);
+    }
+
+    return {};
+  }
+
+  dynamic _valor(Map<String, dynamic> mapa, List<String> keys) {
+    for (final key in keys) {
+      if (mapa.containsKey(key) && mapa[key] != null) {
+        return mapa[key];
+      }
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic> _usuarioDe(Map<String, dynamic> paseador) {
+    final usuario = _valor(
+      paseador,
+      [
+        'usuario',
+        'Usuario',
+        'user',
+        'User',
+        'datosUsuario',
+        'DatosUsuario',
+      ],
+    );
+
+    return _mapaSeguro(usuario);
+  }
+
+  String _nombrePaseador(Map<String, dynamic> paseador) {
+    final usuario = _usuarioDe(paseador);
+
+    final nombreDirecto = _valor(
+      paseador,
+      [
+        'nombreCompleto',
+        'NombreCompleto',
+        'paseadorNombreCompleto',
+        'nombrePaseadorCompleto',
+      ],
+    );
+
+    final nombreDirectoTexto = _textoSeguro(nombreDirecto, '');
+
+    if (nombreDirectoTexto.isNotEmpty) {
+      return nombreDirectoTexto;
+    }
+
+    final nombre = _textoSeguro(
+      _valor(
+            paseador,
+            [
+              'nombre',
+              'Nombre',
+              'paseadorNombre',
+              'PaseadorNombre',
+              'nombrePaseador',
+              'NombrePaseador',
+            ],
+          ) ??
+          _valor(
+            usuario,
+            [
+              'nombre',
+              'Nombre',
+              'name',
+              'Name',
+            ],
+          ),
+      '',
+    );
+
+    final apellido = _textoSeguro(
+      _valor(
+            paseador,
+            [
+              'apellido',
+              'Apellido',
+              'paseadorApellido',
+              'PaseadorApellido',
+              'apellidoPaseador',
+              'ApellidoPaseador',
+            ],
+          ) ??
+          _valor(
+            usuario,
+            [
+              'apellido',
+              'Apellido',
+              'lastName',
+              'LastName',
+            ],
+          ),
+      '',
+    );
+
+    final completo = '$nombre $apellido'.trim();
+
+    return completo.isEmpty ? 'Sin dato' : completo;
+  }
+
+  String _emailPaseador(Map<String, dynamic> paseador) {
+    final usuario = _usuarioDe(paseador);
+
+    return _textoSeguro(
+      _valor(
+            paseador,
+            [
+              'email',
+              'Email',
+              'correo',
+              'Correo',
+              'paseadorEmail',
+              'PaseadorEmail',
+            ],
+          ) ??
+          _valor(
+            usuario,
+            [
+              'email',
+              'Email',
+              'correo',
+              'Correo',
+            ],
+          ),
+      '',
     );
   }
 
-  String _textoSeguro(dynamic valor, [String fallback = 'Sin dato']) {
-    if (valor == null) return fallback;
-    final texto = valor.toString().trim();
-    return texto.isEmpty ? fallback : texto;
+  String _descripcion(Map<String, dynamic> paseador) {
+    return _textoSeguro(
+      _valor(
+        paseador,
+        [
+          'descripcion',
+          'Descripcion',
+          'descripción',
+          'bio',
+          'Bio',
+          'presentacion',
+          'Presentacion',
+        ],
+      ),
+      'Sin descripción',
+    );
   }
 
-  String _tarifaTexto(dynamic tarifa) {
+  String _zona(Map<String, dynamic> paseador) {
+    return _textoSeguro(
+      _valor(
+        paseador,
+        [
+          'zonaServicio',
+          'ZonaServicio',
+          'zona',
+          'Zona',
+          'zonas',
+          'Zonas',
+          'ubicacion',
+          'Ubicacion',
+        ],
+      ),
+      'Sin zona',
+    );
+  }
+
+  String _fotoUrl(Map<String, dynamic> paseador) {
+    final usuario = _usuarioDe(paseador);
+
+    return _textoSeguro(
+      _valor(
+            paseador,
+            [
+              'fotoUrl',
+              'FotoUrl',
+              'fotoPerfilUrl',
+              'FotoPerfilUrl',
+              'imagenUrl',
+              'ImagenUrl',
+            ],
+          ) ??
+          _valor(
+            usuario,
+            [
+              'fotoUrl',
+              'FotoUrl',
+              'fotoPerfilUrl',
+              'FotoPerfilUrl',
+              'imagenUrl',
+              'ImagenUrl',
+            ],
+          ),
+      '',
+    );
+  }
+
+  String _tarifaTexto(Map<String, dynamic> paseador) {
+    final tarifa = _valor(
+      paseador,
+      [
+        'tarifaPorHora',
+        'TarifaPorHora',
+        'tarifa',
+        'Tarifa',
+        'precioHora',
+        'PrecioHora',
+      ],
+    );
+
     if (tarifa == null) return 'Tarifa no disponible';
-    return '\$${tarifa.toString()} / hora';
+
+    final numero = double.tryParse(tarifa.toString());
+
+    if (numero == null) {
+      return '\$${tarifa.toString()} / hora';
+    }
+
+    return '\$${numero.toStringAsFixed(2)} / hora';
   }
 
-  String _calificacionTexto(dynamic calificacion) {
+  String _calificacionTexto(Map<String, dynamic> paseador) {
+    final calificacion = _valor(
+      paseador,
+      [
+        'calificacionPromedio',
+        'CalificacionPromedio',
+        'rating',
+        'Rating',
+        'calificacion',
+        'Calificacion',
+      ],
+    );
+
     if (calificacion == null) return 'Sin calificación';
-    return '⭐ ${calificacion.toString()}';
+
+    final numero = double.tryParse(calificacion.toString());
+
+    if (numero == null) {
+      return '⭐ ${calificacion.toString()}';
+    }
+
+    return '⭐ ${numero.toStringAsFixed(1)}';
   }
 
-  String _experienciaTexto(dynamic experiencia) {
+  String _experienciaTexto(Map<String, dynamic> paseador) {
+    final experiencia = _valor(
+      paseador,
+      [
+        'experienciaAnios',
+        'ExperienciaAnios',
+        'experienciaAños',
+        'ExperienciaAños',
+        'experiencia',
+        'Experiencia',
+      ],
+    );
+
     if (experiencia == null) return 'Sin experiencia';
+
     return '$experiencia año(s) exp.';
+  }
+
+  bool _disponible(Map<String, dynamic> paseador) {
+    final valor = _valor(
+      paseador,
+      [
+        'disponible',
+        'Disponible',
+        'estaDisponible',
+        'EstaDisponible',
+        'activo',
+        'Activo',
+      ],
+    );
+
+    if (valor is bool) return valor;
+
+    final texto = valor?.toString().trim().toLowerCase();
+
+    if (texto == null || texto.isEmpty || texto == 'null') {
+      return true;
+    }
+
+    return texto == 'true' || texto == '1' || texto == 'si' || texto == 'sí';
+  }
+
+  List<String> _zonasLista(Map<String, dynamic> paseador) {
+    final zona = _zona(paseador);
+
+    if (zona == 'Sin zona') {
+      return [zona];
+    }
+
+    final separadas = zona
+        .split(',')
+        .map((z) => z.trim())
+        .where((z) => z.isNotEmpty)
+        .toList();
+
+    return separadas.isEmpty ? [zona] : separadas;
+  }
+
+  Map<String, dynamic> _normalizarPaseadorParaDetalle(
+    Map<String, dynamic> paseador,
+  ) {
+    final normalizado = Map<String, dynamic>.from(paseador);
+
+    normalizado['nombre'] = _nombrePaseador(paseador);
+    normalizado['email'] = _emailPaseador(paseador);
+    normalizado['descripcion'] = _descripcion(paseador);
+    normalizado['zonaServicio'] = _zona(paseador);
+    normalizado['fotoUrl'] = _fotoUrl(paseador);
+    normalizado['disponible'] = _disponible(paseador);
+
+    final tarifa = _valor(
+      paseador,
+      [
+        'tarifaPorHora',
+        'TarifaPorHora',
+        'tarifa',
+        'Tarifa',
+        'precioHora',
+        'PrecioHora',
+      ],
+    );
+
+    final calificacion = _valor(
+      paseador,
+      [
+        'calificacionPromedio',
+        'CalificacionPromedio',
+        'rating',
+        'Rating',
+        'calificacion',
+        'Calificacion',
+      ],
+    );
+
+    final experiencia = _valor(
+      paseador,
+      [
+        'experienciaAnios',
+        'ExperienciaAnios',
+        'experienciaAños',
+        'ExperienciaAños',
+        'experiencia',
+        'Experiencia',
+      ],
+    );
+
+    normalizado['tarifaPorHora'] = tarifa;
+    normalizado['calificacionPromedio'] = calificacion;
+    normalizado['experienciaAnios'] = experiencia;
+
+    return normalizado;
   }
 
   List<dynamic> get _paseadoresFiltrados {
@@ -93,21 +447,31 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
     if (texto.isEmpty) return _paseadores;
 
     return _paseadores.where((item) {
-      final paseador = item as Map<String, dynamic>;
-      final nombre = _textoSeguro(paseador['nombre']).toLowerCase();
-      final descripcion = _textoSeguro(
-        paseador['descripcion'],
-        '',
-      ).toLowerCase();
-      final zona = _textoSeguro(
-        paseador['zonaServicio'] ?? paseador['zona'],
-        '',
-      ).toLowerCase();
+      final paseador = _mapaSeguro(item);
+
+      final nombre = _nombrePaseador(paseador).toLowerCase();
+      final descripcion = _descripcion(paseador).toLowerCase();
+      final zona = _zona(paseador).toLowerCase();
+      final email = _emailPaseador(paseador).toLowerCase();
 
       return nombre.contains(texto) ||
           descripcion.contains(texto) ||
-          zona.contains(texto);
+          zona.contains(texto) ||
+          email.contains(texto);
     }).toList();
+  }
+
+  Future<void> _abrirDetalle(Map<String, dynamic> paseador) async {
+    final paseadorNormalizado = _normalizarPaseadorParaDetalle(paseador);
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetallePaseadorScreen(
+          paseador: paseadorNormalizado,
+        ),
+      ),
+    );
   }
 
   @override
@@ -120,8 +484,8 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.pets, color: Color(0xFF14A89A)),
             SizedBox(width: 8),
             Text(
@@ -190,7 +554,7 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            '🦴 ENCUENTRA TU PASEADOR',
+                            'ENCUENTRA TU PASEADOR',
                             style: TextStyle(
                               fontSize: 12,
                               color: Color(0xFF14A89A),
@@ -227,6 +591,16 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
                               filled: true,
                               fillColor: Colors.white,
                               prefixIcon: const Icon(Icons.search),
+                              suffixIcon:
+                                  _busquedaController.text.trim().isEmpty
+                                      ? null
+                                      : IconButton(
+                                          onPressed: () {
+                                            _busquedaController.clear();
+                                            setState(() {});
+                                          },
+                                          icon: const Icon(Icons.close_rounded),
+                                        ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(14),
                                 borderSide: BorderSide.none,
@@ -282,35 +656,18 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
                                 padding: const EdgeInsets.all(18),
                                 itemCount: lista.length,
                                 itemBuilder: (context, index) {
-                                  final paseador =
-                                      lista[index] as Map<String, dynamic>;
+                                  final paseador = _mapaSeguro(lista[index]);
 
-                                  final nombre = _textoSeguro(
-                                    paseador['nombre'],
-                                  );
-                                  final tarifa = _tarifaTexto(
-                                    paseador['tarifaPorHora'] ??
-                                        paseador['tarifa'],
-                                  );
-                                  final descripcion = _textoSeguro(
-                                    paseador['descripcion'],
-                                    'Sin descripción',
-                                  );
-                                  final zona = _textoSeguro(
-                                    paseador['zonaServicio'] ??
-                                        paseador['zona'],
-                                    'Sin zona',
-                                  );
-                                  final experiencia = _experienciaTexto(
-                                    paseador['experienciaAnios'] ??
-                                        paseador['experiencia'],
-                                  );
-                                  final rating = _calificacionTexto(
-                                    paseador['calificacionPromedio'] ??
-                                        paseador['rating'],
-                                  );
-                                  final disponible =
-                                      paseador['disponible'] == true;
+                                  final nombre = _nombrePaseador(paseador);
+                                  final tarifa = _tarifaTexto(paseador);
+                                  final descripcion = _descripcion(paseador);
+                                  final zonas = _zonasLista(paseador);
+                                  final experiencia =
+                                      _experienciaTexto(paseador);
+                                  final rating =
+                                      _calificacionTexto(paseador);
+                                  final disponible = _disponible(paseador);
+                                  final fotoUrl = _fotoUrl(paseador);
 
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 14),
@@ -318,31 +675,16 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
                                       nombre: nombre,
                                       precio: tarifa,
                                       descripcion: descripcion,
-                                      zonas: [zona],
+                                      zonas: zonas,
                                       experiencia: experiencia,
                                       disponible: disponible,
                                       rating: rating,
+                                      fotoUrl: fotoUrl,
                                       onVerPerfil: () async {
-                                        await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                DetallePaseadorScreen(
-                                              paseador: paseador,
-                                            ),
-                                          ),
-                                        );
+                                        await _abrirDetalle(paseador);
                                       },
                                       onSolicitar: () async {
-                                        await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                DetallePaseadorScreen(
-                                              paseador: paseador,
-                                            ),
-                                          ),
-                                        );
+                                        await _abrirDetalle(paseador);
                                       },
                                     ),
                                   );
@@ -364,6 +706,7 @@ class _PaseadorCard extends StatelessWidget {
   final String experiencia;
   final bool disponible;
   final String rating;
+  final String fotoUrl;
   final VoidCallback onVerPerfil;
   final VoidCallback onSolicitar;
 
@@ -375,9 +718,14 @@ class _PaseadorCard extends StatelessWidget {
     required this.experiencia,
     required this.disponible,
     required this.rating,
+    required this.fotoUrl,
     required this.onVerPerfil,
     required this.onSolicitar,
   });
+
+  bool get _tieneFotoAbsoluta {
+    return fotoUrl.startsWith('http://') || fotoUrl.startsWith('https://');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -407,13 +755,28 @@ class _PaseadorCard extends StatelessWidget {
                     color: const Color(0xFFF4EDE3),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.person,
-                      color: Color(0xFF6B7280),
-                      size: 30,
-                    ),
-                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _tieneFotoAbsoluta
+                      ? Image.network(
+                          fotoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) {
+                            return const Center(
+                              child: Icon(
+                                Icons.person,
+                                color: Color(0xFF6B7280),
+                                size: 30,
+                              ),
+                            );
+                          },
+                        )
+                      : const Center(
+                          child: Icon(
+                            Icons.person,
+                            color: Color(0xFF6B7280),
+                            size: 30,
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

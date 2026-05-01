@@ -1,7 +1,12 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
-class MapaPaseoScreen extends StatelessWidget {
+import '../services/session_service.dart';
+import '../services/tracking_service.dart';
+import 'tracking_paseo_screen.dart';
+
+class MapaPaseoScreen extends StatefulWidget {
   final Map<String, dynamic> paseo;
 
   const MapaPaseoScreen({
@@ -9,29 +14,268 @@ class MapaPaseoScreen extends StatelessWidget {
     required this.paseo,
   });
 
+  @override
+  State<MapaPaseoScreen> createState() => _MapaPaseoScreenState();
+}
+
+class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
+  final TrackingService _trackingService = TrackingService();
+
+  Map<String, dynamic>? _ultimaUbicacion;
+  bool _cargandoUbicacion = false;
+  String? _errorUbicacion;
+  String? _rolReal;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarRol();
+    _cargarUltimaUbicacion();
+  }
+
+  Future<void> _cargarRol() async {
+    try {
+      final rol = await SessionService.obtenerRol();
+
+      if (!mounted) return;
+
+      setState(() {
+        _rolReal = rol;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _rolReal = null;
+      });
+    }
+  }
+
+  Future<void> _cargarUltimaUbicacion() async {
+    final id = _idPaseo();
+
+    if (id == null) return;
+
+    setState(() {
+      _cargandoUbicacion = true;
+      _errorUbicacion = null;
+    });
+
+    try {
+      final ubicacion = await _trackingService.obtenerUltimaUbicacion(id);
+
+      if (!mounted) return;
+
+      setState(() {
+        _ultimaUbicacion = ubicacion;
+        _cargandoUbicacion = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _errorUbicacion = e.toString();
+        _cargandoUbicacion = false;
+      });
+    }
+  }
+
+  int? _idPaseo() {
+    final valor = widget.paseo['id'] ??
+        widget.paseo['Id'] ??
+        widget.paseo['paseoId'] ??
+        widget.paseo['PaseoId'];
+
+    if (valor is int) return valor;
+    return int.tryParse(valor?.toString() ?? '');
+  }
+
   String _texto(dynamic valor, {String fallback = 'No disponible'}) {
     if (valor == null) return fallback;
+
     final texto = valor.toString().trim();
-    return texto.isEmpty ? fallback : texto;
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return fallback;
+    }
+
+    return texto;
   }
 
-  double? _double(dynamic valor) {
+  double? _doubleSeguro(dynamic valor) {
     if (valor == null) return null;
+
     if (valor is double) return valor;
     if (valor is int) return valor.toDouble();
-    return double.tryParse(valor.toString());
+    if (valor is num) return valor.toDouble();
+
+    final texto = valor.toString().trim();
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return double.tryParse(texto);
   }
 
-  String get estado => _texto(paseo['estado'], fallback: 'Pendiente');
+  String _estado() {
+    return _texto(
+      widget.paseo['estado'] ?? widget.paseo['Estado'],
+      fallback: 'Pendiente',
+    );
+  }
 
-  bool get estaEnCurso => estado.toLowerCase() == 'encurso';
+  String _estadoNormalizado() {
+    return _estado().replaceAll(' ', '').toLowerCase();
+  }
 
-  bool get estaFinalizado => estado.toLowerCase() == 'finalizado';
+  bool get _esPaseador {
+    return SessionService.esPaseadorRol(_rolReal);
+  }
 
-  bool get estaCancelado => estado.toLowerCase() == 'cancelado';
+  bool get _esEnCurso {
+    return _estadoNormalizado() == 'encurso';
+  }
 
-  Color get colorEstado {
-    switch (estado.toLowerCase()) {
+  bool get _puedeAbrirTracking {
+    return _esPaseador && _esEnCurso;
+  }
+
+  String _nombrePerro() {
+    return _texto(
+      widget.paseo['perroNombre'] ??
+          widget.paseo['nombrePerro'] ??
+          widget.paseo['perro']?['nombre'] ??
+          widget.paseo['Perro']?['Nombre'],
+      fallback: 'Perro',
+    );
+  }
+
+  String _nombrePaseador() {
+    final nombre = widget.paseo['paseadorNombre'] ??
+        widget.paseo['nombrePaseador'] ??
+        widget.paseo['paseador']?['nombre'] ??
+        widget.paseo['paseador']?['usuario']?['nombre'] ??
+        widget.paseo['Paseador']?['Usuario']?['Nombre'];
+
+    final apellido = widget.paseo['paseadorApellido'] ??
+        widget.paseo['apellidoPaseador'] ??
+        widget.paseo['paseador']?['usuario']?['apellido'] ??
+        widget.paseo['Paseador']?['Usuario']?['Apellido'];
+
+    final n = _texto(nombre, fallback: '');
+    final a = _texto(apellido, fallback: '');
+
+    final completo = '$n $a'.trim();
+
+    return completo.isEmpty ? 'Paseador no asignado' : completo;
+  }
+
+  double? _latitudActual() {
+    return _doubleSeguro(
+      _ultimaUbicacion?['latitud'] ??
+          _ultimaUbicacion?['Latitud'] ??
+          _ultimaUbicacion?['latitudActual'] ??
+          _ultimaUbicacion?['LatitudActual'] ??
+          widget.paseo['latitudActual'] ??
+          widget.paseo['LatitudActual'],
+    );
+  }
+
+  double? _longitudActual() {
+    return _doubleSeguro(
+      _ultimaUbicacion?['longitud'] ??
+          _ultimaUbicacion?['Longitud'] ??
+          _ultimaUbicacion?['longitudActual'] ??
+          _ultimaUbicacion?['LongitudActual'] ??
+          widget.paseo['longitudActual'] ??
+          widget.paseo['LongitudActual'],
+    );
+  }
+
+  double? _latitudRecogida() {
+    return _doubleSeguro(
+      widget.paseo['latitudRecogida'] ??
+          widget.paseo['latRecogida'] ??
+          widget.paseo['ubicacionLatitud'] ??
+          widget.paseo['LatitudRecogida'] ??
+          widget.paseo['LatRecogida'] ??
+          widget.paseo['UbicacionLatitud'],
+    );
+  }
+
+  double? _longitudRecogida() {
+    return _doubleSeguro(
+      widget.paseo['longitudRecogida'] ??
+          widget.paseo['lngRecogida'] ??
+          widget.paseo['lonRecogida'] ??
+          widget.paseo['ubicacionLongitud'] ??
+          widget.paseo['LongitudRecogida'] ??
+          widget.paseo['LngRecogida'] ??
+          widget.paseo['LonRecogida'] ??
+          widget.paseo['UbicacionLongitud'],
+    );
+  }
+
+  String _direccionRecogida() {
+    return _texto(
+      widget.paseo['ubicacionTexto'] ??
+          widget.paseo['ubicacionRecogidaTexto'] ??
+          widget.paseo['direccionRecogida'] ??
+          widget.paseo['direccion'] ??
+          widget.paseo['UbicacionTexto'] ??
+          widget.paseo['UbicacionRecogidaTexto'] ??
+          widget.paseo['DireccionRecogida'] ??
+          widget.paseo['Direccion'],
+      fallback: 'Ubicación de recogida no definida',
+    );
+  }
+
+  String _fechaBonita(dynamic valor) {
+    if (valor == null) return 'No disponible';
+
+    final fecha = DateTime.tryParse(valor.toString());
+    if (fecha == null) return valor.toString();
+
+    final local = fecha.toLocal();
+
+    String dos(int n) => n.toString().padLeft(2, '0');
+
+    return '${dos(local.day)}/${dos(local.month)}/${local.year} ${dos(local.hour)}:${dos(local.minute)}';
+  }
+
+  dynamic _fechaUbicacion() {
+    return _ultimaUbicacion?['fecha'] ??
+        _ultimaUbicacion?['Fecha'] ??
+        _ultimaUbicacion?['timestamp'] ??
+        _ultimaUbicacion?['Timestamp'] ??
+        _ultimaUbicacion?['fechaRegistro'] ??
+        _ultimaUbicacion?['FechaRegistro'];
+  }
+
+  Future<void> _abrirTracking() async {
+    final id = _idPaseo();
+
+    if (id == null) return;
+
+    final actualizado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TrackingPaseoScreen(
+          paseoId: id,
+          nombrePerro: _nombrePerro(),
+          nombrePaseador: _nombrePaseador(),
+        ),
+      ),
+    );
+
+    if (actualizado == true) {
+      await _cargarUltimaUbicacion();
+    }
+  }
+
+  Color _colorEstado() {
+    switch (_estadoNormalizado()) {
       case 'pendiente':
         return Colors.orange;
       case 'aceptado':
@@ -47,48 +291,45 @@ class MapaPaseoScreen extends StatelessWidget {
     }
   }
 
+  LatLng? _puntoActual() {
+    final lat = _latitudActual();
+    final lng = _longitudActual();
+
+    if (lat == null || lng == null) return null;
+
+    return LatLng(lat, lng);
+  }
+
+  LatLng? _puntoRecogida() {
+    final lat = _latitudRecogida();
+    final lng = _longitudRecogida();
+
+    if (lat == null || lng == null) return null;
+
+    return LatLng(lat, lng);
+  }
+
+  LatLng _centroMapa() {
+    final actual = _puntoActual();
+    final recogida = _puntoRecogida();
+
+    if (actual != null && recogida != null) {
+      return LatLng(
+        (actual.latitude + recogida.latitude) / 2,
+        (actual.longitude + recogida.longitude) / 2,
+      );
+    }
+
+    if (actual != null) return actual;
+    if (recogida != null) return recogida;
+
+    return const LatLng(25.6866, -100.3161);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final nombrePerro = _texto(
-      paseo['perroNombre'] ??
-          paseo['nombrePerro'] ??
-          paseo['perro']?['nombre'],
-      fallback: 'Perro',
-    );
-
-    final nombrePaseador = _texto(
-      paseo['paseadorNombre'] ??
-          paseo['nombrePaseador'] ??
-          paseo['paseador']?['usuario']?['nombre'],
-      fallback: 'Paseador',
-    );
-
-    final latActual = _double(
-      paseo['latitudActual'] ??
-          paseo['LatitudActual'] ??
-          paseo['ubicacionActual']?['latitud'],
-    );
-
-    final lngActual = _double(
-      paseo['longitudActual'] ??
-          paseo['LongitudActual'] ??
-          paseo['ubicacionActual']?['longitud'],
-    );
-
-    final latRecogida = _double(
-      paseo['latitudRecogida'] ?? paseo['LatitudRecogida'],
-    );
-
-    final lngRecogida = _double(
-      paseo['longitudRecogida'] ?? paseo['LongitudRecogida'],
-    );
-
-    final ubicacionTexto = _texto(
-      paseo['ubicacionTexto'] ??
-          paseo['direccionRecogida'] ??
-          paseo['ubicacionRecogidaTexto'],
-      fallback: 'Ubicación de recogida no definida',
-    );
+    final puntoActual = _puntoActual();
+    final puntoRecogida = _puntoRecogida();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
@@ -97,116 +338,78 @@ class MapaPaseoScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1F8A70),
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _cargarUltimaUbicacion,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
       ),
-      body: SafeArea(
+      body: RefreshIndicator(
+        onRefresh: _cargarUltimaUbicacion,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _HeaderPaseo(
-              nombrePerro: nombrePerro,
-              nombrePaseador: nombrePaseador,
-              estado: estado,
-              colorEstado: colorEstado,
+            _buildHeader(),
+            const SizedBox(height: 16),
+            _buildMapaReal(
+              puntoActual: puntoActual,
+              puntoRecogida: puntoRecogida,
             ),
             const SizedBox(height: 16),
-
-            _MapaVisualCard(
-              estado: estado,
-              colorEstado: colorEstado,
-              latActual: latActual,
-              lngActual: lngActual,
-              latRecogida: latRecogida,
-              lngRecogida: lngRecogida,
-            ),
-
+            _buildLeyenda(),
             const SizedBox(height: 16),
-
-            _InfoUbicacionCard(
-              titulo: 'Punto de recogida',
-              icono: Icons.home_rounded,
-              contenido: ubicacionTexto,
-              latitud: latRecogida,
-              longitud: lngRecogida,
+            _buildUbicacionInfo(
+              puntoActual: puntoActual,
+              puntoRecogida: puntoRecogida,
             ),
-
-            const SizedBox(height: 12),
-
-            _InfoUbicacionCard(
-              titulo: estaFinalizado
-                  ? 'Última ubicación registrada'
-                  : 'Ubicación actual del paseo',
-              icono: estaEnCurso
-                  ? Icons.my_location_rounded
-                  : Icons.location_on_rounded,
-              contenido: latActual != null && lngActual != null
-                  ? 'Coordenadas registradas por el paseador'
-                  : 'Todavía no hay ubicación actual disponible',
-              latitud: latActual,
-              longitud: lngActual,
-            ),
-
             const SizedBox(height: 16),
-
-            _TrackingTimeline(
-              estado: estado,
-              colorEstado: colorEstado,
-            ),
-
-            const SizedBox(height: 16),
-
-            _BotonesMapa(
-              tieneUbicacionActual: latActual != null && lngActual != null,
-              latActual: latActual,
-              lngActual: lngActual,
-            ),
+            if (_puedeAbrirTracking) _buildBotonTracking(),
+            if (_puedeAbrirTracking) const SizedBox(height: 16),
+            _buildEstadoTracking(),
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
-}
 
-class _HeaderPaseo extends StatelessWidget {
-  final String nombrePerro;
-  final String nombrePaseador;
-  final String estado;
-  final Color colorEstado;
+  Widget _buildHeader() {
+    final color = _colorEstado();
 
-  const _HeaderPaseo({
-    required this.nombrePerro,
-    required this.nombrePaseador,
-    required this.estado,
-    required this.colorEstado,
-  });
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF1F8A70),
+            Color(0xFF35A98A),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: 62,
+            height: 62,
             decoration: BoxDecoration(
-              color: const Color(0xFF1F8A70).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(18),
+              color: Colors.white.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(
-              Icons.pets_rounded,
-              color: Color(0xFF1F8A70),
-              size: 30,
+              Icons.map_rounded,
+              color: Colors.white,
+              size: 36,
             ),
           ),
           const SizedBox(width: 14),
@@ -215,36 +418,411 @@ class _HeaderPaseo extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  nombrePerro,
+                  _nombrePerro(),
                   style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
-                  'Paseador: $nombrePaseador',
+                  'Paseador: ${_nombrePaseador()}',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
+                    color: Colors.white.withOpacity(0.90),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    _estado(),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      shadows: [
+                        Shadow(
+                          color: color.withOpacity(0.35),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 7,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMapaReal({
+    required LatLng? puntoActual,
+    required LatLng? puntoRecogida,
+  }) {
+    final markers = <Marker>[];
+
+    if (puntoRecogida != null) {
+      markers.add(
+        Marker(
+          point: puntoRecogida,
+          width: 62,
+          height: 62,
+          child: const _MarkerIcon(
+            icono: Icons.home_rounded,
+            color: Colors.blue,
+            texto: 'Recogida',
+          ),
+        ),
+      );
+    }
+
+    if (puntoActual != null) {
+      markers.add(
+        Marker(
+          point: puntoActual,
+          width: 62,
+          height: 62,
+          child: _MarkerIcon(
+            icono: Icons.pets_rounded,
+            color: _colorEstado(),
+            texto: 'GPS',
+          ),
+        ),
+      );
+    }
+
+    final puntosRuta = <LatLng>[];
+
+    if (puntoRecogida != null) puntosRuta.add(puntoRecogida);
+    if (puntoActual != null) puntosRuta.add(puntoActual);
+
+    return Container(
+      height: 380,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.045),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: FlutterMap(
+        options: MapOptions(
+          initialCenter: _centroMapa(),
+          initialZoom: puntosRuta.length >= 2 ? 14 : 16,
+          minZoom: 3,
+          maxZoom: 19,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.example.doggo_flutter',
+          ),
+          if (puntosRuta.length >= 2)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: puntosRuta,
+                  strokeWidth: 5,
+                  color: const Color(0xFF1F8A70),
+                ),
+              ],
             ),
-            decoration: BoxDecoration(
-              color: colorEstado.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
+          MarkerLayer(
+            markers: markers,
+          ),
+          if (markers.isEmpty)
+            Container(
+              color: Colors.black.withOpacity(0.03),
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: const Text(
+                    'Todavía no hay coordenadas para mostrar en el mapa.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeyenda() {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.035),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Row(
+        children: [
+          _LeyendaItem(
+            color: Colors.blue,
+            texto: 'Recogida',
+            icono: Icons.home_rounded,
+          ),
+          SizedBox(width: 14),
+          _LeyendaItem(
+            color: Color(0xFF1F8A70),
+            texto: 'GPS del paseo',
+            icono: Icons.pets_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUbicacionInfo({
+    required LatLng? puntoActual,
+    required LatLng? puntoRecogida,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.045),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _InfoMapaRow(
+            icono: Icons.home_rounded,
+            titulo: 'Punto de recogida',
+            valor: _direccionRecogida(),
+          ),
+          _InfoMapaRow(
+            icono: Icons.pin_drop_rounded,
+            titulo: 'Coordenadas de recogida',
+            valor: puntoRecogida != null
+                ? '${puntoRecogida.latitude.toStringAsFixed(6)}, ${puntoRecogida.longitude.toStringAsFixed(6)}'
+                : 'No disponibles',
+          ),
+          _InfoMapaRow(
+            icono: Icons.my_location_rounded,
+            titulo: 'Última ubicación GPS',
+            valor: puntoActual != null
+                ? '${puntoActual.latitude.toStringAsFixed(6)}, ${puntoActual.longitude.toStringAsFixed(6)}'
+                : 'Todavía no hay ubicación GPS',
+          ),
+          _InfoMapaRow(
+            icono: Icons.access_time_rounded,
+            titulo: 'Última actualización',
+            valor: _fechaBonita(_fechaUbicacion()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBotonTracking() {
+    return SizedBox(
+      height: 54,
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _abrirTracking,
+        icon: const Icon(Icons.my_location_rounded),
+        label: const Text('Abrir tracking GPS'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(17),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEstadoTracking() {
+    if (_cargandoUbicacion) {
+      return const LinearProgressIndicator();
+    }
+
+    if (_errorUbicacion != null) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              color: Colors.orange,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'No se pudo cargar ubicación real. Puede que todavía no exista tracking.',
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            color: Colors.green,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
-              estado,
+              'Mapa actualizado con la información disponible del paseo.',
               style: TextStyle(
-                color: colorEstado,
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarkerIcon extends StatelessWidget {
+  final IconData icono;
+  final Color color;
+  final String texto;
+
+  const _MarkerIcon({
+    required this.icono,
+    required this.color,
+    required this.texto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white,
+              width: 3,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Icon(
+            icono,
+            color: Colors.white,
+            size: 23,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 6,
+            vertical: 2,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            texto,
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LeyendaItem extends StatelessWidget {
+  final Color color;
+  final String texto;
+  final IconData icono;
+
+  const _LeyendaItem({
+    required this.color,
+    required this.texto,
+    required this.icono,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Row(
+        children: [
+          Icon(
+            icono,
+            color: color,
+            size: 20,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              texto,
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 12,
               ),
@@ -256,671 +834,56 @@ class _HeaderPaseo extends StatelessWidget {
   }
 }
 
-class _MapaVisualCard extends StatelessWidget {
-  final String estado;
-  final Color colorEstado;
-  final double? latActual;
-  final double? lngActual;
-  final double? latRecogida;
-  final double? lngRecogida;
-
-  const _MapaVisualCard({
-    required this.estado,
-    required this.colorEstado,
-    required this.latActual,
-    required this.lngActual,
-    required this.latRecogida,
-    required this.lngRecogida,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tieneTracking = latActual != null && lngActual != null;
-
-    return Container(
-      height: 330,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _MapaPainter(
-                  tieneTracking: tieneTracking,
-                  colorEstado: colorEstado,
-                ),
-              ),
-            ),
-
-            Positioned(
-              left: 18,
-              top: 18,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      tieneTracking
-                          ? Icons.navigation_rounded
-                          : Icons.location_searching_rounded,
-                      color: colorEstado,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      tieneTracking
-                          ? 'Tracking visual activo'
-                          : 'Esperando ubicación',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            Positioned(
-              right: 18,
-              top: 18,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: colorEstado.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Text(
-                  estado,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-
-            Positioned(
-              left: 24,
-              bottom: 24,
-              child: _PuntoMapa(
-                titulo: 'Recogida',
-                subtitulo: latRecogida != null && lngRecogida != null
-                    ? 'Ubicación guardada'
-                    : 'No definida',
-                icono: Icons.home_rounded,
-                color: Colors.blue,
-              ),
-            ),
-
-            Positioned(
-              right: 24,
-              bottom: 88,
-              child: _PuntoMapa(
-                titulo: 'Paseador',
-                subtitulo: tieneTracking ? 'Última señal GPS' : 'Sin señal',
-                icono: Icons.directions_walk_rounded,
-                color: colorEstado,
-              ),
-            ),
-
-            Positioned(
-              right: 24,
-              bottom: 24,
-              child: _PuntoMapa(
-                titulo: 'Ruta',
-                subtitulo: tieneTracking ? 'En progreso' : 'Pendiente',
-                icono: Icons.route_rounded,
-                color: Colors.deepOrange,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MapaPainter extends CustomPainter {
-  final bool tieneTracking;
-  final Color colorEstado;
-
-  _MapaPainter({
-    required this.tieneTracking,
-    required this.colorEstado,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fondo = Paint()
-      ..shader = const LinearGradient(
-        colors: [
-          Color(0xFFE8F5E9),
-          Color(0xFFE3F2FD),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), fondo);
-
-    final callePaint = Paint()
-      ..color = Colors.white.withOpacity(0.85)
-      ..strokeWidth = 18
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final calleBordePaint = Paint()
-      ..color = Colors.black.withOpacity(0.05)
-      ..strokeWidth = 22
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path1 = Path()
-      ..moveTo(-20, size.height * 0.25)
-      ..quadraticBezierTo(
-        size.width * 0.35,
-        size.height * 0.10,
-        size.width * 0.65,
-        size.height * 0.30,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.90,
-        size.height * 0.47,
-        size.width + 20,
-        size.height * 0.37,
-      );
-
-    final path2 = Path()
-      ..moveTo(size.width * 0.15, size.height + 20)
-      ..quadraticBezierTo(
-        size.width * 0.28,
-        size.height * 0.58,
-        size.width * 0.46,
-        size.height * 0.38,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.64,
-        size.height * 0.18,
-        size.width * 0.92,
-        -20,
-      );
-
-    final path3 = Path()
-      ..moveTo(-20, size.height * 0.75)
-      ..lineTo(size.width + 20, size.height * 0.58);
-
-    canvas.drawPath(path1, calleBordePaint);
-    canvas.drawPath(path1, callePaint);
-
-    canvas.drawPath(path2, calleBordePaint);
-    canvas.drawPath(path2, callePaint);
-
-    canvas.drawPath(path3, calleBordePaint);
-    canvas.drawPath(path3, callePaint);
-
-    final rutaPaint = Paint()
-      ..color = tieneTracking ? colorEstado : Colors.grey
-      ..strokeWidth = 6
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final ruta = Path()
-      ..moveTo(size.width * 0.18, size.height * 0.72)
-      ..quadraticBezierTo(
-        size.width * 0.34,
-        size.height * 0.58,
-        size.width * 0.48,
-        size.height * 0.54,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.67,
-        size.height * 0.49,
-        size.width * 0.80,
-        size.height * 0.30,
-      );
-
-    canvas.drawPath(ruta, rutaPaint);
-
-    final puntosPaint = Paint()
-      ..color = tieneTracking ? colorEstado : Colors.grey;
-
-    for (double i = 0; i <= 1; i += 0.15) {
-      final x = lerpDouble(size.width * 0.18, size.width * 0.80, i);
-      final y = size.height * (0.72 - sin(i * pi) * 0.25 - i * 0.35);
-      canvas.drawCircle(Offset(x, y), 3, puntosPaint);
-    }
-  }
-
-  double lerpDouble(double a, double b, double t) {
-    return a + (b - a) * t;
-  }
-
-  @override
-  bool shouldRepaint(covariant _MapaPainter oldDelegate) {
-    return oldDelegate.tieneTracking != tieneTracking ||
-        oldDelegate.colorEstado != colorEstado;
-  }
-}
-
-class _PuntoMapa extends StatelessWidget {
-  final String titulo;
-  final String subtitulo;
+class _InfoMapaRow extends StatelessWidget {
   final IconData icono;
-  final Color color;
+  final String titulo;
+  final String valor;
 
-  const _PuntoMapa({
-    required this.titulo,
-    required this.subtitulo,
+  const _InfoMapaRow({
     required this.icono,
-    required this.color,
+    required this.titulo,
+    required this.valor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 138,
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.96),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 13),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icono,
-              color: color,
-              size: 19,
-            ),
+          Icon(
+            icono,
+            color: Colors.grey.shade700,
+            size: 21,
           ),
-          const SizedBox(width: 9),
+          const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   titulo,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
                     fontSize: 12,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  subtitulo,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoUbicacionCard extends StatelessWidget {
-  final String titulo;
-  final IconData icono;
-  final String contenido;
-  final double? latitud;
-  final double? longitud;
-
-  const _InfoUbicacionCard({
-    required this.titulo,
-    required this.icono,
-    required this.contenido,
-    required this.latitud,
-    required this.longitud,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tieneCoordenadas = latitud != null && longitud != null;
-
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.045),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          )
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1F8A70).withOpacity(0.10),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Icon(
-              icono,
-              color: const Color(0xFF1F8A70),
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  titulo,
+                  valor,
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  contenido,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade700,
-                    height: 1.25,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (tieneCoordenadas)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Lat: ${latitud!.toStringAsFixed(6)}  •  Lng: ${longitud!.toStringAsFixed(6)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrackingTimeline extends StatelessWidget {
-  final String estado;
-  final Color colorEstado;
-
-  const _TrackingTimeline({
-    required this.estado,
-    required this.colorEstado,
-  });
-
-  int get pasoActual {
-    switch (estado.toLowerCase()) {
-      case 'pendiente':
-        return 0;
-      case 'aceptado':
-        return 1;
-      case 'encurso':
-        return 2;
-      case 'finalizado':
-        return 3;
-      case 'cancelado':
-        return 0;
-      default:
-        return 0;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pasos = [
-      _PasoTracking(
-        titulo: 'Solicitado',
-        subtitulo: 'El paseo fue creado',
-        icono: Icons.assignment_rounded,
-      ),
-      _PasoTracking(
-        titulo: 'Aceptado',
-        subtitulo: 'El paseador confirmó',
-        icono: Icons.check_circle_rounded,
-      ),
-      _PasoTracking(
-        titulo: 'En curso',
-        subtitulo: 'Tracking activo',
-        icono: Icons.directions_walk_rounded,
-      ),
-      _PasoTracking(
-        titulo: 'Finalizado',
-        subtitulo: 'Paseo completado',
-        icono: Icons.flag_rounded,
-      ),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.045),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Estado del recorrido',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...List.generate(pasos.length, (index) {
-            final paso = pasos[index];
-            final activo = index <= pasoActual;
-            final ultimo = index == pasos.length - 1;
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Column(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: activo
-                            ? colorEstado.withOpacity(0.13)
-                            : Colors.grey.shade200,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        paso.icono,
-                        size: 18,
-                        color: activo ? colorEstado : Colors.grey,
-                      ),
-                    ),
-                    if (!ultimo)
-                      Container(
-                        width: 2,
-                        height: 34,
-                        color: activo
-                            ? colorEstado.withOpacity(0.45)
-                            : Colors.grey.shade300,
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 2, bottom: ultimo ? 0 : 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          paso.titulo,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color:
-                                activo ? Colors.black87 : Colors.grey.shade600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          paso.subtitulo,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
                   ),
                 ),
               ],
-            );
-          }),
+            ),
+          ),
         ],
       ),
-    );
-  }
-}
-
-class _PasoTracking {
-  final String titulo;
-  final String subtitulo;
-  final IconData icono;
-
-  _PasoTracking({
-    required this.titulo,
-    required this.subtitulo,
-    required this.icono,
-  });
-}
-
-class _BotonesMapa extends StatelessWidget {
-  final bool tieneUbicacionActual;
-  final double? latActual;
-  final double? lngActual;
-
-  const _BotonesMapa({
-    required this.tieneUbicacionActual,
-    required this.latActual,
-    required this.lngActual,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: tieneUbicacionActual
-                ? () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Ubicación actual: ${latActual!.toStringAsFixed(6)}, ${lngActual!.toStringAsFixed(6)}',
-                        ),
-                      ),
-                    );
-                  }
-                : null,
-            icon: const Icon(Icons.my_location_rounded),
-            label: const Text('Ver ubicación actual'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1F8A70),
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.grey.shade300,
-              disabledForegroundColor: Colors.grey.shade600,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(17),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: const Icon(Icons.arrow_back_rounded),
-            label: const Text('Volver al detalle'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1F8A70),
-              side: const BorderSide(
-                color: Color(0xFF1F8A70),
-                width: 1.3,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(17),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

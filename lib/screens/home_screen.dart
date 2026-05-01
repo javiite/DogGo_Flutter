@@ -1,463 +1,504 @@
 import 'package:flutter/material.dart';
-import 'mis_perros_screen.dart';
-import 'mis_paseos_screen.dart';
+
+import 'perfil_usuario_screen.dart';
 import 'paseadores_screen.dart';
-import 'server_config_screen.dart';
-import 'perfil_screen.dart';
+import 'mis_perros_screen.dart';
+import 'crear_paseo_screen.dart';
+import 'mis_paseos_screen.dart';
 import 'configuracion_screen.dart';
+import 'notificaciones_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final Map<String, dynamic>? usuario;
+  final int? usuarioId;
+  final String? nombre;
+  final String? rol;
 
-  void _mostrarMensaje(BuildContext context, String texto) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(texto)),
+  const HomeScreen({
+    super.key,
+    this.usuario,
+    this.usuarioId,
+    this.nombre,
+    this.rol,
+  });
+
+  String _texto(dynamic valor, {String fallback = ''}) {
+    if (valor == null) return fallback;
+    final texto = valor.toString().trim();
+    if (texto.isEmpty || texto.toLowerCase() == 'null') return fallback;
+    return texto;
+  }
+
+  String get _nombreUsuario {
+    final nombreMapa = usuario?['nombre'] ?? usuario?['Nombre'];
+    final apellidoMapa = usuario?['apellido'] ?? usuario?['Apellido'];
+
+    final n = _texto(nombre ?? nombreMapa, fallback: '');
+    final a = _texto(apellidoMapa, fallback: '');
+
+    final completo = '$n $a'.trim();
+    return completo.isEmpty ? 'Usuario' : completo;
+  }
+
+  String get _rolUsuario {
+    return _texto(
+      rol ?? usuario?['rol'] ?? usuario?['Rol'],
+      fallback: 'DogGo',
+    );
+  }
+
+  bool get _esPaseador {
+    return _rolUsuario.toLowerCase().contains('paseador');
+  }
+
+  bool get _esDuenio {
+    final r = _rolUsuario.toLowerCase();
+    return r.contains('duenio') || r.contains('dueño');
+  }
+
+  void _abrir(BuildContext context, Widget pantalla) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => pantalla,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F6EF),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: const [
-            Icon(Icons.pets, color: Color(0xFF14A89A)),
-            SizedBox(width: 8),
-            Text(
-              'DogGo',
-              style: TextStyle(
-                color: Color(0xFF25324A),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+    final opciones = <_HomeOption>[
+      _HomeOption(
+        titulo: 'Mi perfil',
+        subtitulo: 'Ver y editar tus datos',
+        icono: Icons.person_rounded,
+        color: const Color(0xFF1F8A70),
+        pantalla: const PerfilUsuarioScreen(),
+        destacado: true,
+      ),
+      _HomeOption(
+        titulo: 'Notificaciones',
+        subtitulo: 'Actividad reciente de paseos y mensajes',
+        icono: Icons.notifications_rounded,
+        color: Colors.deepOrange,
+        pantalla: const NotificacionesScreen(),
+        destacado: true,
+      ),
+      _HomeOption(
+        titulo: 'Mis paseos',
+        subtitulo: 'Revisa estados, detalle, mapa y chat',
+        icono: Icons.route_rounded,
+        color: Colors.green,
+        pantalla: MisPaseosScreen(
+          usuarioId: usuarioId,
+          rol: _rolUsuario,
         ),
+      ),
+      if (_esDuenio || !_esPaseador)
+        _HomeOption(
+          titulo: 'Crear paseo',
+          subtitulo: 'Agenda un nuevo paseo',
+          icono: Icons.add_location_alt_rounded,
+          color: Colors.blue,
+          pantalla: const CrearPaseoScreen(),
+        ),
+      if (_esDuenio || !_esPaseador)
+        _HomeOption(
+          titulo: 'Mis perros',
+          subtitulo: 'Administra tus mascotas',
+          icono: Icons.pets_rounded,
+          color: Colors.orange,
+          pantalla: const MisPerrosScreen(),
+        ),
+      _HomeOption(
+        titulo: 'Paseadores',
+        subtitulo: 'Busca paseadores disponibles',
+        icono: Icons.directions_walk_rounded,
+        color: Colors.purple,
+        pantalla: const PaseadoresScreen(),
+      ),
+      _HomeOption(
+        titulo: 'Configuración',
+        subtitulo: 'URL del servidor y conexión',
+        icono: Icons.settings_rounded,
+        color: Colors.grey,
+        pantalla: const ConfiguracionScreen(),
+      ),
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+      appBar: AppBar(
+        title: const Text('DogGo'),
+        backgroundColor: const Color(0xFF1F8A70),
+        foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
+            tooltip: 'Notificaciones',
             onPressed: () {
-              Navigator.push(
+              _abrir(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const ConfiguracionScreen(),
-                ),
+                const NotificacionesScreen(),
               );
             },
-            icon: const Icon(
-              Icons.settings_outlined,
-              color: Color(0xFF25324A),
-            ),
+            icon: const Icon(Icons.notifications_rounded),
           ),
-          TextButton(
+          IconButton(
+            tooltip: 'Mi perfil',
             onPressed: () {
-              Navigator.push(
+              _abrir(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const PerfilScreen(),
-                ),
+                const PerfilUsuarioScreen(),
               );
             },
-            child: const Text(
-              'Perfil',
-              style: TextStyle(
-                color: Color(0xFF25324A),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            icon: const Icon(Icons.person_rounded),
           ),
-          const SizedBox(width: 8),
         ],
       ),
-      body: ListView(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF4EDE3),
-              border: Border(
-                bottom: BorderSide(color: Color(0xFFE7E0D5)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildHeader(context),
+            const SizedBox(height: 16),
+            _buildAccesosDestacados(context),
+            const SizedBox(height: 16),
+            const Text(
+              'Accesos rápidos',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
               ),
             ),
+            const SizedBox(height: 12),
+            ...opciones.map(
+              (opcion) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _HomeOptionCard(
+                  opcion: opcion,
+                  onTap: () => _abrir(context, opcion.pantalla),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF1F8A70),
+            Color(0xFF35A98A),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.25),
+              ),
+            ),
+            child: const Icon(
+              Icons.pets_rounded,
+              color: Colors.white,
+              size: 36,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Hola, $_nombreUsuario',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _esPaseador
+                      ? 'Gestiona solicitudes, chats y paseos activos.'
+                      : 'Agenda paseos, revisa chats y cuida a tus mascotas.',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 13,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
+                    horizontal: 10,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDDF4F1),
+                    color: Colors.white.withOpacity(0.16),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Text(
-                    '👋 BIENVENIDO DE VUELTA',
-                    style: TextStyle(
+                  child: Text(
+                    _rolUsuario,
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontSize: 12,
-                      color: Color(0xFF14A89A),
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Hola.\n¿Cómo están tus peludos hoy?',
-                  style: TextStyle(
-                    fontSize: 34,
-                    height: 1.05,
-                    color: Color(0xFF25324A),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Todo lo que necesitas para cuidar a tus mascotas está aquí.',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _ActionButton(
-                      texto: 'Buscar paseador',
-                      filled: true,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PaseadoresScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _ActionButton(
-                      texto: 'Mis paseos',
-                      filled: false,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MisPaseosScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _ActionButton(
-                      texto: 'Mis perros',
-                      filled: false,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MisPerrosScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _ActionButton(
-                      texto: 'Mi perfil',
-                      filled: false,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PerfilScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
               ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.94),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE7E2D9)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Accesos rápidos',
-                      style: TextStyle(
-                        fontSize: 22,
-                        color: Color(0xFF25324A),
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _QuickTile(
-                      icon: Icons.map_outlined,
-                      titulo: 'Ver mis paseos',
-                      subtitulo: 'Consulta tus paseos y sus estados',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MisPaseosScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _QuickTile(
-                      icon: Icons.pets_outlined,
-                      titulo: 'Ver mis perros',
-                      subtitulo: 'Administra tus mascotas registradas',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MisPerrosScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _QuickTile(
-                      icon: Icons.person_search_outlined,
-                      titulo: 'Buscar paseadores',
-                      subtitulo: 'Encuentra paseadores disponibles',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PaseadoresScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 18,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFF14A89A),
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Row(
-                children: const [
-                  Expanded(
-                    child: _BottomStat(
-                      numero: 'App',
-                      texto: 'Conectada',
-                    ),
-                  ),
-                  Expanded(
-                    child: _BottomStat(
-                      numero: 'API',
-                      texto: 'Lista',
-                    ),
-                  ),
-                  Expanded(
-                    child: _BottomStat(
-                      numero: 'JWT',
-                      texto: 'Activo',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 18),
-            child: Center(
-              child: TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ServerConfigScreen(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Configurar servidor',
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-              ),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _ActionButton extends StatelessWidget {
-  final String texto;
-  final bool filled;
-  final VoidCallback onTap;
-
-  const _ActionButton({
-    required this.texto,
-    required this.filled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (filled) {
-      return ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF14A89A),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          texto,
-          style: const TextStyle(color: Colors.white),
-        ),
-      );
-    }
-
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFE2D8C9)),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-      ),
-      child: Text(
-        texto,
-        style: const TextStyle(
-          color: Color(0xFF25324A),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickTile extends StatelessWidget {
-  final IconData icon;
-  final String titulo;
-  final String subtitulo;
-  final VoidCallback onTap;
-
-  const _QuickTile({
-    required this.icon,
-    required this.titulo,
-    required this.subtitulo,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFF8F4EC),
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Icon(icon, color: const Color(0xFF14A89A)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      titulo,
-                      style: const TextStyle(
-                        color: Color(0xFF25324A),
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitulo,
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                color: Color(0xFF6B7280),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomStat extends StatelessWidget {
-  final String numero;
-  final String texto;
-
-  const _BottomStat({
-    required this.numero,
-    required this.texto,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
+  Widget _buildAccesosDestacados(BuildContext context) {
+    return Row(
       children: [
-        Text(
-          numero,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 22,
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
+        Expanded(
+          child: _MiniAcceso(
+            titulo: 'Perfil',
+            subtitulo: 'Tus datos',
+            icono: Icons.person_rounded,
+            color: const Color(0xFF1F8A70),
+            onTap: () {
+              _abrir(
+                context,
+                const PerfilUsuarioScreen(),
+              );
+            },
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          texto,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.white,
+        const SizedBox(width: 12),
+        Expanded(
+          child: _MiniAcceso(
+            titulo: 'Avisos',
+            subtitulo: 'Actividad',
+            icono: Icons.notifications_rounded,
+            color: Colors.deepOrange,
+            onTap: () {
+              _abrir(
+                context,
+                const NotificacionesScreen(),
+              );
+            },
           ),
         ),
       ],
+    );
+  }
+}
+
+class _HomeOption {
+  final String titulo;
+  final String subtitulo;
+  final IconData icono;
+  final Color color;
+  final Widget pantalla;
+  final bool destacado;
+
+  const _HomeOption({
+    required this.titulo,
+    required this.subtitulo,
+    required this.icono,
+    required this.color,
+    required this.pantalla,
+    this.destacado = false,
+  });
+}
+
+class _HomeOptionCard extends StatelessWidget {
+  final _HomeOption opcion;
+  final VoidCallback onTap;
+
+  const _HomeOptionCard({
+    required this.opcion,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: opcion.destacado
+              ? opcion.color.withOpacity(0.08)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: opcion.destacado
+                ? opcion.color.withOpacity(0.18)
+                : Colors.transparent,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: opcion.color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Icon(
+                opcion.icono,
+                color: opcion.color,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    opcion.titulo,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    opcion.subtitulo,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 12.5,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.grey.shade500,
+              size: 28,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniAcceso extends StatelessWidget {
+  final String titulo;
+  final String subtitulo;
+  final IconData icono;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MiniAcceso({
+    required this.titulo,
+    required this.subtitulo,
+    required this.icono,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.045),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(
+                icono,
+                color: color,
+                size: 25,
+              ),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitulo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

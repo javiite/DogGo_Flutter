@@ -35,6 +35,31 @@ class ApiService {
     return _armarRespuesta(response);
   }
 
+  static Future<Map<String, dynamic>> postAuth(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    final baseUrl = await obtenerBaseUrl();
+    final token = await obtenerToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception('No hay token guardado. Inicia sesión otra vez.');
+    }
+
+    final url = Uri.parse('$baseUrl$endpoint');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+
+    return _armarRespuesta(response);
+  }
+
   static Future<Map<String, dynamic>> getAuth(String endpoint) async {
     final baseUrl = await obtenerBaseUrl();
     final token = await obtenerToken();

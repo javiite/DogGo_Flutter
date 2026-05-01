@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../services/perros_service.dart';
+import '../services/storage_service.dart';
 import 'detalle_perro_screen.dart';
 import 'editar_perro_screen.dart';
 import 'registrar_perro_screen.dart';
@@ -14,12 +16,25 @@ class MisPerrosScreen extends StatefulWidget {
 class _MisPerrosScreenState extends State<MisPerrosScreen> {
   bool _cargando = true;
   String? _error;
+  String? _baseUrl;
   List<dynamic> _perros = [];
 
   @override
   void initState() {
     super.initState();
-    _cargarPerros();
+    _inicializar();
+  }
+
+  Future<void> _inicializar() async {
+    final baseUrl = await StorageService.obtenerBaseUrl();
+
+    if (!mounted) return;
+
+    setState(() {
+      _baseUrl = baseUrl;
+    });
+
+    await _cargarPerros();
   }
 
   Future<void> _cargarPerros() async {
@@ -34,23 +49,60 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
+        final data = result['data'];
+
         setState(() {
-          _perros = result['data'] as List<dynamic>;
+          _perros = data is List ? data : [];
           _cargando = false;
         });
       } else {
         setState(() {
-          _error = result['message'];
+          _error = result['message']?.toString() ??
+              'No se pudieron obtener los perros.';
           _cargando = false;
         });
       }
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _error = 'Error de conexión: $e';
         _cargando = false;
       });
     }
+  }
+
+  Map<String, dynamic> _mapaSeguro(dynamic valor) {
+    if (valor is Map<String, dynamic>) return valor;
+    if (valor is Map) return Map<String, dynamic>.from(valor);
+    return {};
+  }
+
+  dynamic _valor(Map<String, dynamic> mapa, List<String> keys) {
+    for (final key in keys) {
+      if (mapa.containsKey(key) && mapa[key] != null) {
+        return mapa[key];
+      }
+    }
+
+    return null;
+  }
+
+  int? _idPerro(Map<String, dynamic> perro) {
+    final valor = _valor(
+      perro,
+      [
+        'id',
+        'Id',
+        'perroId',
+        'PerroId',
+        'idPerro',
+        'IdPerro',
+      ],
+    );
+
+    if (valor is int) return valor;
+    return int.tryParse(valor?.toString() ?? '');
   }
 
   void _mostrarMensaje(String texto) {
@@ -61,17 +113,140 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
 
   String _textoSeguro(dynamic valor, [String fallback = 'Sin dato']) {
     if (valor == null) return fallback;
+
     final texto = valor.toString().trim();
-    return texto.isEmpty ? fallback : texto;
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return fallback;
+    }
+
+    return texto;
   }
 
   String _edadTexto(dynamic edad) {
     if (edad == null) return 'Sin edad';
-    return '${edad.toString()} años';
+
+    final texto = edad.toString().trim();
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return 'Sin edad';
+    }
+
+    if (texto == '1') return '1 año';
+
+    return '$texto años';
+  }
+
+  String _nombrePerro(Map<String, dynamic> perro) {
+    return _textoSeguro(
+      _valor(
+        perro,
+        [
+          'nombre',
+          'Nombre',
+          'nombrePerro',
+          'NombrePerro',
+        ],
+      ),
+      'Perro',
+    );
+  }
+
+  String _razaPerro(Map<String, dynamic> perro) {
+    return _textoSeguro(
+      _valor(
+        perro,
+        [
+          'raza',
+          'Raza',
+        ],
+      ),
+      'Sin raza',
+    );
+  }
+
+  String _tamanoPerro(Map<String, dynamic> perro) {
+    return _textoSeguro(
+      _valor(
+        perro,
+        [
+          'tamano',
+          'Tamano',
+          'tamanio',
+          'Tamanio',
+          'tamaño',
+          'Tamaño',
+        ],
+      ),
+      'Sin tamaño',
+    );
+  }
+
+  String _notasPerro(Map<String, dynamic> perro) {
+    return _textoSeguro(
+      _valor(
+        perro,
+        [
+          'notas',
+          'Notas',
+          'nota',
+          'Nota',
+          'descripcion',
+          'Descripcion',
+          'observaciones',
+          'Observaciones',
+        ],
+      ),
+      '',
+    );
+  }
+
+  String _fotoPerro(Map<String, dynamic> perro) {
+    final raw = _textoSeguro(
+      _valor(
+        perro,
+        [
+          'fotoUrl',
+          'FotoUrl',
+          'foto',
+          'Foto',
+          'urlFoto',
+          'UrlFoto',
+          'imagenUrl',
+          'ImagenUrl',
+          'fotoPerroUrl',
+          'FotoPerroUrl',
+        ],
+      ),
+      '',
+    );
+
+    if (raw.isEmpty) return '';
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+
+    if (_baseUrl == null || _baseUrl!.trim().isEmpty) {
+      return '';
+    }
+
+    if (raw.startsWith('/')) {
+      return '${_baseUrl!}$raw';
+    }
+
+    return '${_baseUrl!}/$raw';
   }
 
   Future<void> _confirmarEliminar(Map<String, dynamic> perro) async {
-    final nombre = _textoSeguro(perro['nombre'], 'este perro');
+    final id = _idPerro(perro);
+
+    if (id == null) {
+      _mostrarMensaje('No se encontró el ID del perro.');
+      return;
+    }
+
+    final nombre = _nombrePerro(perro);
 
     final confirmar = await showDialog<bool>(
       context: context,
@@ -86,6 +261,10 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Eliminar'),
             ),
           ],
@@ -96,11 +275,13 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
     if (confirmar != true) return;
 
     try {
-      final result = await PerrosService.eliminarPerro(perro['id'] as int);
+      final result = await PerrosService.eliminarPerro(id);
 
       if (!mounted) return;
 
-      _mostrarMensaje(result['message']);
+      _mostrarMensaje(
+        result['message']?.toString() ?? 'Acción completada.',
+      );
 
       if (result['success'] == true) {
         await _cargarPerros();
@@ -108,6 +289,49 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
     } catch (e) {
       if (!mounted) return;
       _mostrarMensaje('Error de conexión: $e');
+    }
+  }
+
+  Future<void> _abrirRegistrar() async {
+    final creado = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RegistrarPerroScreen(),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (creado == true) {
+      await _cargarPerros();
+    }
+  }
+
+  Future<void> _abrirDetalle(Map<String, dynamic> perro) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetallePerroScreen(
+          perro: perro,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _abrirEditar(Map<String, dynamic> perro) async {
+    final editado = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditarPerroScreen(
+          perro: perro,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (editado == true) {
+      await _cargarPerros();
     }
   }
 
@@ -120,8 +344,8 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.pets, color: Color(0xFF14A89A)),
             SizedBox(width: 8),
             Text(
@@ -192,7 +416,7 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            '🐶 TU MANADA',
+                            'TU MANADA',
                             style: TextStyle(
                               fontSize: 12,
                               color: Color(0xFF14A89A),
@@ -223,21 +447,7 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
                             width: double.infinity,
                             height: 46,
                             child: ElevatedButton.icon(
-                              onPressed: () async {
-                                final creado = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const RegistrarPerroScreen(),
-                                  ),
-                                );
-
-                                if (!mounted) return;
-
-                                if (creado == true) {
-                                  await _cargarPerros();
-                                }
-                              },
+                              onPressed: _abrirRegistrar,
                               icon: const Icon(Icons.add, color: Colors.white),
                               label: const Text(
                                 'Añadir perro',
@@ -299,25 +509,22 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
                                 padding: const EdgeInsets.all(18),
                                 itemCount: _perros.length,
                                 itemBuilder: (context, index) {
-                                  final perro =
-                                      _perros[index] as Map<String, dynamic>;
+                                  final perro = _mapaSeguro(_perros[index]);
 
-                                  final nombre = _textoSeguro(perro['nombre']);
-                                  final raza = _textoSeguro(
-                                    perro['raza'],
-                                    'Sin raza',
+                                  final nombre = _nombrePerro(perro);
+                                  final raza = _razaPerro(perro);
+                                  final tamano = _tamanoPerro(perro);
+                                  final notas = _notasPerro(perro);
+                                  final edad = _edadTexto(
+                                    _valor(
+                                      perro,
+                                      [
+                                        'edad',
+                                        'Edad',
+                                      ],
+                                    ),
                                   );
-                                  final tamano = _textoSeguro(
-                                    perro['tamano'] ?? perro['tamaño'],
-                                    'Sin tamaño',
-                                  );
-                                  final notas = _textoSeguro(
-                                    perro['notas'] ??
-                                        perro['nota'] ??
-                                        perro['descripcion'],
-                                    '',
-                                  );
-                                  final edad = _edadTexto(perro['edad']);
+                                  final fotoUrl = _fotoPerro(perro);
 
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 16),
@@ -327,32 +534,9 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
                                       raza: raza,
                                       tamano: tamano,
                                       nota: notas,
-                                      onVerPerfil: () async {
-                                        await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => DetallePerroScreen(
-                                              perro: perro,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      onEditar: () async {
-                                        final editado = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => EditarPerroScreen(
-                                              perro: perro,
-                                            ),
-                                          ),
-                                        );
-
-                                        if (!mounted) return;
-
-                                        if (editado == true) {
-                                          await _cargarPerros();
-                                        }
-                                      },
+                                      fotoUrl: fotoUrl,
+                                      onVerPerro: () => _abrirDetalle(perro),
+                                      onEditar: () => _abrirEditar(perro),
                                       onEliminar: () {
                                         _confirmarEliminar(perro);
                                       },
@@ -374,7 +558,8 @@ class _PerroCard extends StatelessWidget {
   final String raza;
   final String tamano;
   final String nota;
-  final VoidCallback onVerPerfil;
+  final String fotoUrl;
+  final VoidCallback onVerPerro;
   final VoidCallback onEditar;
   final VoidCallback onEliminar;
 
@@ -384,10 +569,15 @@ class _PerroCard extends StatelessWidget {
     required this.raza,
     required this.tamano,
     required this.nota,
-    required this.onVerPerfil,
+    required this.fotoUrl,
+    required this.onVerPerro,
     required this.onEditar,
     required this.onEliminar,
   });
+
+  bool get _tieneFoto {
+    return fotoUrl.startsWith('http://') || fotoUrl.startsWith('https://');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -416,8 +606,30 @@ class _PerroCard extends StatelessWidget {
                 top: Radius.circular(24),
               ),
             ),
+            clipBehavior: Clip.antiAlias,
             child: Stack(
               children: [
+                Positioned.fill(
+                  child: _tieneFoto
+                      ? Image.network(
+                          fotoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) {
+                            return const Center(
+                              child: Text(
+                                '🐶',
+                                style: TextStyle(fontSize: 72),
+                              ),
+                            );
+                          },
+                        )
+                      : const Center(
+                          child: Text(
+                            '🐶',
+                            style: TextStyle(fontSize: 72),
+                          ),
+                        ),
+                ),
                 Positioned(
                   left: 12,
                   top: 12,
@@ -438,12 +650,6 @@ class _PerroCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                ),
-                const Center(
-                  child: Text(
-                    '🐶',
-                    style: TextStyle(fontSize: 72),
                   ),
                 ),
               ],
@@ -526,7 +732,7 @@ class _PerroCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
-                      '📝 $nota',
+                      'Nota: $nota',
                       style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF8A6A1F),
@@ -540,7 +746,7 @@ class _PerroCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: onVerPerfil,
+                        onPressed: onVerPerro,
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(
                             color: Color(0xFF14A89A),
@@ -550,7 +756,7 @@ class _PerroCard extends StatelessWidget {
                           ),
                         ),
                         child: const Text(
-                          'Ver perfil',
+                          'Ver perro',
                           style: TextStyle(
                             color: Color(0xFF14A89A),
                             fontWeight: FontWeight.bold,

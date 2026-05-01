@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../services/paseos_service.dart';
+import '../services/session_service.dart';
 import 'detalle_paseo_screen.dart';
 import 'mapa_paseo_screen.dart';
+import 'chat_paseo_screen.dart';
 
 class MisPaseosScreen extends StatefulWidget {
   final int? usuarioId;
@@ -21,13 +23,13 @@ class MisPaseosScreen extends StatefulWidget {
 }
 
 class _MisPaseosScreenState extends State<MisPaseosScreen> {
-  final PaseosService _paseosService = PaseosService();
   final TextEditingController _busquedaController = TextEditingController();
 
   List<Map<String, dynamic>> _paseos = [];
   bool _cargando = true;
   bool _accionando = false;
   String? _error;
+  String? _rolReal;
   String _filtroEstado = 'Todos';
 
   final List<String> _filtros = const [
@@ -42,18 +44,55 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
   @override
   void initState() {
     super.initState();
+
     _filtroEstado = widget.filtroInicial ?? 'Todos';
-    _cargarPaseos();
 
     _busquedaController.addListener(() {
       setState(() {});
     });
+
+    _inicializar();
   }
 
   @override
   void dispose() {
     _busquedaController.dispose();
     super.dispose();
+  }
+
+  String get _rolUsuario {
+    return _rolReal ?? widget.rol ?? '';
+  }
+
+  bool get _esPaseador {
+    return SessionService.esPaseadorRol(_rolUsuario);
+  }
+
+  bool get _esDuenio {
+    return SessionService.esDuenioRol(_rolUsuario);
+  }
+
+  Future<void> _inicializar() async {
+    await _cargarRol();
+    await _cargarPaseos();
+  }
+
+  Future<void> _cargarRol() async {
+    try {
+      final rol = await SessionService.obtenerRol();
+
+      if (!mounted) return;
+
+      setState(() {
+        _rolReal = rol ?? widget.rol;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _rolReal = widget.rol;
+      });
+    }
   }
 
   Future<void> _cargarPaseos() async {
@@ -63,14 +102,21 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     });
 
     try {
-      final lista = await _obtenerMisPaseosCompatible();
+      final result = await PaseosService.obtenerMisPaseos();
 
       if (!mounted) return;
 
-      setState(() {
-        _paseos = lista;
-        _cargando = false;
-      });
+      if (result['success'] == true) {
+        setState(() {
+          _paseos = _normalizarLista(result['data']);
+          _cargando = false;
+        });
+      } else {
+        setState(() {
+          _cargando = false;
+          _error = result['message']?.toString() ?? 'No se pudieron cargar.';
+        });
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -81,67 +127,16 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _obtenerMisPaseosCompatible() async {
-    final dynamic service = _paseosService;
-    dynamic respuesta;
+  List<Map<String, dynamic>> _normalizarLista(dynamic datos) {
+    if (datos is Map) {
+      final posibleLista = datos['data'] ??
+          datos['paseos'] ??
+          datos['items'] ??
+          datos['resultado'] ??
+          datos['result'] ??
+          datos['value'];
 
-    try {
-      respuesta = await service.obtenerMisPaseos();
-      return _normalizarLista(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.listarMisPaseos();
-      return _normalizarLista(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.obtenerPaseos();
-      return _normalizarLista(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.listarPaseos();
-      return _normalizarLista(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.getMisPaseos();
-      return _normalizarLista(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    try {
-      respuesta = await service.getPaseos();
-      return _normalizarLista(respuesta);
-    } on NoSuchMethodError catch (_) {}
-
-    if (widget.usuarioId != null) {
-      try {
-        respuesta = await service.obtenerMisPaseos(widget.usuarioId);
-        return _normalizarLista(respuesta);
-      } on NoSuchMethodError catch (_) {}
-
-      try {
-        respuesta = await service.listarMisPaseos(widget.usuarioId);
-        return _normalizarLista(respuesta);
-      } on NoSuchMethodError catch (_) {}
-    }
-
-    throw Exception(
-      'No encontré un método compatible para listar paseos en PaseosService.',
-    );
-  }
-
-  List<Map<String, dynamic>> _normalizarLista(dynamic respuesta) {
-    dynamic datos = respuesta;
-
-    if (respuesta is Map) {
-      datos = respuesta['data'] ??
-          respuesta['paseos'] ??
-          respuesta['items'] ??
-          respuesta['resultado'] ??
-          respuesta['result'] ??
-          respuesta['value'];
+      return _normalizarLista(posibleLista);
     }
 
     if (datos is! List) return [];
@@ -153,7 +148,8 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
   }
 
   int? _idPaseo(Map<String, dynamic> paseo) {
-    final valor = paseo['id'] ?? paseo['Id'] ?? paseo['paseoId'] ?? paseo['PaseoId'];
+    final valor =
+        paseo['id'] ?? paseo['Id'] ?? paseo['paseoId'] ?? paseo['PaseoId'];
 
     if (valor is int) return valor;
     return int.tryParse(valor?.toString() ?? '');
@@ -161,6 +157,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
 
   String _texto(dynamic valor, {String fallback = 'No disponible'}) {
     if (valor == null) return fallback;
+
     final texto = valor.toString().trim();
 
     if (texto.isEmpty || texto.toLowerCase() == 'null') {
@@ -168,6 +165,22 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     }
 
     return texto;
+  }
+
+  double? _doubleSeguro(dynamic valor) {
+    if (valor == null) return null;
+
+    if (valor is double) return valor;
+    if (valor is int) return valor.toDouble();
+    if (valor is num) return valor.toDouble();
+
+    final texto = valor.toString().trim();
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return double.tryParse(texto);
   }
 
   String _estado(Map<String, dynamic> paseo) {
@@ -198,6 +211,58 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     }
   }
 
+  bool _estaPendiente(Map<String, dynamic> paseo) {
+    return _normalizarEstado(_estado(paseo)) == 'pendiente';
+  }
+
+  bool _estaAceptado(Map<String, dynamic> paseo) {
+    return _normalizarEstado(_estado(paseo)) == 'aceptado';
+  }
+
+  bool _estaEnCurso(Map<String, dynamic> paseo) {
+    return _normalizarEstado(_estado(paseo)) == 'encurso';
+  }
+
+  bool _estaFinalizado(Map<String, dynamic> paseo) {
+    return _normalizarEstado(_estado(paseo)) == 'finalizado';
+  }
+
+  bool _estaCancelado(Map<String, dynamic> paseo) {
+    return _normalizarEstado(_estado(paseo)) == 'cancelado';
+  }
+
+  bool _puedeAceptar(Map<String, dynamic> paseo) {
+    return _esPaseador && _estaPendiente(paseo);
+  }
+
+  bool _puedeRechazar(Map<String, dynamic> paseo) {
+    return _esPaseador && _estaPendiente(paseo);
+  }
+
+  bool _puedeIniciar(Map<String, dynamic> paseo) {
+    return _esPaseador && _estaAceptado(paseo);
+  }
+
+  bool _puedeFinalizar(Map<String, dynamic> paseo) {
+    return _esPaseador && _estaEnCurso(paseo);
+  }
+
+  bool _puedeCancelar(Map<String, dynamic> paseo) {
+    final terminado = _estaFinalizado(paseo) || _estaCancelado(paseo);
+
+    if (terminado) return false;
+
+    return _esPaseador || _esDuenio;
+  }
+
+  bool _tieneAccionesRapidas(Map<String, dynamic> paseo) {
+    return _puedeAceptar(paseo) ||
+        _puedeRechazar(paseo) ||
+        _puedeIniciar(paseo) ||
+        _puedeFinalizar(paseo) ||
+        _puedeCancelar(paseo);
+  }
+
   String _nombrePerro(Map<String, dynamic> paseo) {
     return _texto(
       paseo['perroNombre'] ??
@@ -226,6 +291,29 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     final completo = '$nombreTxt $apellidoTxt'.trim();
 
     return completo.isEmpty ? 'Paseador no asignado' : completo;
+  }
+
+  String _nombreDuenio(Map<String, dynamic> paseo) {
+    final nombre = paseo['duenioNombre'] ??
+        paseo['nombreDuenio'] ??
+        paseo['dueñoNombre'] ??
+        paseo['perro']?['duenio']?['nombre'] ??
+        paseo['perro']?['usuario']?['nombre'] ??
+        paseo['Perro']?['Usuario']?['Nombre'];
+
+    final apellido = paseo['duenioApellido'] ??
+        paseo['apellidoDuenio'] ??
+        paseo['dueñoApellido'] ??
+        paseo['perro']?['duenio']?['apellido'] ??
+        paseo['perro']?['usuario']?['apellido'] ??
+        paseo['Perro']?['Usuario']?['Apellido'];
+
+    final nombreTxt = _texto(nombre, fallback: '');
+    final apellidoTxt = _texto(apellido, fallback: '');
+
+    final completo = '$nombreTxt $apellidoTxt'.trim();
+
+    return completo.isEmpty ? 'Dueño' : completo;
   }
 
   String _fechaBonita(dynamic valor) {
@@ -285,6 +373,48 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     return texto;
   }
 
+  String _direccionRecogida(Map<String, dynamic> paseo) {
+    return _texto(
+      paseo['ubicacionTexto'] ??
+          paseo['ubicacionRecogidaTexto'] ??
+          paseo['direccionRecogida'] ??
+          paseo['direccion'] ??
+          paseo['UbicacionTexto'] ??
+          paseo['UbicacionRecogidaTexto'] ??
+          paseo['DireccionRecogida'] ??
+          paseo['Direccion'],
+      fallback: 'Sin ubicación de recogida',
+    );
+  }
+
+  double? _latitudRecogida(Map<String, dynamic> paseo) {
+    return _doubleSeguro(
+      paseo['latitudRecogida'] ??
+          paseo['latRecogida'] ??
+          paseo['ubicacionLatitud'] ??
+          paseo['LatitudRecogida'] ??
+          paseo['LatRecogida'] ??
+          paseo['UbicacionLatitud'],
+    );
+  }
+
+  double? _longitudRecogida(Map<String, dynamic> paseo) {
+    return _doubleSeguro(
+      paseo['longitudRecogida'] ??
+          paseo['lngRecogida'] ??
+          paseo['lonRecogida'] ??
+          paseo['ubicacionLongitud'] ??
+          paseo['LongitudRecogida'] ??
+          paseo['LngRecogida'] ??
+          paseo['LonRecogida'] ??
+          paseo['UbicacionLongitud'],
+    );
+  }
+
+  bool _tieneCoordenadasRecogida(Map<String, dynamic> paseo) {
+    return _latitudRecogida(paseo) != null && _longitudRecogida(paseo) != null;
+  }
+
   List<Map<String, dynamic>> get _paseosFiltrados {
     final busqueda = _busquedaController.text.trim().toLowerCase();
 
@@ -293,15 +423,17 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
       final estadoNormalizado = _normalizarEstado(estado);
       final filtroNormalizado = _normalizarEstado(_filtroEstado);
 
-      final coincideEstado = _filtroEstado == 'Todos' ||
-          estadoNormalizado == filtroNormalizado;
+      final coincideEstado =
+          _filtroEstado == 'Todos' || estadoNormalizado == filtroNormalizado;
 
       final textoBusqueda = [
         _nombrePerro(paseo),
         _nombrePaseador(paseo),
+        _nombreDuenio(paseo),
         estado,
         _fechaPrincipal(paseo),
         _precio(paseo),
+        _direccionRecogida(paseo),
       ].join(' ').toLowerCase();
 
       final coincideBusqueda =
@@ -328,7 +460,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
   }
 
   Future<void> _ejecutarAccion({
-    required Future<void> Function() accion,
+    required Future<Map<String, dynamic>> Function() accion,
     required String mensajeExito,
   }) async {
     if (_accionando) return;
@@ -338,12 +470,18 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     });
 
     try {
-      await accion();
+      final result = await accion();
 
       if (!mounted) return;
 
-      _mostrarMensaje(mensajeExito);
-      await _cargarPaseos();
+      if (result['success'] == true) {
+        _mostrarMensaje(result['message']?.toString() ?? mensajeExito);
+        await _cargarPaseos();
+      } else {
+        _mostrarMensaje(
+          result['message']?.toString() ?? 'No se pudo completar la acción.',
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       _mostrarMensaje('Ocurrió un error: $e');
@@ -358,84 +496,28 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
 
   Future<void> _aceptar(int id) async {
     await _ejecutarAccion(
-      accion: () async {
-        final dynamic service = _paseosService;
-
-        try {
-          await service.aceptarPaseo(id);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        try {
-          await service.aceptar(id);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        throw Exception('No encontré método para aceptar paseo.');
-      },
+      accion: () => PaseosService.aceptarPaseo(id),
       mensajeExito: 'Paseo aceptado correctamente.',
     );
   }
 
   Future<void> _rechazar(int id) async {
     await _ejecutarAccion(
-      accion: () async {
-        final dynamic service = _paseosService;
-
-        try {
-          await service.rechazarPaseo(id);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        try {
-          await service.rechazar(id);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        throw Exception('No encontré método para rechazar paseo.');
-      },
+      accion: () => PaseosService.rechazarPaseo(id),
       mensajeExito: 'Paseo rechazado correctamente.',
     );
   }
 
   Future<void> _iniciar(int id) async {
     await _ejecutarAccion(
-      accion: () async {
-        final dynamic service = _paseosService;
-
-        try {
-          await service.iniciarPaseo(id);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        try {
-          await service.iniciar(id);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        throw Exception('No encontré método para iniciar paseo.');
-      },
+      accion: () => PaseosService.iniciarPaseo(id),
       mensajeExito: 'Paseo iniciado correctamente.',
     );
   }
 
   Future<void> _finalizar(int id) async {
     await _ejecutarAccion(
-      accion: () async {
-        final dynamic service = _paseosService;
-
-        try {
-          await service.finalizarPaseo(id);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        try {
-          await service.finalizar(id);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        throw Exception('No encontré método para finalizar paseo.');
-      },
+      accion: () => PaseosService.finalizarPaseo(id),
       mensajeExito: 'Paseo finalizado correctamente.',
     );
   }
@@ -453,7 +535,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
             maxLines: 3,
             decoration: const InputDecoration(
               labelText: 'Motivo de cancelación',
-              hintText: 'Ej. El dueño canceló, lluvia, cambio de horario...',
+              hintText: 'Ej. Cambio de horario, lluvia, emergencia...',
               border: OutlineInputBorder(),
             ),
           ),
@@ -486,21 +568,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     }
 
     await _ejecutarAccion(
-      accion: () async {
-        final dynamic service = _paseosService;
-
-        try {
-          await service.cancelarPaseo(id, motivo);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        try {
-          await service.cancelar(id, motivo);
-          return;
-        } on NoSuchMethodError catch (_) {}
-
-        throw Exception('No encontré método para cancelar paseo.');
-      },
+      accion: () => PaseosService.cancelarPaseo(id),
       mensajeExito: 'Paseo cancelado correctamente.',
     );
   }
@@ -511,6 +579,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
       MaterialPageRoute(
         builder: (_) => DetallePaseoScreen(
           paseo: paseo,
+          rol: _rolUsuario,
           onPaseoActualizado: _cargarPaseos,
         ),
       ),
@@ -523,6 +592,29 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
       MaterialPageRoute(
         builder: (_) => MapaPaseoScreen(
           paseo: paseo,
+        ),
+      ),
+    );
+  }
+
+  void _abrirChat(Map<String, dynamic> paseo) {
+    final id = _idPaseo(paseo);
+
+    if (id == null) {
+      _mostrarMensaje('No se encontró el ID del paseo.');
+      return;
+    }
+
+    final nombreOtroUsuario =
+        _esPaseador ? _nombreDuenio(paseo) : _nombrePaseador(paseo);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatPaseoScreen(
+          paseoId: id,
+          nombrePerro: _nombrePerro(paseo),
+          nombreOtroUsuario: nombreOtroUsuario,
         ),
       ),
     );
@@ -549,6 +641,8 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _buildResumen(),
+                  const SizedBox(height: 12),
+                  _buildRolCard(),
                   const SizedBox(height: 16),
                   _buildBuscador(),
                   const SizedBox(height: 14),
@@ -588,13 +682,6 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,7 +696,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Revisa solicitudes, tracking visual y estado de cada paseo.',
+            'Acciones visibles según tu rol real.',
             style: TextStyle(
               color: Colors.white.withOpacity(0.9),
               fontSize: 13,
@@ -656,11 +743,54 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     );
   }
 
+  Widget _buildRolCard() {
+    final rolTexto = SessionService.normalizarRol(_rolUsuario);
+
+    final descripcion = _esPaseador
+        ? 'Puedes aceptar, rechazar, iniciar y finalizar paseos.'
+        : _esDuenio
+            ? 'Puedes consultar tus paseos, ver mapa, usar chat y cancelar si aplica.'
+            : 'No se detectó un rol claro. Solo se mostrarán acciones seguras.';
+
+    final color = _esPaseador
+        ? Colors.green
+        : _esDuenio
+            ? Colors.blue
+            : Colors.orange;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.09),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.badge_rounded,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$rolTexto: $descripcion',
+              style: TextStyle(
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBuscador() {
     return TextField(
       controller: _busquedaController,
       decoration: InputDecoration(
-        hintText: 'Buscar por perro, paseador o estado',
+        hintText: 'Buscar por perro, paseador, dueño, estado o ubicación',
         prefixIcon: const Icon(Icons.search_rounded),
         suffixIcon: _busquedaController.text.trim().isEmpty
             ? null
@@ -672,10 +802,6 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
               ),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
@@ -811,15 +937,8 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
   Widget _buildPaseoCard(Map<String, dynamic> paseo) {
     final id = _idPaseo(paseo);
     final estado = _estado(paseo);
-    final estadoNorm = _normalizarEstado(estado);
     final color = _colorEstado(estado);
     final foto = _fotoPerro(paseo);
-
-    final esPendiente = estadoNorm == 'pendiente';
-    final esAceptado = estadoNorm == 'aceptado';
-    final esEnCurso = estadoNorm == 'encurso';
-    final esFinalizado = estadoNorm == 'finalizado';
-    final esCancelado = estadoNorm == 'cancelado';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -862,6 +981,17 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (_esPaseador) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'Dueño: ${_nombreDuenio(paseo)}',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -892,10 +1022,10 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
             ],
           ),
           const SizedBox(height: 14),
+          _buildUbicacionPreview(paseo),
+          const SizedBox(height: 10),
           _buildTrackingPreview(
-            esEnCurso: esEnCurso,
-            esFinalizado: esFinalizado,
-            esCancelado: esCancelado,
+            paseo: paseo,
             color: color,
           ),
           const SizedBox(height: 14),
@@ -908,7 +1038,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
                   onPressed: () => _abrirDetalle(paseo),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: _BotonPrincipal(
                   texto: 'Mapa',
@@ -916,18 +1046,21 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
                   onPressed: () => _abrirMapa(paseo),
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _BotonSecundario(
+                  texto: 'Chat',
+                  icono: Icons.chat_rounded,
+                  onPressed: () => _abrirChat(paseo),
+                ),
+              ),
             ],
           ),
-          if (id != null &&
-              !esFinalizado &&
-              !esCancelado &&
-              (esPendiente || esAceptado || esEnCurso)) ...[
+          if (id != null && _tieneAccionesRapidas(paseo)) ...[
             const SizedBox(height: 10),
             _buildAccionesRapidas(
               id: id,
-              esPendiente: esPendiente,
-              esAceptado: esAceptado,
-              esEnCurso: esEnCurso,
+              paseo: paseo,
             ),
           ],
         ],
@@ -967,22 +1100,61 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     );
   }
 
+  Widget _buildUbicacionPreview(Map<String, dynamic> paseo) {
+    final tieneUbicacion = _tieneCoordenadasRecogida(paseo);
+    final direccion = _direccionRecogida(paseo);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tieneUbicacion
+            ? const Color(0xFF1F8A70).withOpacity(0.08)
+            : Colors.orange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            tieneUbicacion
+                ? Icons.home_rounded
+                : Icons.location_off_rounded,
+            color: tieneUbicacion ? const Color(0xFF1F8A70) : Colors.orange,
+            size: 21,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              tieneUbicacion
+                  ? 'Recogida: $direccion'
+                  : 'Sin punto de recogida con coordenadas.',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.grey.shade800,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTrackingPreview({
-    required bool esEnCurso,
-    required bool esFinalizado,
-    required bool esCancelado,
+    required Map<String, dynamic> paseo,
     required Color color,
   }) {
     String texto;
     IconData icono;
 
-    if (esEnCurso) {
+    if (_estaEnCurso(paseo)) {
       texto = 'Tracking visual activo. Puedes revisar el mapa del paseo.';
       icono = Icons.my_location_rounded;
-    } else if (esFinalizado) {
+    } else if (_estaFinalizado(paseo)) {
       texto = 'Paseo finalizado. Puedes ver la última ubicación registrada.';
       icono = Icons.flag_rounded;
-    } else if (esCancelado) {
+    } else if (_estaCancelado(paseo)) {
       texto = 'Este paseo fue cancelado. El tracking ya no está disponible.';
       icono = Icons.cancel_rounded;
     } else {
@@ -1021,14 +1193,12 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
 
   Widget _buildAccionesRapidas({
     required int id,
-    required bool esPendiente,
-    required bool esAceptado,
-    required bool esEnCurso,
+    required Map<String, dynamic> paseo,
   }) {
     final acciones = <Widget>[];
 
-    if (esPendiente) {
-      acciones.addAll([
+    if (_puedeAceptar(paseo)) {
+      acciones.add(
         Expanded(
           child: _BotonAccionChico(
             texto: 'Aceptar',
@@ -1037,7 +1207,12 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
             onPressed: _accionando ? null : () => _aceptar(id),
           ),
         ),
-        const SizedBox(width: 8),
+      );
+    }
+
+    if (_puedeRechazar(paseo)) {
+      if (acciones.isNotEmpty) acciones.add(const SizedBox(width: 8));
+      acciones.add(
         Expanded(
           child: _BotonAccionChico(
             texto: 'Rechazar',
@@ -1046,10 +1221,11 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
             onPressed: _accionando ? null : () => _rechazar(id),
           ),
         ),
-      ]);
+      );
     }
 
-    if (esAceptado) {
+    if (_puedeIniciar(paseo)) {
+      if (acciones.isNotEmpty) acciones.add(const SizedBox(width: 8));
       acciones.add(
         Expanded(
           child: _BotonAccionChico(
@@ -1062,7 +1238,8 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
       );
     }
 
-    if (esEnCurso) {
+    if (_puedeFinalizar(paseo)) {
+      if (acciones.isNotEmpty) acciones.add(const SizedBox(width: 8));
       acciones.add(
         Expanded(
           child: _BotonAccionChico(
@@ -1075,21 +1252,22 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
       );
     }
 
-    if (acciones.isNotEmpty) {
-      acciones.add(const SizedBox(width: 8));
+    if (_puedeCancelar(paseo)) {
+      if (acciones.isNotEmpty) acciones.add(const SizedBox(width: 8));
+      acciones.add(
+        Expanded(
+          child: _BotonAccionChico(
+            texto: 'Cancelar',
+            icono: Icons.cancel_rounded,
+            color: Colors.red,
+            outlined: true,
+            onPressed: _accionando ? null : () => _cancelar(id),
+          ),
+        ),
+      );
     }
 
-    acciones.add(
-      Expanded(
-        child: _BotonAccionChico(
-          texto: 'Cancelar',
-          icono: Icons.cancel_rounded,
-          color: Colors.red,
-          outlined: true,
-          onPressed: _accionando ? null : () => _cancelar(id),
-        ),
-      ),
-    );
+    if (acciones.isEmpty) return const SizedBox.shrink();
 
     return Row(children: acciones);
   }
@@ -1245,11 +1423,15 @@ class _BotonPrincipal extends StatelessWidget {
       height: 46,
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icono, size: 19),
-        label: Text(texto),
+        icon: Icon(icono, size: 18),
+        label: Text(
+          texto,
+          style: const TextStyle(fontSize: 12),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1F8A70),
           foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
@@ -1276,10 +1458,14 @@ class _BotonSecundario extends StatelessWidget {
       height: 46,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icono, size: 19),
-        label: Text(texto),
+        icon: Icon(icono, size: 18),
+        label: Text(
+          texto,
+          style: const TextStyle(fontSize: 12),
+        ),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF1F8A70),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           side: const BorderSide(
             color: Color(0xFF1F8A70),
             width: 1.2,
@@ -1322,6 +1508,7 @@ class _BotonAccionChico extends StatelessWidget {
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: color,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
             side: BorderSide(
               color: color,
               width: 1.1,
@@ -1346,6 +1533,7 @@ class _BotonAccionChico extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           disabledBackgroundColor: Colors.grey.shade300,
           disabledForegroundColor: Colors.grey.shade600,
           shape: RoundedRectangleBorder(

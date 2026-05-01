@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'home_screen.dart';
 import 'register_screen.dart';
+import 'recuperar_password_screen.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -35,7 +37,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      _mostrarMensaje('Completa correo y contraseña');
+      _mostrarMensaje('Completa correo y contraseña.');
+      return;
+    }
+
+    if (!email.contains('@')) {
+      _mostrarMensaje('Escribe un correo válido.');
       return;
     }
 
@@ -59,9 +66,12 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       } else {
-        _mostrarMensaje(result['message']);
+        _mostrarMensaje(
+          result['message']?.toString() ?? 'No se pudo iniciar sesión.',
+        );
       }
     } catch (e) {
+      if (!mounted) return;
       _mostrarMensaje('Error de conexión: $e');
     } finally {
       if (mounted) {
@@ -72,6 +82,42 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _abrirRecuperarPassword() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RecuperarPasswordScreen(),
+      ),
+    );
+  }
+
+  Future<void> _abrirRegistro() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RegisterScreen(),
+      ),
+    );
+  }
+
+  InputDecoration _decoracionCampo({
+    required String label,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: const Color(0xFFF8F4EC),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,8 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.pets, color: Color(0xFF14A89A)),
             SizedBox(width: 8),
             Text(
@@ -95,9 +141,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
+            onPressed: _cargando
+                ? null
+                : () {
+                    Navigator.pop(context);
+                  },
             child: const Text(
               'Volver',
               style: TextStyle(color: Color(0xFF25324A)),
@@ -117,8 +165,8 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(26),
               border: Border.all(color: const Color(0xFFE7E0D5)),
             ),
-            child: Column(
-              children: const [
+            child: const Column(
+              children: [
                 CircleAvatar(
                   radius: 34,
                   backgroundColor: Colors.white,
@@ -178,42 +226,41 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 TextField(
                   controller: _emailController,
+                  enabled: !_cargando,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Correo electrónico',
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    filled: true,
-                    fillColor: const Color(0xFFF8F4EC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
+                  textInputAction: TextInputAction.next,
+                  decoration: _decoracionCampo(
+                    label: 'Correo electrónico',
+                    icon: Icons.email_outlined,
                   ),
                 ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: _passwordController,
+                  enabled: !_cargando,
                   obscureText: _ocultarPassword,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    filled: true,
-                    fillColor: const Color(0xFFF8F4EC),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (!_cargando) {
+                      _iniciarSesion();
+                    }
+                  },
+                  decoration: _decoracionCampo(
+                    label: 'Contraseña',
+                    icon: Icons.lock_outline,
                     suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _ocultarPassword = !_ocultarPassword;
-                        });
-                      },
+                      onPressed: _cargando
+                          ? null
+                          : () {
+                              setState(() {
+                                _ocultarPassword = !_ocultarPassword;
+                              });
+                            },
                       icon: Icon(
                         _ocultarPassword
                             ? Icons.visibility_off
                             : Icons.visibility,
                       ),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
@@ -225,6 +272,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _cargando ? null : _iniciarSesion,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF14A89A),
+                      disabledBackgroundColor:
+                          const Color(0xFF14A89A).withOpacity(0.45),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(26),
                       ),
@@ -250,9 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 10),
                 TextButton(
-                  onPressed: () {
-                    _mostrarMensaje('Recuperar contraseña después');
-                  },
+                  onPressed: _cargando ? null : _abrirRecuperarPassword,
                   child: const Text(
                     '¿Olvidaste tu contraseña?',
                     style: TextStyle(color: Color(0xFF6B7280)),
@@ -281,14 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RegisterScreen(),
-                      ),
-                    );
-                  },
+                  onPressed: _cargando ? null : _abrirRegistro,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFF14A89A)),
                     shape: RoundedRectangleBorder(

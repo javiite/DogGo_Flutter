@@ -7,16 +7,39 @@ class PaseadoresService {
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if (statusCode == 200 && body['success'] == true) {
+    if (statusCode == 200 && body is Map && body['success'] == true) {
       return {
         'success': true,
-        'data': body['data'],
+        'data': _normalizarLista(body['data']),
       };
     }
 
     return {
       'success': false,
-      'message': body['message'] ?? 'No se pudieron obtener los paseadores.',
+      'message': body is Map
+          ? body['message'] ?? 'No se pudieron obtener los paseadores.'
+          : 'No se pudieron obtener los paseadores.',
+      'statusCode': statusCode,
     };
+  }
+
+  static List<dynamic> _normalizarLista(dynamic data) {
+    if (data is List) {
+      return data;
+    }
+
+    if (data is Map) {
+      final posibleLista = data['items'] ??
+          data['paseadores'] ??
+          data['data'] ??
+          data['result'] ??
+          data['resultado'];
+
+      if (posibleLista is List) {
+        return posibleLista;
+      }
+    }
+
+    return [];
   }
 }

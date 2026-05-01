@@ -2,67 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../services/usuario_service.dart';
 
-class EditarPerfilScreen extends StatefulWidget {
-  final Map<String, dynamic> perfil;
-
-  const EditarPerfilScreen({
-    super.key,
-    required this.perfil,
-  });
+class CambiarPasswordScreen extends StatefulWidget {
+  const CambiarPasswordScreen({super.key});
 
   @override
-  State<EditarPerfilScreen> createState() => _EditarPerfilScreenState();
+  State<CambiarPasswordScreen> createState() => _CambiarPasswordScreenState();
 }
 
-class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
+class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   final UsuarioService _usuarioService = UsuarioService();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  late final TextEditingController _nombreController;
-  late final TextEditingController _apellidoController;
-  late final TextEditingController _telefonoController;
+  final TextEditingController _actualController = TextEditingController();
+  final TextEditingController _nuevaController = TextEditingController();
+  final TextEditingController _confirmarController = TextEditingController();
 
   bool _guardando = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _nombreController = TextEditingController(
-      text: _texto(
-        widget.perfil['nombre'] ?? widget.perfil['Nombre'],
-        fallback: '',
-      ),
-    );
-
-    _apellidoController = TextEditingController(
-      text: _texto(
-        widget.perfil['apellido'] ?? widget.perfil['Apellido'],
-        fallback: '',
-      ),
-    );
-
-    _telefonoController = TextEditingController(
-      text: _texto(
-        widget.perfil['telefono'] ?? widget.perfil['Telefono'],
-        fallback: '',
-      ),
-    );
-  }
+  bool _verActual = false;
+  bool _verNueva = false;
+  bool _verConfirmar = false;
 
   @override
   void dispose() {
-    _nombreController.dispose();
-    _apellidoController.dispose();
-    _telefonoController.dispose();
+    _actualController.dispose();
+    _nuevaController.dispose();
+    _confirmarController.dispose();
     super.dispose();
-  }
-
-  String _texto(dynamic valor, {String fallback = 'No disponible'}) {
-    if (valor == null) return fallback;
-    final texto = valor.toString().trim();
-    if (texto.isEmpty || texto.toLowerCase() == 'null') return fallback;
-    return texto;
   }
 
   Future<void> _guardar() async {
@@ -73,27 +38,26 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     });
 
     try {
-      await _usuarioService.actualizarPerfil(
-        nombre: _nombreController.text.trim(),
-        apellido: _apellidoController.text.trim(),
-        telefono: _telefonoController.text.trim(),
+      await _usuarioService.cambiarPassword(
+        passwordActual: _actualController.text.trim(),
+        passwordNueva: _nuevaController.text.trim(),
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Perfil actualizado correctamente.'),
+          content: Text('Contraseña actualizada correctamente.'),
         ),
       );
 
-      Navigator.pop(context, true);
+      Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No se pudo actualizar el perfil: $e'),
+          content: Text('No se pudo cambiar la contraseña: $e'),
         ),
       );
     } finally {
@@ -105,29 +69,39 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     }
   }
 
-  String? _validarTexto(String? valor, String campo) {
+  String? _validarActual(String? valor) {
     final texto = valor?.trim() ?? '';
 
     if (texto.isEmpty) {
-      return '$campo es obligatorio.';
-    }
-
-    if (texto.length < 2) {
-      return '$campo debe tener al menos 2 caracteres.';
+      return 'Escribe tu contraseña actual.';
     }
 
     return null;
   }
 
-  String? _validarTelefono(String? valor) {
+  String? _validarNueva(String? valor) {
     final texto = valor?.trim() ?? '';
 
     if (texto.isEmpty) {
-      return 'El teléfono es obligatorio.';
+      return 'Escribe la nueva contraseña.';
     }
 
-    if (texto.length < 8) {
-      return 'El teléfono es demasiado corto.';
+    if (texto.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    }
+
+    return null;
+  }
+
+  String? _validarConfirmacion(String? valor) {
+    final texto = valor?.trim() ?? '';
+
+    if (texto.isEmpty) {
+      return 'Confirma la nueva contraseña.';
+    }
+
+    if (texto != _nuevaController.text.trim()) {
+      return 'Las contraseñas no coinciden.';
     }
 
     return null;
@@ -135,20 +109,10 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final email = _texto(
-      widget.perfil['email'] ?? widget.perfil['Email'],
-      fallback: 'Correo no disponible',
-    );
-
-    final rol = _texto(
-      widget.perfil['rol'] ?? widget.perfil['Rol'],
-      fallback: 'Rol no disponible',
-    );
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
       appBar: AppBar(
-        title: const Text('Editar perfil'),
+        title: const Text('Cambiar contraseña'),
         backgroundColor: const Color(0xFF1F8A70),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -157,30 +121,31 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildHeader(email, rol),
+            _buildHeader(),
             const SizedBox(height: 16),
             _buildFormulario(),
             const SizedBox(height: 18),
-            _buildBotonGuardar(),
-            const SizedBox(height: 30),
+            _buildBoton(),
+            const SizedBox(height: 14),
+            _buildNota(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(String email, String rol) {
+  Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F8A70),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
-          ),
+            color: Colors.black.withOpacity(0.045),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          )
         ],
       ),
       child: Row(
@@ -189,43 +154,34 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.16),
+              color: const Color(0xFF1F8A70).withOpacity(0.10),
               borderRadius: BorderRadius.circular(18),
             ),
             child: const Icon(
-              Icons.manage_accounts_rounded,
-              color: Colors.white,
+              Icons.lock_reset_rounded,
+              color: Color(0xFF1F8A70),
               size: 32,
             ),
           ),
           const SizedBox(width: 14),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Actualiza tus datos',
+                Text(
+                  'Seguridad de la cuenta',
                   style: TextStyle(
-                    color: Colors.white,
                     fontSize: 19,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
-                  email,
+                  'Actualiza tu contraseña para mantener tu cuenta protegida.',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.black54,
                     fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Rol: $rol',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    height: 1.25,
                   ),
                 ),
               ],
@@ -254,26 +210,40 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
         key: _formKey,
         child: Column(
           children: [
-            _CampoPerfil(
-              controller: _nombreController,
-              label: 'Nombre',
-              icono: Icons.person_rounded,
-              validator: (valor) => _validarTexto(valor, 'El nombre'),
+            _CampoPassword(
+              controller: _actualController,
+              label: 'Contraseña actual',
+              visible: _verActual,
+              onToggleVisible: () {
+                setState(() {
+                  _verActual = !_verActual;
+                });
+              },
+              validator: _validarActual,
             ),
             const SizedBox(height: 14),
-            _CampoPerfil(
-              controller: _apellidoController,
-              label: 'Apellido',
-              icono: Icons.person_outline_rounded,
-              validator: (valor) => _validarTexto(valor, 'El apellido'),
+            _CampoPassword(
+              controller: _nuevaController,
+              label: 'Nueva contraseña',
+              visible: _verNueva,
+              onToggleVisible: () {
+                setState(() {
+                  _verNueva = !_verNueva;
+                });
+              },
+              validator: _validarNueva,
             ),
             const SizedBox(height: 14),
-            _CampoPerfil(
-              controller: _telefonoController,
-              label: 'Teléfono',
-              icono: Icons.phone_rounded,
-              keyboardType: TextInputType.phone,
-              validator: _validarTelefono,
+            _CampoPassword(
+              controller: _confirmarController,
+              label: 'Confirmar nueva contraseña',
+              visible: _verConfirmar,
+              onToggleVisible: () {
+                setState(() {
+                  _verConfirmar = !_verConfirmar;
+                });
+              },
+              validator: _validarConfirmacion,
             ),
           ],
         ),
@@ -281,7 +251,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     );
   }
 
-  Widget _buildBotonGuardar() {
+  Widget _buildBoton() {
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -297,7 +267,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                 ),
               )
             : const Icon(Icons.save_rounded),
-        label: Text(_guardando ? 'Guardando...' : 'Guardar cambios'),
+        label: Text(_guardando ? 'Guardando...' : 'Actualizar contraseña'),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1F8A70),
           foregroundColor: Colors.white,
@@ -310,20 +280,52 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       ),
     );
   }
+
+  Widget _buildNota() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: Colors.orange,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Usa una contraseña que no compartas con otras cuentas.',
+              style: TextStyle(
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+                height: 1.25,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _CampoPerfil extends StatelessWidget {
+class _CampoPassword extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final IconData icono;
-  final TextInputType? keyboardType;
+  final bool visible;
+  final VoidCallback onToggleVisible;
   final String? Function(String?)? validator;
 
-  const _CampoPerfil({
+  const _CampoPassword({
     required this.controller,
     required this.label,
-    required this.icono,
-    this.keyboardType,
+    required this.visible,
+    required this.onToggleVisible,
     this.validator,
   });
 
@@ -331,11 +333,17 @@ class _CampoPerfil extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      keyboardType: keyboardType,
+      obscureText: !visible,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icono),
+        prefixIcon: const Icon(Icons.lock_rounded),
+        suffixIcon: IconButton(
+          onPressed: onToggleVisible,
+          icon: Icon(
+            visible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+          ),
+        ),
         filled: true,
         fillColor: const Color(0xFFF4F6F8),
         border: OutlineInputBorder(
