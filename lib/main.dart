@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math' as math;
+import 'dart:async';
+import 'perfil_screen.dart';
+import 'chat_screen.dart';
+import 'config_screen.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  ENTRY POINT
+// ─────────────────────────────────────────────────────────────────────────────
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
@@ -13,181 +19,264 @@ void main() {
   runApp(const DogGoApp());
 }
 
-// ─────────────────────────────────────────────
-//  PALETA DE COLORES
-// ─────────────────────────────────────────────
-class DogGoColors {
-  static const teal = Color(0xFF1ABC9C);
-  static const tealDark = Color(0xFF16A085);
-  static const tealLight = Color(0xFFD5F5EE);
-  static const purple = Color(0xFF8E44AD);
-  static const green = Color(0xFF27AE60);
-  static const orange = Color(0xFFF39C12);
-  static const cream = Color(0xFFF5F1E8);
-  static const creamDark = Color(0xFFEDE8DB);
-  static const dark = Color(0xFF2C3E50);
-  static const grey = Color(0xFF7F8C8D);
-  static const greyLight = Color(0xFFBDC3C7);
-  static const white = Colors.white;
-  static const red = Color(0xFFE74C3C);
+// ─────────────────────────────────────────────────────────────────────────────
+//  DESIGN TOKENS
+// ─────────────────────────────────────────────────────────────────────────────
+class T {
+  static const teal = Color(0xFF0EC9A0);
+  static const tealDeep = Color(0xFF089B7A);
+  static const tealMid = Color(0xFF12B48E);
+  static const tealSurface = Color(0xFFE4FAF4);
+  static const violet = Color(0xFF7C5CBF);
+  static const violetSurf = Color(0xFFF0EBFA);
+  static const amber = Color(0xFFFFAB2E);
+  static const amberSurf = Color(0xFFFFF4E0);
+  static const emerald = Color(0xFF22C55E);
+  static const emeraldSurf = Color(0xFFE6FAF0);
+  static const rose = Color(0xFFEF4444);
+  static const roseSurf = Color(0xFFFEEEEE);
+  static const bg = Color(0xFFF4F0E8);
+  static const surface = Color(0xFFFFFFFF);
+  static const ink = Color(0xFF111827);
+  static const inkMid = Color(0xFF374151);
+  static const inkSub = Color(0xFF6B7280);
+  static const stroke = Color(0xFFE5E7EB);
+
+  static const r8 = BorderRadius.all(Radius.circular(8));
+  static const r10 = BorderRadius.all(Radius.circular(10));
+  static const r12 = BorderRadius.all(Radius.circular(12));
+  static const r16 = BorderRadius.all(Radius.circular(16));
+  static const r20 = BorderRadius.all(Radius.circular(20));
+  static const r24 = BorderRadius.all(Radius.circular(24));
+  static const r32 = BorderRadius.all(Radius.circular(32));
+
+  static List<BoxShadow> shadow({
+    double opacity = .07,
+    double blur = 20,
+    Offset offset = const Offset(0, 6),
+  }) => [
+    BoxShadow(
+      color: Colors.black.withOpacity(opacity),
+      blurRadius: blur,
+      offset: offset,
+    ),
+  ];
+
+  static List<BoxShadow> shadowColor(
+    Color c, {
+    double opacity = .28,
+    double blur = 22,
+    Offset offset = const Offset(0, 8),
+  }) => [
+    BoxShadow(color: c.withOpacity(opacity), blurRadius: blur, offset: offset),
+  ];
 }
 
-// ─────────────────────────────────────────────
-//  APP PRINCIPAL
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  TYPOGRAPHY HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+TextStyle _ts(
+  double size,
+  FontWeight w,
+  Color c, {
+  double spacing = 0,
+  double height = 1.2,
+}) => TextStyle(
+  fontSize: size,
+  fontWeight: w,
+  color: c,
+  letterSpacing: spacing,
+  height: height,
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  DATA CLASSES
+// ─────────────────────────────────────────────────────────────────────────────
+class _MascotaData {
+  final String nombre, raza, edad, tamano, emoji;
+  final String? nota;
+  const _MascotaData(
+    this.nombre,
+    this.raza,
+    this.edad,
+    this.tamano,
+    this.emoji,
+    this.nota,
+  );
+}
+
+class _PaseoData {
+  final String perro, paseador, fecha, duracion, precio, estado;
+  const _PaseoData(
+    this.perro,
+    this.paseador,
+    this.fecha,
+    this.duracion,
+    this.precio,
+    this.estado,
+  );
+}
+
+class _PillData {
+  final String title, cat, emoji;
+  final Color color;
+  const _PillData(this.title, this.cat, this.emoji, this.color);
+}
+
+class _CurioData {
+  final String raza, peso, tamano, emoji;
+  const _CurioData(this.raza, this.peso, this.tamano, this.emoji);
+}
+
+class _LugarData {
+  final String nombre, tipo, subtipo, emoji;
+  final Color color;
+  const _LugarData(
+    this.nombre,
+    this.tipo,
+    this.subtipo,
+    this.emoji,
+    this.color,
+  );
+}
+
+class _QuickData {
+  final String title, sub, emoji;
+  final Color color, surf;
+  const _QuickData(this.title, this.sub, this.emoji, this.color, this.surf);
+}
+
+class _StatData {
+  final String value, label, emoji;
+  const _StatData(this.value, this.label, this.emoji);
+}
+
+class _TabMeta {
+  final String label;
+  final IconData icon, activeIcon;
+  const _TabMeta(this.label, this.icon, this.activeIcon);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  APP ROOT
+// ─────────────────────────────────────────────────────────────────────────────
 class DogGoApp extends StatelessWidget {
   const DogGoApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DogGo',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: DogGoColors.teal,
-          brightness: Brightness.light,
-        ),
-        fontFamily: 'Nunito',
-      ),
-      home: const MainShell(),
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'DogGo',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(seedColor: T.teal),
+      scaffoldBackgroundColor: T.bg,
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: Colors.transparent,
+    ),
+    home: const AppShell(),
+  );
 }
 
-// ─────────────────────────────────────────────
-//  SHELL PRINCIPAL CON BOTTOM NAV
-// ─────────────────────────────────────────────
-class MainShell extends StatefulWidget {
-  const MainShell({super.key});
-
+// ─────────────────────────────────────────────────────────────────────────────
+//  APP SHELL — bottom nav + pantallas
+// ─────────────────────────────────────────────────────────────────────────────
+class AppShell extends StatefulWidget {
+  const AppShell({super.key});
   @override
-  State<MainShell> createState() => _MainShellState();
+  State<AppShell> createState() => _AppShellState();
 }
 
-class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
-  int _selectedIndex = 0;
+class _AppShellState extends State<AppShell> {
+  int _tab = 0;
 
-  final List<_NavItem> _navItems = [
-    _NavItem(
-      icon: Icons.home_rounded,
-      activeIcon: Icons.home_rounded,
-      label: 'Inicio',
+  static const _tabs = [
+    _TabMeta('Inicio', Icons.house_outlined, Icons.house_rounded),
+    _TabMeta('Mis perros', Icons.pets_outlined, Icons.pets_rounded),
+    _TabMeta(
+      'Paseos',
+      Icons.directions_walk_outlined,
+      Icons.directions_walk_rounded,
     ),
-    _NavItem(
-      icon: Icons.pets_outlined,
-      activeIcon: Icons.pets,
-      label: 'Mis perros',
+    _TabMeta(
+      'Mensajes',
+      Icons.chat_bubble_outline_rounded,
+      Icons.chat_bubble_rounded,
     ),
-    _NavItem(
-      icon: Icons.directions_walk_outlined,
-      activeIcon: Icons.directions_walk,
-      label: 'Paseos',
-    ),
-    _NavItem(
-      icon: Icons.chat_bubble_outline_rounded,
-      activeIcon: Icons.chat_bubble_rounded,
-      label: 'Mensajes',
-    ),
-    _NavItem(
-      icon: Icons.person_outline_rounded,
-      activeIcon: Icons.person_rounded,
-      label: 'Perfil',
-    ),
+    _TabMeta('Perfil', Icons.person_outline_rounded, Icons.person_rounded),
   ];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DogGoColors.cream,
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          const HomeScreen(),
-          _PlaceholderScreen(
-            title: 'Mis Perros',
-            icon: Icons.pets,
-            color: DogGoColors.purple,
-          ),
-          _PlaceholderScreen(
-            title: 'Paseos',
-            icon: Icons.directions_walk,
-            color: DogGoColors.orange,
-          ),
-          _PlaceholderScreen(
-            title: 'Mensajes',
-            icon: Icons.chat_bubble_rounded,
-            color: DogGoColors.green,
-          ),
-          _PlaceholderScreen(
-            title: 'Mi Perfil',
-            icon: Icons.person_rounded,
-            color: DogGoColors.teal,
-          ),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomNav(),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    body: IndexedStack(
+      index: _tab,
+      children: [
+        const HomeScreen(),
+        const MisPerrosScreen(),
+        const PaseosScreen(),
+        const MensajesScreen(),
+        const PerfilScreen(),
+      ],
+    ),
+    bottomNavigationBar: _buildNav(),
+  );
 
-  Widget _buildBottomNav() {
+  Widget _buildNav() {
     return Container(
       decoration: BoxDecoration(
-        color: DogGoColors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        color: T.surface,
+        boxShadow: T.shadow(
+          opacity: .06,
+          blur: 28,
+          offset: const Offset(0, -4),
+        ),
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+        top: false,
+        child: SizedBox(
+          height: 62,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_navItems.length, (i) {
-              final item = _navItems[i];
-              final isActive = i == _selectedIndex;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedIndex = i),
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? DogGoColors.teal.withOpacity(0.12)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+            children: List.generate(_tabs.length, (i) {
+              final sel = i == _tab;
+              final tab = _tabs[i];
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _tab = i);
+                  },
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      AnimatedSwitcher(
+                      AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: sel
+                              ? T.teal.withOpacity(.12)
+                              : Colors.transparent,
+                          borderRadius: T.r12,
+                        ),
                         child: Icon(
-                          isActive ? item.activeIcon : item.icon,
-                          key: ValueKey(isActive),
-                          color: isActive ? DogGoColors.teal : DogGoColors.grey,
-                          size: 24,
+                          sel ? tab.activeIcon : tab.icon,
+                          color: sel ? T.teal : T.inkSub,
+                          size: 22,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w400,
-                          color: isActive ? DogGoColors.teal : DogGoColors.grey,
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 200),
+                        style: _ts(
+                          9.5,
+                          sel ? FontWeight.w800 : FontWeight.w500,
+                          sel ? T.teal : T.inkSub,
                         ),
+                        child: Text(tab.label),
                       ),
                     ],
                   ),
@@ -201,656 +290,542 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   }
 }
 
-class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  const _NavItem({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-  });
-}
-
-// ─────────────────────────────────────────────
-//  HOME SCREEN COMPLETA
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  HOME SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  late AnimationController _bannerController;
-  late AnimationController _cardsController;
-  late Animation<double> _bannerFade;
-  late Animation<Offset> _bannerSlide;
-  late Animation<double> _cardsFade;
+  late final AnimationController _entry = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..forward();
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _entry,
+    curve: const Interval(0, .65, curve: Curves.easeOut),
+  );
+  late final Animation<Offset> _slide =
+      Tween(begin: const Offset(0, .08), end: Offset.zero).animate(
+        CurvedAnimation(
+          parent: _entry,
+          curve: const Interval(0, .70, curve: Curves.easeOutCubic),
+        ),
+      );
 
-  final ScrollController _scrollController = ScrollController();
-  int _activeMascotaIndex = 0;
+  final PageController _pageCtrl = PageController(viewportFraction: .90);
+  int _pageIdx = 0;
 
-  // ── Datos mock ──
-  final List<_Mascota> _mascotas = [
-    _Mascota(
-      nombre: 'Hikari',
-      raza: 'Pomerania',
-      edad: '7 años',
-      tamano: 'Pequeño',
-      emoji: '🐕',
-      nota: 'Tiene obesidad extrema y se puede cansar rápido',
+  final _ctrlConsejos = ScrollController();
+  final _ctrlProductos = ScrollController();
+  final _ctrlCurios = ScrollController();
+  bool _pauseConsejos = false;
+  bool _pauseProductos = false;
+  bool _pauseCurios = false;
+  Timer? _tConsejos, _tProductos, _tCurios;
+
+  // ── DATA ──────────────────────────────────────────────────────────────────
+  static const _mascotas = [
+    _MascotaData(
+      'Hikari',
+      'Pomerania',
+      '7 años',
+      'Pequeño',
+      '🐕',
+      'Obesidad extrema — se cansa rápido',
     ),
-    _Mascota(
-      nombre: 'Rocky',
-      raza: 'Golden Retriever',
-      edad: '3 años',
-      tamano: 'Grande',
-      emoji: '🦮',
-      nota: null,
+    _MascotaData('Rocky', 'Golden Retriever', '3 años', 'Grande', '🦮', null),
+  ];
+  static const _paseos = [
+    _PaseoData(
+      'Max',
+      'Carlos Rodríguez',
+      'Hoy, 4:30 PM',
+      '45 min',
+      '\$25',
+      'Confirmado',
+    ),
+    _PaseoData(
+      'Luna',
+      'María González',
+      'Mañana, 10:00 AM',
+      '60 min',
+      '\$30',
+      'Pendiente',
     ),
   ];
-
-  final List<_Paseo> _paseos = [
-    _Paseo(
-      perro: 'Max',
-      paseador: 'Carlos Rodríguez',
-      fecha: 'Hoy, 4:30 PM',
-      duracion: '45 min',
-      precio: '\$25.00',
-      estado: 'Confirmado',
+  static const _consejos = [
+    _PillData('¿Qué come tu\nperro según talla?', 'Nutrición', '🍖', T.teal),
+    _PillData('Paseos diarios\npor raza y edad', 'Ejercicio', '🏃', T.violet),
+    _PillData('Calendario de\nvacunación', 'Salud', '💉', T.emerald),
+    _PillData('Frecuencia de\nbaño correcta', 'Higiene', '🛁', T.amber),
+    _PillData('Señales de estrés\nen perros', 'Comportamiento', '😰', T.rose),
+    _PillData('Actividades en\ncasa con él', 'Bienestar', '❤️', T.tealDeep),
+  ];
+  static const _productos = [
+    _PillData('Kong Classic', 'Juguete', '🦷', T.teal),
+    _PillData('Cama ortopédica', 'Descanso', '🛏️', T.violet),
+    _PillData('Arnés antipull', 'Paseo', '🦺', T.emerald),
+    _PillData('Snacks deshidratados', 'Nutrición', '🥩', T.amber),
+    _PillData('Shampoo hipoalergénico', 'Higiene', '🧴', T.rose),
+    _PillData('Comedero automático', 'Gadget', '🤖', T.tealDeep),
+  ];
+  static const _curios = [
+    _CurioData('Golden Retriever', '25–34 kg', 'Grande', '🦮'),
+    _CurioData('Poodle', '20–32 kg', 'Grande', '🐩'),
+    _CurioData('Labrador Retriever', '25–36 kg', 'Grande', '🐕'),
+    _CurioData('French Bulldog', '8–14 kg', 'Pequeño', '🐶'),
+    _CurioData('Pastor Alemán', '22–40 kg', 'Grande', '🐕‍🦺'),
+    _CurioData('Beagle', '9–11 kg', 'Mediano', '🐕'),
+  ];
+  static const _lugares = [
+    _LugarData(
+      'Hospital Veterinario Mascota Feliz',
+      'Veterinaria',
+      '24 horas',
+      '🏥',
+      T.rose,
     ),
-    _Paseo(
-      perro: 'Luna',
-      paseador: 'María González',
-      fecha: 'Mañana, 10:00 AM',
-      duracion: '60 min',
-      precio: '\$30.00',
-      estado: 'Pendiente',
+    _LugarData(
+      'Parque Canino España',
+      'Parque',
+      'Dog friendly',
+      '🌳',
+      T.emerald,
+    ),
+    _LugarData('PetCo Cumbres', 'Tienda', 'Grooming', '🛒', T.violet),
+    _LugarData('Adopta Nuevo León', 'Adopción', 'Rescate', '🐾', T.amber),
+  ];
+  static const _quickItems = [
+    _QuickData(
+      'Mis perros',
+      'Administra tus mascotas',
+      '🐕',
+      T.violet,
+      T.violetSurf,
+    ),
+    _QuickData(
+      'Paseadores',
+      'Busca paseadores disponibles',
+      '👟',
+      T.teal,
+      T.tealSurface,
+    ),
+    _QuickData(
+      'Mensajes',
+      'Chats con paseadores',
+      '💬',
+      T.emerald,
+      T.emeraldSurf,
+    ),
+    _QuickData(
+      'Configuración',
+      'Preferencias y seguridad',
+      '⚙️',
+      T.inkSub,
+      Color(0xFFF3F4F6),
     ),
   ];
-
-  final List<_Consejo> _consejos = [
-    _Consejo(
-      titulo: '¿Qué debe comer tu perro según su tamaño?',
-      categoria: 'Nutrición',
-      emoji: '🍖',
-      tiempo: '5 min de lectura',
+  static const _ctaItems = [
+    _QuickData(
+      'Ver mis paseos',
+      'Activos e historial',
+      '🐕',
+      T.teal,
+      T.tealSurface,
     ),
-    _Consejo(
-      titulo: '¿Cuántos paseos necesita tu perro al día?',
-      categoria: 'Ejercicio',
-      emoji: '🏃',
-      tiempo: '3 min de lectura',
+    _QuickData(
+      'Buscar paseador',
+      'Encuentra el perfecto',
+      '🔍',
+      T.violet,
+      T.violetSurf,
     ),
-    _Consejo(
-      titulo: 'Calendario de vacunación: lo esencial',
-      categoria: 'Salud',
-      emoji: '💉',
-      tiempo: '4 min de lectura',
+    _QuickData(
+      'Mis perros',
+      'Perfiles y datos',
+      '🐾',
+      T.emerald,
+      T.emeraldSurf,
     ),
-    _Consejo(
-      titulo: '¿Con qué frecuencia bañar a tu perro?',
-      categoria: 'Higiene',
-      emoji: '🛁',
-      tiempo: '3 min de lectura',
-    ),
-    _Consejo(
-      titulo: 'Señales de estrés en perros que debes conocer',
-      categoria: 'Comportamiento',
-      emoji: '😰',
-      tiempo: '6 min de lectura',
-    ),
-    _Consejo(
-      titulo: 'Actividades para hacer con tu perro en casa',
-      categoria: 'Bienestar',
-      emoji: '❤️',
-      tiempo: '4 min de lectura',
-    ),
+    _QuickData('Mi perfil', 'Foto y dirección', '👤', T.amber, T.amberSurf),
   ];
 
-  final List<_Producto> _productos = [
-    _Producto(
-      nombre: 'Juguete Kong Classic',
-      descripcion: 'Para perros que mastican mucho',
-      categoria: 'Juguete',
-      emoji: '🦷',
-    ),
-    _Producto(
-      nombre: 'Cama ortopédica para perros',
-      descripcion: 'Especialmente recomendada para razas grandes',
-      categoria: 'Descanso',
-      emoji: '🛏️',
-    ),
-    _Producto(
-      nombre: 'Arnés antipull ajustable',
-      descripcion: 'Reduce el jalón al caminar',
-      categoria: 'Paseo',
-      emoji: '🦺',
-    ),
-    _Producto(
-      nombre: 'Snacks naturales deshidratados',
-      descripcion: 'Son conservantes ni colorantes',
-      categoria: 'Nutrición',
-      emoji: '🥩',
-    ),
-  ];
-
-  final List<_Lugar> _lugares = [
-    _Lugar(
-      nombre: 'Hospital Veterinario Mascota Feliz',
-      tipo: 'Veterinaria',
-      subtipo: '24 horas',
-      emoji: '🏥',
-      color: DogGoColors.red,
-    ),
-    _Lugar(
-      nombre: 'Parque Canino España',
-      tipo: 'Parque',
-      subtipo: 'Dog friendly',
-      emoji: '🌳',
-      color: DogGoColors.green,
-    ),
-    _Lugar(
-      nombre: 'PetCo Cumbres',
-      tipo: 'Tienda',
-      subtipo: 'Grooming',
-      emoji: '🛒',
-      color: DogGoColors.purple,
-    ),
-    _Lugar(
-      nombre: 'Adopta Nuevo León',
-      tipo: 'Adopción',
-      subtipo: 'Rescate',
-      emoji: '🐾',
-      color: DogGoColors.orange,
-    ),
-  ];
-
-  final List<_Curiosidad> _curiosidades = [
-    _Curiosidad(
-      raza: 'Golden Retriever',
-      peso: '25-34 kg',
-      tamano: 'Grande',
-      emoji: '🦮',
-    ),
-    _Curiosidad(
-      raza: 'Poodle (Caniche)',
-      peso: '20-32 kg',
-      tamano: 'Grande',
-      emoji: '🐩',
-    ),
-    _Curiosidad(
-      raza: 'Labrador Retriever',
-      peso: '25-36 kg',
-      tamano: 'Grande',
-      emoji: '🐕',
-    ),
-    _Curiosidad(
-      raza: 'French Bulldog',
-      peso: '8-14 kg',
-      tamano: 'Pequeño',
-      emoji: '🐶',
-    ),
-    _Curiosidad(
-      raza: 'Pastor Alemán',
-      peso: '22-40 kg',
-      tamano: 'Grande',
-      emoji: '🐕‍🦺',
-    ),
-    _Curiosidad(
-      raza: 'Beagle',
-      peso: '9-11 kg',
-      tamano: 'Mediano',
-      emoji: '🐕',
-    ),
-  ];
-
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _auto(_ctrlConsejos, () => _pauseConsejos, .55, (t) => _tConsejos = t);
+      _auto(_ctrlProductos, () => _pauseProductos, .60, (t) => _tProductos = t);
+      _auto(_ctrlCurios, () => _pauseCurios, .50, (t) => _tCurios = t);
+    });
+  }
 
-    _bannerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _cardsController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-
-    _bannerFade = CurvedAnimation(
-      parent: _bannerController,
-      curve: Curves.easeOut,
-    );
-    _bannerSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(
-          CurvedAnimation(parent: _bannerController, curve: Curves.easeOut),
-        );
-    _cardsFade = CurvedAnimation(
-      parent: _cardsController,
-      curve: Curves.easeOut,
-    );
-
-    _bannerController.forward();
-    Future.delayed(
-      const Duration(milliseconds: 300),
-      () => _cardsController.forward(),
-    );
+  void _auto(
+    ScrollController c,
+    bool Function() paused,
+    double spd,
+    void Function(Timer) set,
+  ) {
+    final t = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (!mounted || paused() || !c.hasClients) return;
+      final max = c.position.maxScrollExtent;
+      if (max > 0 && c.offset >= max * 0.75) {
+        // Salto invisible al 25% para crear efecto infinito
+        c.jumpTo(max * 0.25);
+      } else {
+        c.jumpTo(c.offset + spd);
+      }
+    });
+    set(t);
   }
 
   @override
   void dispose() {
-    _bannerController.dispose();
-    _cardsController.dispose();
-    _scrollController.dispose();
+    _entry.dispose();
+    _pageCtrl.dispose();
+    _ctrlConsejos.dispose();
+    _ctrlProductos.dispose();
+    _ctrlCurios.dispose();
+    _tConsejos?.cancel();
+    _tProductos?.cancel();
+    _tCurios?.cancel();
     super.dispose();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  BUILD
+  // ─────────────────────────────────────────────────────────────────────────
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DogGoColors.cream,
-      body: NestedScrollView(
-        controller: _scrollController,
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          _buildAppBar(innerBoxIsScrolled),
-        ],
-        body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: T.bg,
+    body: NestedScrollView(
+      headerSliverBuilder: (_, __) => [_appBar()],
+      body: FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(
+          position: _slide,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _heroBanner(),
+                _statsRibbon(),
+                _sec('🐾 Tus mascotas', action: 'Ver todas'),
+                _mascotaCarousel(),
+                _sec('📅 Próximos paseos', action: 'Ver todos'),
+                _paseoCards(),
+                _sec('⚡ Accesos rápidos'),
+                _quickAccess(),
+                _sec(
+                  '💡 Cuidado & bienestar',
+                  sub: 'Consejos para tu mejor amigo',
+                ),
+                _autoRow(
+                  _ctrlConsejos,
+                  (v) => setState(() => _pauseConsejos = v),
+                  _consejos,
+                  162,
+                  (d) => _consejoCard(d as _PillData),
+                ),
+                _sec(
+                  '🛍️ Productos recomendados',
+                  sub: 'Lo que los dueños de DogGo usan',
+                ),
+                _autoRow(
+                  _ctrlProductos,
+                  (v) => setState(() => _pauseProductos = v),
+                  _productos,
+                  170,
+                  (d) => _productoCard(d as _PillData),
+                ),
+                _sec('📍 Cerca de ti', sub: 'Monterrey y Área Metro'),
+                _lugarGrid(),
+                _sec(
+                  '🧬 ¿Sabías que...?',
+                  sub: 'Curiosidades de razas populares',
+                ),
+                _autoRow(
+                  _ctrlCurios,
+                  (v) => setState(() => _pauseCurios = v),
+                  _curios,
+                  110,
+                  (d) => _curioCard(d as _CurioData),
+                ),
+                _ctaBlock(),
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  // ── APP BAR ──────────────────────────────────────────────────────────────
+  SliverAppBar _appBar() => SliverAppBar(
+    pinned: true,
+    floating: true,
+    snap: true,
+    backgroundColor: T.tealDeep,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    title: Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.15),
+            borderRadius: T.r8,
+          ),
+          child: const Center(
+            child: Text('🐾', style: TextStyle(fontSize: 18)),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'DogGo',
+          style: _ts(21, FontWeight.w900, Colors.white, spacing: -.6),
+        ),
+      ],
+    ),
+    actions: [
+      _NavBtn(icon: Icons.notifications_outlined, badge: true, onTap: () {}),
+      _NavBtn(icon: Icons.person_outline_rounded, badge: false, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PerfilScreen()))),
+      const SizedBox(width: 6),
+    ],
+  );
+
+  // ── HERO BANNER ───────────────────────────────────────────────────────────
+  Widget _heroBanner() => Container(
+    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF0EC9A0), Color(0xFF057A5F)],
+      ),
+      borderRadius: T.r24,
+      boxShadow: T.shadowColor(
+        T.teal,
+        opacity: .32,
+        blur: 30,
+        offset: const Offset(0, 12),
+      ),
+    ),
+    child: Stack(
+      children: [
+        Positioned(top: -36, right: -36, child: _blob(160, .06)),
+        Positioned(bottom: -24, right: 48, child: _blob(80, .07)),
+        Positioned(top: 30, right: 30, child: _blob(44, .10)),
+        Positioned(bottom: 20, left: -20, child: _blob(60, .05)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Banner bienvenida
-              _buildWelcomeBanner(),
-              const SizedBox(height: 20),
-
-              // 2. Mis mascotas
-              _buildSectionHeader('🐾 Tus mascotas', 'Ver todas', onTap: () {}),
-              _buildMascotas(),
-              const SizedBox(height: 8),
-
-              // 3. Stats rápidos
-              _buildStatsRow(),
-              const SizedBox(height: 20),
-
-              // 4. Próximos paseos
-              _buildSectionHeader(
-                '📅 Próximos paseos',
-                'Ver todos',
-                onTap: () {},
-              ),
-              _buildPaseos(),
-              const SizedBox(height: 20),
-
-              // 5. Accesos rápidos
-              _buildAccesosRapidos(),
-              const SizedBox(height: 24),
-
-              // 6. Consejos
-              _buildSectionHeader(
-                '💡 Cuidado y bienestar',
-                null,
-                subtitle: 'Consejos para tu mejor amigo',
-              ),
-              _buildConsejos(),
-              const SizedBox(height: 24),
-
-              // 7. Productos recomendados
-              _buildSectionHeader(
-                '🛍️ Productos recomendados',
-                null,
-                subtitle: 'Lo que los dueños de DogGo usan y recomiendan',
-              ),
-              _buildProductos(),
-              const SizedBox(height: 24),
-
-              // 8. Lugares cerca
-              _buildSectionHeader(
-                '📍 Lugares cerca de ti',
-                null,
-                subtitle: 'Monterrey y Área Metro',
-              ),
-              _buildLugares(),
-              const SizedBox(height: 24),
-
-              // 9. Curiosidades de razas
-              _buildSectionHeader(
-                '🧬 ¿Sabías que...?',
-                null,
-                subtitle: 'Curiosidades de razas populares',
-              ),
-              _buildCuriosidades(),
-              const SizedBox(height: 24),
-
-              // 10. CTA final
-              _buildCTAFinal(),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── APP BAR ──
-  SliverAppBar _buildAppBar(bool innerBoxIsScrolled) {
-    return SliverAppBar(
-      pinned: true,
-      floating: true,
-      snap: true,
-      backgroundColor: DogGoColors.teal,
-      elevation: 0,
-      expandedHeight: 0,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Text('🐾', style: TextStyle(fontSize: 18)),
-          ),
-          const SizedBox(width: 10),
-          const Text(
-            'DogGo',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(
-                Icons.notifications_outlined,
-                color: Colors.white,
-                size: 26,
-              ),
-              onPressed: () {},
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE74C3C),
-                  shape: BoxShape.circle,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(.18),
+                  borderRadius: T.r32,
+                  border: Border.all(color: Colors.white.withOpacity(.22)),
+                ),
+                child: Text(
+                  'BIENVENIDO DE VUELTA',
+                  style: _ts(9.5, FontWeight.w800, Colors.white, spacing: 1.5),
                 ),
               ),
-            ),
-          ],
-        ),
-        IconButton(
-          icon: const Icon(
-            Icons.person_outline_rounded,
-            color: Colors.white,
-            size: 26,
-          ),
-          onPressed: () {},
-        ),
-        const SizedBox(width: 4),
-      ],
-    );
-  }
-
-  // ── BANNER BIENVENIDA ──
-  Widget _buildWelcomeBanner() {
-    return FadeTransition(
-      opacity: _bannerFade,
-      child: SlideTransition(
-        position: _bannerSlide,
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1ABC9C), Color(0xFF0E8C72)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: DogGoColors.teal.withOpacity(0.35),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Círculos decorativos
-              Positioned(
-                top: -20,
-                right: -20,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -30,
-                right: 60,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'BIENVENIDO DE VUELTA',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Hola, Marco.',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              height: 1.1,
-                            ),
-                          ),
-                          const Text(
-                            '¿Cómo están tus\npeludos hoy?',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              height: 1.3,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'Todo lo que necesitas para cuidar\na tus mascotas está aquí.',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              _BannerButton(
-                                label: 'Buscar paseador',
-                                isPrimary: true,
-                                onTap: () {},
-                              ),
-                              const SizedBox(width: 8),
-                              _BannerButton(
-                                label: 'Mis paseos',
-                                isPrimary: false,
-                                onTap: () {},
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── SECTION HEADER ──
-  Widget _buildSectionHeader(
-    String title,
-    String? actionLabel, {
-    String? subtitle,
-    VoidCallback? onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+              const SizedBox(height: 14),
               Text(
-                title,
-                style: const TextStyle(
-                  color: DogGoColors.dark,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+                'Hola, Marco.',
+                style: _ts(
+                  30,
+                  FontWeight.w900,
+                  Colors.white,
+                  spacing: -.8,
+                  height: 1.05,
                 ),
               ),
-              if (actionLabel != null)
-                GestureDetector(
-                  onTap: onTap,
-                  child: Text(
-                    actionLabel,
-                    style: const TextStyle(
-                      color: DogGoColors.teal,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                '¿Cómo están\ntus peludos hoy?',
+                style: _ts(
+                  18,
+                  FontWeight.w300,
+                  Colors.white.withOpacity(.92),
+                  height: 1.35,
                 ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Todo lo que necesitas para cuidar\na tus mascotas está aquí.',
+                style: _ts(
+                  12.5,
+                  FontWeight.w400,
+                  Colors.white.withOpacity(.60),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  _HeroBtn(
+                    label: 'Buscar paseador',
+                    primary: true,
+                    onTap: () {},
+                  ),
+                  const SizedBox(width: 9),
+                  _HeroBtn(label: 'Mis paseos', primary: false, onTap: () {}),
+                ],
+              ),
             ],
           ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: const TextStyle(color: DogGoColors.grey, fontSize: 13),
-            ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _blob(double size, double op) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(op),
+      shape: BoxShape.circle,
+    ),
+  );
+
+  // ── STATS RIBBON ──────────────────────────────────────────────────────────
+  Widget _statsRibbon() {
+    const stats = [
+      _StatData('6', 'Mascotas', '🐕'),
+      _StatData('3', 'Paseos', '✅'),
+      _StatData('Hikari', 'Último', '📅'),
+      _StatData('—', 'Activos', '⏳'),
+    ];
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0EC9A0), Color(0xFF0AA882)],
+        ),
+        borderRadius: T.r20,
+        boxShadow: T.shadowColor(
+          T.teal,
+          opacity: .20,
+          blur: 20,
+          offset: const Offset(0, 6),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          for (int i = 0; i < stats.length; i++) ...[
+            if (i > 0)
+              Container(
+                width: 1,
+                height: 32,
+                color: Colors.white.withOpacity(.20),
+              ),
+            _StatTile(stats[i]),
           ],
         ],
       ),
     );
   }
 
-  // ── MASCOTAS (CAROUSEL) ──
-  Widget _buildMascotas() {
-    return Column(
+  // ── SECTION LABEL ─────────────────────────────────────────────────────────
+  Widget _sec(String title, {String? action, String? sub}) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 26, 16, 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: 160,
-          child: PageView.builder(
-            controller: PageController(viewportFraction: 0.85, initialPage: 0),
-            onPageChanged: (i) => setState(() => _activeMascotaIndex = i),
-            itemCount: _mascotas.length + 1,
-            itemBuilder: (context, i) {
-              if (i == _mascotas.length) {
-                return _buildAddMascotaCard();
-              }
-              return _buildMascotaCard(_mascotas[i]);
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_mascotas.length + 1, (i) {
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: i == _activeMascotaIndex ? 20 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: i == _activeMascotaIndex
-                    ? DogGoColors.teal
-                    : DogGoColors.greyLight,
-                borderRadius: BorderRadius.circular(3),
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: _ts(17, FontWeight.w900, T.ink, spacing: -.3)),
+            if (action != null)
+              GestureDetector(
+                onTap: () {},
+                child: Text(
+                  action,
+                  style: _ts(12.5, FontWeight.w700, T.tealMid),
+                ),
               ),
-            );
-          }),
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildMascotaCard(_Mascota m) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: DogGoColors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
+        if (sub != null) ...[
+          const SizedBox(height: 3),
+          Text(sub, style: _ts(12.5, FontWeight.w400, T.inkSub)),
         ],
+      ],
+    ),
+  );
+
+  // ── MASCOTA CAROUSEL ──────────────────────────────────────────────────────
+  Widget _mascotaCarousel() => Column(
+    children: [
+      SizedBox(
+        height: 150,
+        child: PageView.builder(
+          controller: _pageCtrl,
+          onPageChanged: (i) => setState(() => _pageIdx = i),
+          itemCount: _mascotas.length + 1,
+          itemBuilder: (_, i) => i < _mascotas.length
+              ? _mascotaCard(_mascotas[i])
+              : _addMascotaCard(),
+        ),
       ),
+      const SizedBox(height: 10),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(_mascotas.length + 1, (i) {
+          final sel = i == _pageIdx;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            width: sel ? 24 : 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: sel ? T.teal : T.stroke,
+              borderRadius: T.r32,
+            ),
+          );
+        }),
+      ),
+    ],
+  );
+
+  Widget _mascotaCard(_MascotaData m) => Container(
+    margin: const EdgeInsets.symmetric(horizontal: 8),
+    decoration: BoxDecoration(
+      color: T.surface,
+      borderRadius: T.r20,
+      boxShadow: T.shadow(opacity: .055, blur: 18, offset: const Offset(0, 6)),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           Container(
-            width: 70,
-            height: 70,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
-              color: DogGoColors.tealLight,
-              borderRadius: BorderRadius.circular(16),
+              color: T.tealSurface,
+              borderRadius: T.r16,
             ),
             child: Center(
-              child: Text(m.emoji, style: const TextStyle(fontSize: 36)),
+              child: Text(m.emoji, style: const TextStyle(fontSize: 38)),
             ),
           ),
           const SizedBox(width: 14),
@@ -861,50 +836,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 Text(
                   m.nombre,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: DogGoColors.dark,
-                  ),
+                  style: _ts(17.5, FontWeight.w900, T.ink, spacing: -.3),
                 ),
-                Text(
-                  m.raza,
-                  style: const TextStyle(fontSize: 13, color: DogGoColors.grey),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 1),
+                Text(m.raza, style: _ts(12.5, FontWeight.w500, T.inkSub)),
+                const SizedBox(height: 9),
                 Row(
                   children: [
-                    _TagChip(label: m.edad, color: DogGoColors.teal),
-                    const SizedBox(width: 6),
-                    _TagChip(label: m.tamano, color: DogGoColors.purple),
+                    _Chip(m.edad, T.teal, T.tealSurface),
+                    const SizedBox(width: 5),
+                    _Chip(m.tamano, T.violet, T.violetSurf),
                   ],
                 ),
                 if (m.nota != null) ...[
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
+                      horizontal: 9,
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: DogGoColors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: DogGoColors.orange.withOpacity(0.3),
-                      ),
+                      color: T.amberSurf,
+                      borderRadius: T.r8,
+                      border: Border.all(color: T.amber.withOpacity(.25)),
                     ),
                     child: Row(
                       children: [
-                        const Text('⚠️', style: TextStyle(fontSize: 11)),
-                        const SizedBox(width: 4),
+                        const Text('⚠️', style: TextStyle(fontSize: 10)),
+                        const SizedBox(width: 5),
                         Expanded(
                           child: Text(
-                            'Notas: ${m.nota}',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: DogGoColors.orange,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            m.nota!,
+                            style: _ts(9.5, FontWeight.w700, T.amber),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -918,532 +881,417 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 
-  Widget _buildAddMascotaCard() {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: DogGoColors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: DogGoColors.teal.withOpacity(0.3),
-            width: 2,
-            style: BorderStyle.solid,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: DogGoColors.tealLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                color: DogGoColors.teal,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Añadir mascota',
-              style: TextStyle(
-                color: DogGoColors.teal,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
+  Widget _addMascotaCard() => GestureDetector(
+    onTap: () {},
+    child: Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: T.surface,
+        borderRadius: T.r20,
+        border: Border.all(color: T.teal.withOpacity(.25), width: 1.6),
+        boxShadow: T.shadow(opacity: .04),
       ),
-    );
-  }
-
-  // ── STATS ROW ──
-  Widget _buildStatsRow() {
-    return FadeTransition(
-      opacity: _cardsFade,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1ABC9C), Color(0xFF16A085)],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: DogGoColors.teal.withOpacity(0.25),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: T.tealSurface,
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            _StatItem(value: '6', label: 'Mascotas\nregistradas', emoji: '🐕'),
-            _StatDivider(),
-            _StatItem(value: '3', label: 'Paseos\ncompletados', emoji: '✅'),
-            _StatDivider(),
-            _StatItem(value: 'Hikari', label: 'Último\npaseo', emoji: '📅'),
-            _StatDivider(),
-            _StatItem(value: '—', label: 'Sin paseos\nactivos', emoji: '⏳'),
-          ],
-        ),
+            child: const Icon(Icons.add_rounded, color: T.teal, size: 26),
+          ),
+          const SizedBox(height: 10),
+          Text('Añadir mascota', style: _ts(14, FontWeight.w800, T.teal)),
+          const SizedBox(height: 3),
+          Text(
+            'Registrar nueva mascota',
+            style: _ts(11, FontWeight.w400, T.inkSub),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 
-  // ── PRÓXIMOS PASEOS ──
-  Widget _buildPaseos() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _paseos.length,
-      itemBuilder: (context, i) => _buildPaseoCard(_paseos[i], i),
-    );
-  }
+  // ── PASEO CARDS ───────────────────────────────────────────────────────────
+  Widget _paseoCards() => ListView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    itemCount: _paseos.length,
+    itemBuilder: (_, i) => _paseoCard(_paseos[i], i),
+  );
 
-  Widget _buildPaseoCard(_Paseo p, int index) {
-    final isConfirmado = p.estado == 'Confirmado';
+  Widget _paseoCard(_PaseoData p, int delay) {
+    final ok = p.estado == 'Confirmado';
+    final col = ok ? T.emerald : T.amber;
+    final bg = ok ? T.emeraldSurf : T.amberSurf;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 400 + index * 150),
-      curve: Curves.easeOut,
-      builder: (context, value, child) => Opacity(
-        opacity: value,
+      duration: Duration(milliseconds: 380 + delay * 120),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, child) => Opacity(
+        opacity: v,
         child: Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
+          offset: Offset(0, 16 * (1 - v)),
           child: child,
         ),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: DogGoColors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          color: T.surface,
+          borderRadius: T.r20,
+          boxShadow: T.shadow(
+            opacity: .055,
+            blur: 16,
+            offset: const Offset(0, 5),
+          ),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  p.perro,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: DogGoColors.dark,
-                  ),
-                ),
-                _StatusBadge(label: p.estado, isConfirmado: isConfirmado),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Paseador: ${p.paseador}',
-              style: const TextStyle(color: DogGoColors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                _InfoChip(icon: '📅', label: p.fecha),
-                const SizedBox(width: 10),
-                _InfoChip(icon: '⏱️', label: p.duracion),
-                const SizedBox(width: 10),
-                _InfoChip(icon: '💰', label: p.precio),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: DogGoColors.teal,
-                      side: const BorderSide(
-                        color: DogGoColors.teal,
-                        width: 1.5,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    child: const Text(
-                      'Detalles',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: DogGoColors.teal,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Chat',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── ACCESOS RÁPIDOS ──
-  Widget _buildAccesosRapidos() {
-    final items = [
-      _AccesoItem(
-        'Mis perros',
-        'Administra tus mascotas',
-        '🐕',
-        DogGoColors.purple,
-      ),
-      _AccesoItem(
-        'Paseadores',
-        'Busca paseadores disponibles',
-        '👟',
-        DogGoColors.teal,
-      ),
-      _AccesoItem('Mensajes', 'Chats con paseadores', '💬', DogGoColors.green),
-      _AccesoItem(
-        'Configuración',
-        'Preferencias y seguridad',
-        '⚙️',
-        DogGoColors.grey,
-      ),
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '⚡ Accesos rápidos',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: DogGoColors.dark,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...items.map((item) => _buildAccesoRow(item)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAccesoRow(_AccesoItem item) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: DogGoColors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              height: 4,
               decoration: BoxDecoration(
-                color: item.color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(item.emoji, style: const TextStyle(fontSize: 22)),
+                color: col,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.titulo,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: DogGoColors.dark,
-                    ),
-                  ),
-                  Text(
-                    item.subtitulo,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: DogGoColors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: DogGoColors.greyLight,
-              size: 22,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── CONSEJOS ──
-  Widget _buildConsejos() {
-    return SizedBox(
-      height: 170,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _consejos.length,
-        itemBuilder: (context, i) {
-          final c = _consejos[i];
-          final colors = [
-            DogGoColors.teal,
-            DogGoColors.purple,
-            DogGoColors.green,
-            DogGoColors.orange,
-            DogGoColors.red,
-            DogGoColors.tealDark,
-          ];
-          return GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 160,
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: DogGoColors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors[i % colors.length].withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      c.categoria,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: colors[i % colors.length],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        p.perro,
+                        style: _ts(17, FontWeight.w900, T.ink, spacing: -.3),
                       ),
-                    ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: bg,
+                          borderRadius: T.r32,
+                          border: Border.all(color: col.withOpacity(.28)),
+                        ),
+                        child: Text(
+                          p.estado,
+                          style: _ts(11, FontWeight.w800, col),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(c.emoji, style: const TextStyle(fontSize: 28)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 3),
                   Text(
-                    c.titulo,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: DogGoColors.dark,
-                      height: 1.3,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                    'Paseador: ${p.paseador}',
+                    style: _ts(12.5, FontWeight.w500, T.inkSub),
                   ),
-                  const Spacer(),
-                  Text(
-                    c.tiempo,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: DogGoColors.grey,
-                    ),
+                  const SizedBox(height: 11),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _InfoPill('📅', p.fecha),
+                      _InfoPill('⏱️', p.duracion),
+                      _InfoPill('💰', p.precio),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ── PRODUCTOS ──
-  Widget _buildProductos() {
-    return SizedBox(
-      height: 180,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _productos.length,
-        itemBuilder: (context, i) {
-          final p = _productos[i];
-          return GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 155,
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: DogGoColors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(p.emoji, style: const TextStyle(fontSize: 32)),
-                  const SizedBox(height: 8),
-                  _TagChip(label: p.categoria, color: DogGoColors.teal),
-                  const SizedBox(height: 6),
-                  Text(
-                    p.nombre,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: DogGoColors.dark,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    p.descripcion,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: DogGoColors.grey,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const Spacer(),
+                  const SizedBox(height: 13),
                   Row(
                     children: [
-                      const Text('🛒', style: TextStyle(fontSize: 12)),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Ver en Amazon',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: DogGoColors.teal,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Expanded(
+                        child: _OutBtn(label: 'Detalles', onTap: () {}),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _FillBtn(label: 'Chat', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MensajesScreen()))),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
 
-  // ── LUGARES ──
-  Widget _buildLugares() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.6,
+  // ── QUICK ACCESS ──────────────────────────────────────────────────────────
+  Widget _quickAccess() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Column(
+      children: _quickItems
+          .map(
+            (a) => GestureDetector(
+              onTap: () {},
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 13,
+                ),
+                decoration: BoxDecoration(
+                  color: T.surface,
+                  borderRadius: T.r16,
+                  boxShadow: T.shadow(
+                    opacity: .04,
+                    blur: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: a.surf,
+                        borderRadius: T.r12,
+                      ),
+                      child: Center(
+                        child: Text(
+                          a.emoji,
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            a.title,
+                            style: _ts(14.5, FontWeight.w800, T.ink),
+                          ),
+                          Text(
+                            a.sub,
+                            style: _ts(11.5, FontWeight.w400, T.inkSub),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFFD1D5DB),
+                      size: 22,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    ),
+  );
+
+  // ── AUTO SCROLL ROW ───────────────────────────────────────────────────────
+  Widget _autoRow(
+    ScrollController ctrl,
+    void Function(bool) onPause,
+    List<dynamic> items,
+    double height,
+    Widget Function(dynamic) build,
+  ) => SizedBox(
+    height: height,
+    child: NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        if (n is ScrollStartNotification && n.dragDetails != null)
+          onPause(true);
+        if (n is ScrollEndNotification) {
+          Future.delayed(const Duration(seconds: 2), () => onPause(false));
+        }
+        return false;
+      },
+      child: ListView.builder(
+        controller: ctrl,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        // Triplicamos items para scroll infinito suave sin saltos visibles
+        itemCount: items.length * 3,
+        itemBuilder: (_, i) => build(items[i % items.length]),
       ),
-      itemCount: _lugares.length,
-      itemBuilder: (context, i) {
-        final l = _lugares[i];
-        return GestureDetector(
-          onTap: () {},
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: DogGoColors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+    ),
+  );
+
+  Widget _consejoCard(_PillData c) => GestureDetector(
+    onTap: () {},
+    child: Container(
+      width: 148,
+      margin: const EdgeInsets.only(right: 10),
+      decoration: BoxDecoration(
+        color: T.surface,
+        borderRadius: T.r20,
+        boxShadow: T.shadow(
+          opacity: .055,
+          blur: 14,
+          offset: const Offset(0, 4),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: c.color.withOpacity(.10),
+                borderRadius: T.r8,
+              ),
+              child: Text(c.cat, style: _ts(9.5, FontWeight.w800, c.color)),
+            ),
+            const SizedBox(height: 10),
+            Text(c.emoji, style: const TextStyle(fontSize: 30)),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Text(
+                c.title,
+                style: _ts(12, FontWeight.w800, T.ink, height: 1.4),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _productoCard(_PillData p) => GestureDetector(
+    onTap: () {},
+    child: Container(
+      width: 144,
+      margin: const EdgeInsets.only(right: 10),
+      decoration: BoxDecoration(
+        color: T.surface,
+        borderRadius: T.r20,
+        boxShadow: T.shadow(
+          opacity: .055,
+          blur: 14,
+          offset: const Offset(0, 4),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(p.emoji, style: const TextStyle(fontSize: 30)),
+            const SizedBox(height: 9),
+            _Chip(p.cat, p.color, p.color.withOpacity(.10)),
+            const SizedBox(height: 7),
+            Expanded(
+              child: Text(
+                p.title,
+                style: _ts(12.5, FontWeight.w800, T.ink, height: 1.3),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Text('🛒', style: TextStyle(fontSize: 11)),
+                const SizedBox(width: 5),
+                Text(
+                  'Ver en Amazon',
+                  style: _ts(10.5, FontWeight.w700, T.tealMid),
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _curioCard(_CurioData c) => GestureDetector(
+    onTap: () {},
+    child: Container(
+      width: 126,
+      margin: const EdgeInsets.only(right: 10),
+      decoration: BoxDecoration(
+        color: T.surface,
+        borderRadius: T.r16,
+        boxShadow: T.shadow(opacity: .05, blur: 12, offset: const Offset(0, 3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(c.emoji, style: const TextStyle(fontSize: 26)),
+            const SizedBox(height: 6),
+            Text(
+              c.raza,
+              style: _ts(11, FontWeight.w800, T.ink),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              '${c.peso} · ${c.tamano}',
+              style: _ts(9.5, FontWeight.w400, T.inkSub),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  // ── LUGAR GRID ────────────────────────────────────────────────────────────
+  Widget _lugarGrid() => GridView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.62,
+    ),
+    itemCount: _lugares.length,
+    itemBuilder: (_, i) {
+      final l = _lugares[i];
+      return GestureDetector(
+        onTap: () {},
+        child: Container(
+          decoration: BoxDecoration(
+            color: T.surface,
+            borderRadius: T.r16,
+            boxShadow: T.shadow(
+              opacity: .05,
+              blur: 12,
+              offset: const Offset(0, 3),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(13),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: l.color.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
+                        color: l.color.withOpacity(.10),
+                        borderRadius: T.r8,
                       ),
                       child: Text(
                         l.emoji,
@@ -1451,39 +1299,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
                     const Spacer(),
-                    GestureDetector(
-                      onTap: () {},
-                      child: const Text(
-                        'Ver mapa',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: DogGoColors.teal,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                    Text('Ver mapa', style: _ts(9, FontWeight.w700, T.tealMid)),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  l.nombre,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: DogGoColors.dark,
-                    height: 1.2,
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Text(
+                    l.nombre,
+                    style: _ts(11.5, FontWeight.w800, T.ink, height: 1.25),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const Spacer(),
+                const SizedBox(height: 7),
                 Row(
                   children: [
-                    _TagChip(label: l.tipo, color: l.color, small: true),
-                    const SizedBox(width: 4),
-                    _TagChip(
-                      label: l.subtipo,
-                      color: DogGoColors.grey,
+                    _Chip(
+                      l.tipo,
+                      l.color,
+                      l.color.withOpacity(.10),
+                      small: true,
+                    ),
+                    const SizedBox(width: 5),
+                    _Chip(
+                      l.subtipo,
+                      T.inkSub,
+                      const Color(0xFFF3F4F6),
                       small: true,
                     ),
                   ],
@@ -1491,495 +1332,291 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ],
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
 
-  // ── CURIOSIDADES ──
-  Widget _buildCuriosidades() {
-    return SizedBox(
-      height: 110,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _curiosidades.length,
-        itemBuilder: (context, i) {
-          final c = _curiosidades[i];
-          return GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 130,
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: DogGoColors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(c.emoji, style: const TextStyle(fontSize: 24)),
-                  const SizedBox(height: 4),
-                  Text(
-                    c.raza,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: DogGoColors.dark,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${c.peso} · ${c.tamano}',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: DogGoColors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ── CTA FINAL ──
-  Widget _buildCTAFinal() {
-    final services = [
-      _CTAItem('Ver mis paseos', 'Activos, historial y seguimiento', '🐕'),
-      _CTAItem('Buscar paseador', 'Encuentra el paseador perfecto', '🔍'),
-      _CTAItem('Mis perros', 'Administra perfiles y datos', '🐾'),
-      _CTAItem('Mi perfil', 'Configura tu foto, dirección y más', '👤'),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: DogGoColors.teal.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Column(
-              children: [
-                Text(
-                  '🚀 ¡TODO LISTO PARA TI!',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: DogGoColors.teal,
-                    letterSpacing: 1,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Prueba nuestros servicios hoy',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: DogGoColors.dark,
-                  ),
-                ),
-              ],
-            ),
+  // ── CTA BLOCK ─────────────────────────────────────────────────────────────
+  Widget _ctaBlock() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            color: T.tealSurface,
+            borderRadius: T.r16,
+            border: Border.all(color: T.teal.withOpacity(.15)),
           ),
-          const SizedBox(height: 14),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 2.0,
-            ),
-            itemCount: services.length,
-            itemBuilder: (context, i) {
-              final s = services[i];
-              return GestureDetector(
-                onTap: () {},
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: DogGoColors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+          child: Column(
+            children: [
+              Text(
+                '🚀 TODO LISTO PARA TI',
+                style: _ts(9.5, FontWeight.w900, T.tealMid, spacing: 1.4),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Prueba nuestros servicios hoy',
+                style: _ts(17, FontWeight.w900, T.ink, spacing: -.3),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 2.1,
+          children: _ctaItems
+              .map(
+                (s) => GestureDetector(
+                  onTap: () {},
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: T.surface,
+                      borderRadius: T.r16,
+                      boxShadow: T.shadow(
+                        opacity: .04,
+                        blur: 10,
+                        offset: const Offset(0, 3),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(s.emoji, style: const TextStyle(fontSize: 20)),
-                      const SizedBox(height: 4),
-                      Text(
-                        s.titulo,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: DogGoColors.dark,
-                        ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
                       ),
-                      Text(
-                        s.subtitulo,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: DogGoColors.grey,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: s.surf,
+                              borderRadius: T.r10,
+                            ),
+                            child: Center(
+                              child: Text(
+                                s.emoji,
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  s.title,
+                                  style: _ts(11.5, FontWeight.w800, T.ink),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  s.sub,
+                                  style: _ts(9.5, FontWeight.w400, T.inkSub),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
+              )
+              .toList(),
+        ),
+      ],
+    ),
+  );
 }
 
-// ─────────────────────────────────────────────
-//  WIDGETS HELPER
-// ─────────────────────────────────────────────
-class _BannerButton extends StatelessWidget {
-  final String label;
-  final bool isPrimary;
+// ─────────────────────────────────────────────────────────────────────────────
+//  SHARED SMALL WIDGETS
+// ─────────────────────────────────────────────────────────────────────────────
+class _NavBtn extends StatelessWidget {
+  final IconData icon;
+  final bool badge;
   final VoidCallback onTap;
-  const _BannerButton({
+  const _NavBtn({required this.icon, required this.badge, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Stack(
+    children: [
+      IconButton(
+        icon: Icon(icon, color: Colors.white, size: 25),
+        onPressed: onTap,
+      ),
+      if (badge)
+        Positioned(
+          top: 10,
+          right: 10,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEF4444),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
+class _HeroBtn extends StatelessWidget {
+  final String label;
+  final bool primary;
+  final VoidCallback onTap;
+  const _HeroBtn({
     required this.label,
-    required this.isPrimary,
+    required this.primary,
     required this.onTap,
   });
-
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: isPrimary ? Colors.white : Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(10),
-          border: isPrimary
-              ? null
-              : Border.all(color: Colors.white.withOpacity(0.5)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isPrimary ? DogGoColors.teal : Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
+      decoration: BoxDecoration(
+        color: primary ? Colors.white : Colors.white.withOpacity(.16),
+        borderRadius: T.r12,
+        border: primary
+            ? null
+            : Border.all(color: Colors.white.withOpacity(.30)),
       ),
-    );
-  }
+      child: Text(
+        label,
+        style: _ts(12.5, FontWeight.w800, primary ? T.tealDeep : Colors.white),
+      ),
+    ),
+  );
 }
 
-class _StatItem extends StatelessWidget {
-  final String value;
-  final String label;
-  final String emoji;
-  const _StatItem({
-    required this.value,
-    required this.label,
-    required this.emoji,
-  });
-
+class _StatTile extends StatelessWidget {
+  final _StatData d;
+  const _StatTile(this.d);
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 18)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 9,
-            height: 1.3,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(d.emoji, style: const TextStyle(fontSize: 18)),
+      const SizedBox(height: 4),
+      Text(
+        d.value,
+        style: _ts(15, FontWeight.w900, Colors.white, spacing: -.3),
+      ),
+      Text(
+        d.label,
+        style: _ts(9.5, FontWeight.w500, Colors.white.withOpacity(.65)),
+      ),
+    ],
+  );
 }
 
-class _StatDivider extends StatelessWidget {
-  const _StatDivider();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 40,
-      color: Colors.white.withOpacity(0.2),
-    );
-  }
-}
-
-class _TagChip extends StatelessWidget {
+class _Chip extends StatelessWidget {
   final String label;
-  final Color color;
+  final Color fg, bg;
   final bool small;
-  const _TagChip({
-    required this.label,
-    required this.color,
-    this.small = false,
-  });
-
+  const _Chip(this.label, this.fg, this.bg, {this.small = false});
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: small ? 6 : 8,
-        vertical: small ? 2 : 3,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: small ? 9 : 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: small ? 6 : 8,
+      vertical: small ? 2 : 3,
+    ),
+    decoration: BoxDecoration(color: bg, borderRadius: T.r8),
+    child: Text(label, style: _ts(small ? 9 : 10.5, FontWeight.w800, fg)),
+  );
 }
 
-class _StatusBadge extends StatelessWidget {
+class _InfoPill extends StatelessWidget {
+  final String icon, label;
+  const _InfoPill(this.icon, this.label);
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(icon, style: const TextStyle(fontSize: 12)),
+      const SizedBox(width: 3),
+      Text(label, style: _ts(11.5, FontWeight.w500, T.inkMid)),
+    ],
+  );
+}
+
+class _OutBtn extends StatelessWidget {
   final String label;
-  final bool isConfirmado;
-  const _StatusBadge({required this.label, required this.isConfirmado});
-
+  final VoidCallback onTap;
+  const _OutBtn({required this.label, required this.onTap});
   @override
-  Widget build(BuildContext context) {
-    final color = isConfirmado ? DogGoColors.green : DogGoColors.orange;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => OutlinedButton(
+    onPressed: onTap,
+    style: OutlinedButton.styleFrom(
+      foregroundColor: T.teal,
+      side: const BorderSide(color: T.teal, width: 1.5),
+      shape: RoundedRectangleBorder(borderRadius: T.r12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+    ),
+    child: Text(label, style: _ts(13, FontWeight.w800, T.teal)),
+  );
 }
 
-class _InfoChip extends StatelessWidget {
-  final String icon;
+class _FillBtn extends StatelessWidget {
   final String label;
-  const _InfoChip({required this.icon, required this.label});
-
+  final VoidCallback onTap;
+  const _FillBtn({required this.label, required this.onTap});
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(icon, style: const TextStyle(fontSize: 12)),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: DogGoColors.grey,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => ElevatedButton(
+    onPressed: onTap,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: T.teal,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: T.r12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      elevation: 0,
+    ),
+    child: Text(label, style: _ts(13, FontWeight.w800, Colors.white)),
+  );
 }
 
-// ─────────────────────────────────────────────
-//  MODELS
-// ─────────────────────────────────────────────
-class _Mascota {
-  final String nombre, raza, edad, tamano, emoji;
-  final String? nota;
-  const _Mascota({
-    required this.nombre,
-    required this.raza,
-    required this.edad,
-    required this.tamano,
-    required this.emoji,
-    this.nota,
-  });
-}
+// ─────────────────────────────────────────────────────────────────────────────
+//  OTRAS PANTALLAS — funcionales, listas para que los compas las pimp
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _Paseo {
-  final String perro, paseador, fecha, duracion, precio, estado;
-  const _Paseo({
-    required this.perro,
-    required this.paseador,
-    required this.fecha,
-    required this.duracion,
-    required this.precio,
-    required this.estado,
-  });
-}
-
-class _Consejo {
-  final String titulo, categoria, emoji, tiempo;
-  const _Consejo({
-    required this.titulo,
-    required this.categoria,
-    required this.emoji,
-    required this.tiempo,
-  });
-}
-
-class _Producto {
-  final String nombre, descripcion, categoria, emoji;
-  const _Producto({
-    required this.nombre,
-    required this.descripcion,
-    required this.categoria,
-    required this.emoji,
-  });
-}
-
-class _Lugar {
-  final String nombre, tipo, subtipo, emoji;
-  final Color color;
-  const _Lugar({
-    required this.nombre,
-    required this.tipo,
-    required this.subtipo,
-    required this.emoji,
-    required this.color,
-  });
-}
-
-class _Curiosidad {
-  final String raza, peso, tamano, emoji;
-  const _Curiosidad({
-    required this.raza,
-    required this.peso,
-    required this.tamano,
-    required this.emoji,
-  });
-}
-
-class _AccesoItem {
-  final String titulo, subtitulo, emoji;
-  final Color color;
-  const _AccesoItem(this.titulo, this.subtitulo, this.emoji, this.color);
-}
-
-class _CTAItem {
-  final String titulo, subtitulo, emoji;
-  const _CTAItem(this.titulo, this.subtitulo, this.emoji);
-}
-
-// ─────────────────────────────────────────────
-//  PLACEHOLDER PARA OTRAS PANTALLAS
-// ─────────────────────────────────────────────
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  const _PlaceholderScreen({
-    required this.title,
-    required this.icon,
-    required this.color,
-  });
-
+class MisPerrosScreen extends StatelessWidget {
+  const MisPerrosScreen({super.key});
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DogGoColors.cream,
-      appBar: AppBar(
-        backgroundColor: color,
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        elevation: 0,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 60, color: color),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: DogGoColors.dark,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Esta pantalla la está\ndesarrollando otro integrante',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: DogGoColors.grey, fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF4F0E8),
+    appBar: AppBar(
+      backgroundColor: const Color(0xFF7C5CBF),
+      elevation: 0,
+      title: const Text('Mis Perros', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+    ),
+    body: const Center(child: Text('En desarrollo')),
+  );
 }
+
+class PaseosScreen extends StatelessWidget {
+  const PaseosScreen({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF4F0E8),
+    appBar: AppBar(
+      backgroundColor: const Color(0xFFFFAB2E),
+      elevation: 0,
+      title: const Text('Paseos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+    ),
+    body: const Center(child: Text('En desarrollo')),
+  );
+}
+
