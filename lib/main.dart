@@ -5,9 +5,6 @@ import 'perfil_screen.dart';
 import 'chat_screen.dart';
 import 'config_screen.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  ENTRY POINT
-// ─────────────────────────────────────────────────────────────────────────────
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
@@ -72,9 +69,6 @@ class T {
   ];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  TYPOGRAPHY HELPER
-// ─────────────────────────────────────────────────────────────────────────────
 TextStyle _ts(
   double size,
   FontWeight w,
@@ -162,7 +156,6 @@ class _TabMeta {
 // ─────────────────────────────────────────────────────────────────────────────
 class DogGoApp extends StatelessWidget {
   const DogGoApp({super.key});
-
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'DogGo',
@@ -179,7 +172,7 @@ class DogGoApp extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  APP SHELL — bottom nav + pantallas
+//  APP SHELL
 // ─────────────────────────────────────────────────────────────────────────────
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -214,8 +207,8 @@ class _AppShellState extends State<AppShell> {
         const HomeScreen(),
         const MisPerrosScreen(),
         const PaseosScreen(),
-        const MensajesScreen(),
-        const PerfilScreen(),
+        MensajesScreen(),
+        PerfilScreen(),
       ],
     ),
     bottomNavigationBar: _buildNav(),
@@ -332,17 +325,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _MascotaData(
       'Hikari',
       'Pomerania',
-      '7 años',
-      'Pequeño',
+      '7 anos',
+      'Pequeno',
       '🐕',
-      'Obesidad extrema — se cansa rápido',
+      'Obesidad extrema — se cansa rapido',
     ),
-    _MascotaData('Rocky', 'Golden Retriever', '3 años', 'Grande', '🦮', null),
+    _MascotaData('Rocky', 'Golden Retriever', '3 anos', 'Grande', '🦮', null),
   ];
   static const _paseos = [
     _PaseoData(
       'Max',
-      'Carlos Rodríguez',
+      'Carlos Rodriguez',
       'Hoy, 4:30 PM',
       '45 min',
       '\$25',
@@ -350,36 +343,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ),
     _PaseoData(
       'Luna',
-      'María González',
-      'Mañana, 10:00 AM',
+      'Maria Gonzalez',
+      'Manana, 10:00 AM',
       '60 min',
       '\$30',
       'Pendiente',
     ),
   ];
   static const _consejos = [
-    _PillData('¿Qué come tu\nperro según talla?', 'Nutrición', '🍖', T.teal),
+    _PillData('Que come tu\nperro segun talla', 'Nutricion', '🍖', T.teal),
     _PillData('Paseos diarios\npor raza y edad', 'Ejercicio', '🏃', T.violet),
-    _PillData('Calendario de\nvacunación', 'Salud', '💉', T.emerald),
-    _PillData('Frecuencia de\nbaño correcta', 'Higiene', '🛁', T.amber),
-    _PillData('Señales de estrés\nen perros', 'Comportamiento', '😰', T.rose),
-    _PillData('Actividades en\ncasa con él', 'Bienestar', '❤️', T.tealDeep),
+    _PillData('Calendario de\nvacunacion', 'Salud', '💉', T.emerald),
+    _PillData('Frecuencia de\nbano correcta', 'Higiene', '🛁', T.amber),
+    _PillData('Senales de estres\nen perros', 'Comportamiento', '😰', T.rose),
+    _PillData('Actividades en\ncasa con el', 'Bienestar', '❤️', T.tealDeep),
   ];
   static const _productos = [
     _PillData('Kong Classic', 'Juguete', '🦷', T.teal),
-    _PillData('Cama ortopédica', 'Descanso', '🛏️', T.violet),
-    _PillData('Arnés antipull', 'Paseo', '🦺', T.emerald),
-    _PillData('Snacks deshidratados', 'Nutrición', '🥩', T.amber),
-    _PillData('Shampoo hipoalergénico', 'Higiene', '🧴', T.rose),
-    _PillData('Comedero automático', 'Gadget', '🤖', T.tealDeep),
+    _PillData('Cama ortopedica', 'Descanso', '🛏️', T.violet),
+    _PillData('Arnes antipull', 'Paseo', '🦺', T.emerald),
+    _PillData('Snacks deshidratados', 'Nutricion', '🥩', T.amber),
+    _PillData('Shampoo hipoalergenico', 'Higiene', '🧴', T.rose),
+    _PillData('Comedero automatico', 'Gadget', '🤖', T.tealDeep),
   ];
   static const _curios = [
-    _CurioData('Golden Retriever', '25–34 kg', 'Grande', '🦮'),
-    _CurioData('Poodle', '20–32 kg', 'Grande', '🐩'),
-    _CurioData('Labrador Retriever', '25–36 kg', 'Grande', '🐕'),
-    _CurioData('French Bulldog', '8–14 kg', 'Pequeño', '🐶'),
-    _CurioData('Pastor Alemán', '22–40 kg', 'Grande', '🐕‍🦺'),
-    _CurioData('Beagle', '9–11 kg', 'Mediano', '🐕'),
+    _CurioData('Golden Retriever', '25-34 kg', 'Grande', '🦮'),
+    _CurioData('Poodle', '20-32 kg', 'Grande', '🐩'),
+    _CurioData('Labrador Retriever', '25-36 kg', 'Grande', '🐕'),
+    _CurioData('French Bulldog', '8-14 kg', 'Pequeno', '🐶'),
+    _CurioData('Pastor Aleman', '22-40 kg', 'Grande', '🐕‍🦺'),
+    _CurioData('Beagle', '9-11 kg', 'Mediano', '🐕'),
   ];
   static const _lugares = [
     _LugarData(
@@ -390,14 +383,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       T.rose,
     ),
     _LugarData(
-      'Parque Canino España',
+      'Parque Canino Espana',
       'Parque',
       'Dog friendly',
       '🌳',
       T.emerald,
     ),
     _LugarData('PetCo Cumbres', 'Tienda', 'Grooming', '🛒', T.violet),
-    _LugarData('Adopta Nuevo León', 'Adopción', 'Rescate', '🐾', T.amber),
+    _LugarData('Adopta Nuevo Leon', 'Adopcion', 'Rescate', '🐾', T.amber),
   ];
   static const _quickItems = [
     _QuickData(
@@ -422,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       T.emeraldSurf,
     ),
     _QuickData(
-      'Configuración',
+      'Configuracion',
       'Preferencias y seguridad',
       '⚙️',
       T.inkSub,
@@ -451,10 +444,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       T.emerald,
       T.emeraldSurf,
     ),
-    _QuickData('Mi perfil', 'Foto y dirección', '👤', T.amber, T.amberSurf),
+    _QuickData('Mi perfil', 'Foto y direccion', '👤', T.amber, T.amberSurf),
   ];
 
-  // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -465,6 +457,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  // Auto-scroll infinito real — items triplicados + salto invisible
   void _auto(
     ScrollController c,
     bool Function() paused,
@@ -475,7 +468,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted || paused() || !c.hasClients) return;
       final max = c.position.maxScrollExtent;
       if (max > 0 && c.offset >= max * 0.75) {
-        // Salto invisible al 25% para crear efecto infinito
         c.jumpTo(max * 0.25);
       } else {
         c.jumpTo(c.offset + spd);
@@ -498,8 +490,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  //  BUILD
-  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: T.bg,
@@ -516,14 +506,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 _heroBanner(),
                 _statsRibbon(),
-                _sec('🐾 Tus mascotas', action: 'Ver todas'),
+                _sec('Tus mascotas 🐾', action: 'Ver todas'),
                 _mascotaCarousel(),
-                _sec('📅 Próximos paseos', action: 'Ver todos'),
+                _sec('Proximos paseos 📅', action: 'Ver todos'),
                 _paseoCards(),
-                _sec('⚡ Accesos rápidos'),
+                _sec('Accesos rapidos ⚡'),
                 _quickAccess(),
                 _sec(
-                  '💡 Cuidado & bienestar',
+                  'Cuidado y bienestar 💡',
                   sub: 'Consejos para tu mejor amigo',
                 ),
                 _autoRow(
@@ -534,8 +524,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   (d) => _consejoCard(d as _PillData),
                 ),
                 _sec(
-                  '🛍️ Productos recomendados',
-                  sub: 'Lo que los dueños de DogGo usan',
+                  'Productos recomendados 🛍️',
+                  sub: 'Lo que los duenos de DogGo usan',
                 ),
                 _autoRow(
                   _ctrlProductos,
@@ -544,12 +534,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   170,
                   (d) => _productoCard(d as _PillData),
                 ),
-                _sec('📍 Cerca de ti', sub: 'Monterrey y Área Metro'),
+                _sec('Cerca de ti 📍', sub: 'Monterrey y Area Metro'),
                 _lugarGrid(),
-                _sec(
-                  '🧬 ¿Sabías que...?',
-                  sub: 'Curiosidades de razas populares',
-                ),
+                _sec('Sabias que? 🧬', sub: 'Curiosidades de razas populares'),
                 _autoRow(
                   _ctrlCurios,
                   (v) => setState(() => _pauseCurios = v),
@@ -596,9 +583,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ],
     ),
     actions: [
-      _NavBtn(icon: Icons.notifications_outlined, badge: true, onTap: () {}),
-      _NavBtn(icon: Icons.person_outline_rounded, badge: false, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PerfilScreen()))),
-      const SizedBox(width: 6),
+      // Notificaciones
+      Stack(
+        children: [
+          IconButton(
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: Colors.white,
+              size: 25,
+            ),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'No tienes notificaciones nuevas',
+                    style: _ts(13, FontWeight.w600, Colors.white),
+                  ),
+                  backgroundColor: T.teal,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: T.r12),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEF4444),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
+      ),
+      // Perfil
+      IconButton(
+        icon: const Icon(
+          Icons.person_outline_rounded,
+          color: Colors.white,
+          size: 25,
+        ),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => PerfilScreen()),
+        ),
+      ),
+      const SizedBox(width: 4),
     ],
   );
 
@@ -624,7 +658,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Positioned(top: -36, right: -36, child: _blob(160, .06)),
         Positioned(bottom: -24, right: 48, child: _blob(80, .07)),
         Positioned(top: 30, right: 30, child: _blob(44, .10)),
-        Positioned(bottom: 20, left: -20, child: _blob(60, .05)),
         Padding(
           padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
           child: Column(
@@ -658,7 +691,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 4),
               Text(
-                '¿Cómo están\ntus peludos hoy?',
+                'Como estan\ntus peludos hoy?',
                 style: _ts(
                   18,
                   FontWeight.w300,
@@ -668,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 8),
               Text(
-                'Todo lo que necesitas para cuidar\na tus mascotas está aquí.',
+                'Todo lo que necesitas para cuidar\na tus mascotas esta aqui.',
                 style: _ts(
                   12.5,
                   FontWeight.w400,
@@ -681,7 +714,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _HeroBtn(
                     label: 'Buscar paseador',
                     primary: true,
-                    onTap: () {},
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Proximamente 🚀',
+                          style: _ts(13, FontWeight.w600, Colors.white),
+                        ),
+                        backgroundColor: T.teal,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: T.r12),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 9),
                   _HeroBtn(label: 'Mis paseos', primary: false, onTap: () {}),
@@ -708,7 +751,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     const stats = [
       _StatData('6', 'Mascotas', '🐕'),
       _StatData('3', 'Paseos', '✅'),
-      _StatData('Hikari', 'Último', '📅'),
+      _StatData('Hikari', 'Ultimo', '📅'),
       _StatData('—', 'Activos', '⏳'),
     ];
     return Container(
@@ -907,7 +950,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: const Icon(Icons.add_rounded, color: T.teal, size: 26),
           ),
           const SizedBox(height: 10),
-          Text('Añadir mascota', style: _ts(14, FontWeight.w800, T.teal)),
+          Text('Anadir mascota', style: _ts(14, FontWeight.w800, T.teal)),
           const SizedBox(height: 3),
           Text(
             'Registrar nueva mascota',
@@ -1015,7 +1058,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: _FillBtn(label: 'Chat', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MensajesScreen()))),
+                        child: _FillBtn(
+                          label: 'Chat',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => MensajesScreen()),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1032,68 +1081,82 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _quickAccess() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: Column(
-      children: _quickItems
-          .map(
-            (a) => GestureDetector(
-              onTap: () {},
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 13,
-                ),
-                decoration: BoxDecoration(
-                  color: T.surface,
-                  borderRadius: T.r16,
-                  boxShadow: T.shadow(
-                    opacity: .04,
-                    blur: 12,
-                    offset: const Offset(0, 3),
+      children: List.generate(_quickItems.length, (i) {
+        final a = _quickItems[i];
+        return GestureDetector(
+          onTap: () {
+            // Navega segun el item
+            if (i == 0) {
+              // Mis perros -> tab 1
+              final shell = context.findAncestorStateOfType<_AppShellState>();
+              shell?.setState(() => shell._tab = 1);
+            } else if (i == 1) {
+              // Paseadores -> proximamente
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Paseadores - Proximamente 🚀',
+                    style: _ts(13, FontWeight.w600, Colors.white),
                   ),
+                  backgroundColor: T.teal,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: T.r12),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: a.surf,
-                        borderRadius: T.r12,
-                      ),
-                      child: Center(
-                        child: Text(
-                          a.emoji,
-                          style: const TextStyle(fontSize: 22),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 13),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            a.title,
-                            style: _ts(14.5, FontWeight.w800, T.ink),
-                          ),
-                          Text(
-                            a.sub,
-                            style: _ts(11.5, FontWeight.w400, T.inkSub),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Color(0xFFD1D5DB),
-                      size: 22,
-                    ),
-                  ],
-                ),
+              );
+            } else if (i == 2) {
+              // Mensajes -> tab 3
+              final shell = context.findAncestorStateOfType<_AppShellState>();
+              shell?.setState(() => shell._tab = 3);
+            } else if (i == 3) {
+              // Configuracion
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ConfigScreen()),
+              );
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: T.surface,
+              borderRadius: T.r16,
+              boxShadow: T.shadow(
+                opacity: .04,
+                blur: 12,
+                offset: const Offset(0, 3),
               ),
             ),
-          )
-          .toList(),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(color: a.surf, borderRadius: T.r12),
+                  child: Center(
+                    child: Text(a.emoji, style: const TextStyle(fontSize: 22)),
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(a.title, style: _ts(14.5, FontWeight.w800, T.ink)),
+                      Text(a.sub, style: _ts(11.5, FontWeight.w400, T.inkSub)),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFD1D5DB),
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     ),
   );
 
@@ -1120,7 +1183,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        // Triplicamos items para scroll infinito suave sin saltos visibles
+        // Triplicados para scroll infinito suave
         itemCount: items.length * 3,
         itemBuilder: (_, i) => build(items[i % items.length]),
       ),
@@ -1245,7 +1308,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 3),
             Text(
-              '${c.peso} · ${c.tamano}',
+              '${c.peso} - ${c.tamano}',
               style: _ts(9.5, FontWeight.w400, T.inkSub),
             ),
           ],
@@ -1354,7 +1417,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Column(
             children: [
               Text(
-                '🚀 TODO LISTO PARA TI',
+                'TODO LISTO PARA TI 🚀',
                 style: _ts(9.5, FontWeight.w900, T.tealMid, spacing: 1.4),
               ),
               const SizedBox(height: 5),
@@ -1373,69 +1436,95 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
           childAspectRatio: 2.1,
-          children: _ctaItems
-              .map(
-                (s) => GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: T.surface,
-                      borderRadius: T.r16,
-                      boxShadow: T.shadow(
-                        opacity: .04,
-                        blur: 10,
-                        offset: const Offset(0, 3),
+          children: List.generate(_ctaItems.length, (i) {
+            final s = _ctaItems[i];
+            return GestureDetector(
+              onTap: () {
+                if (i == 0) {
+                  final shell = context
+                      .findAncestorStateOfType<_AppShellState>();
+                  shell?.setState(() => shell._tab = 2);
+                } else if (i == 1) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Paseadores - Proximamente 🚀',
+                        style: _ts(13, FontWeight.w600, Colors.white),
                       ),
+                      backgroundColor: T.teal,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: T.r12),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: s.surf,
-                              borderRadius: T.r10,
-                            ),
-                            child: Center(
-                              child: Text(
-                                s.emoji,
-                                style: const TextStyle(fontSize: 18),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 9),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  s.title,
-                                  style: _ts(11.5, FontWeight.w800, T.ink),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  s.sub,
-                                  style: _ts(9.5, FontWeight.w400, T.inkSub),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  );
+                } else if (i == 2) {
+                  final shell = context
+                      .findAncestorStateOfType<_AppShellState>();
+                  shell?.setState(() => shell._tab = 1);
+                } else if (i == 3) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => PerfilScreen()),
+                  );
+                }
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: T.surface,
+                  borderRadius: T.r16,
+                  boxShadow: T.shadow(
+                    opacity: .04,
+                    blur: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ),
-              )
-              .toList(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: s.surf,
+                          borderRadius: T.r10,
+                        ),
+                        child: Center(
+                          child: Text(
+                            s.emoji,
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              s.title,
+                              style: _ts(11.5, FontWeight.w800, T.ink),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              s.sub,
+                              style: _ts(9.5, FontWeight.w400, T.inkSub),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
         ),
       ],
     ),
@@ -1443,37 +1532,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  SHARED SMALL WIDGETS
+//  SHARED WIDGETS
 // ─────────────────────────────────────────────────────────────────────────────
-class _NavBtn extends StatelessWidget {
-  final IconData icon;
-  final bool badge;
-  final VoidCallback onTap;
-  const _NavBtn({required this.icon, required this.badge, required this.onTap});
-  @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      IconButton(
-        icon: Icon(icon, color: Colors.white, size: 25),
-        onPressed: onTap,
-      ),
-      if (badge)
-        Positioned(
-          top: 10,
-          right: 10,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEF4444),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-    ],
-  );
-}
-
 class _HeroBtn extends StatelessWidget {
   final String label;
   final bool primary;
@@ -1589,20 +1649,19 @@ class _FillBtn extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  OTRAS PANTALLAS — funcionales, listas para que los compas las pimp
+//  PANTALLAS STUB (otros integrantes)
 // ─────────────────────────────────────────────────────────────────────────────
-
 class MisPerrosScreen extends StatelessWidget {
   const MisPerrosScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFF4F0E8),
+    backgroundColor: T.bg,
     appBar: AppBar(
-      backgroundColor: const Color(0xFF7C5CBF),
+      backgroundColor: T.violet,
       elevation: 0,
-      title: const Text('Mis Perros', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+      title: Text('Mis Perros', style: _ts(19, FontWeight.w900, Colors.white)),
     ),
-    body: const Center(child: Text('En desarrollo')),
+    body: const Center(child: Text('En desarrollo - Mis Perros')),
   );
 }
 
@@ -1610,13 +1669,12 @@ class PaseosScreen extends StatelessWidget {
   const PaseosScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFF4F0E8),
+    backgroundColor: T.bg,
     appBar: AppBar(
-      backgroundColor: const Color(0xFFFFAB2E),
+      backgroundColor: T.amber,
       elevation: 0,
-      title: const Text('Paseos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+      title: Text('Paseos', style: _ts(19, FontWeight.w900, Colors.white)),
     ),
-    body: const Center(child: Text('En desarrollo')),
+    body: const Center(child: Text('En desarrollo - Paseos')),
   );
 }
-
