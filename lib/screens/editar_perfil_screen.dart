@@ -2,6 +2,44 @@ import 'package:flutter/material.dart';
 
 import '../services/usuario_service.dart';
 
+class _T {
+  static const teal = Color(0xFF0EC9A0);
+  static const tealDeep = Color(0xFF089B7A);
+  static const tealSurface = Color(0xFFE4FAF4);
+  static const violet = Color(0xFF7C5CBF);
+  static const violetSurf = Color(0xFFF0EBFA);
+  static const emerald = Color(0xFF22C55E);
+  static const emeraldSurf = Color(0xFFE6FAF0);
+  static const bg = Color(0xFFF4F0E8);
+  static const surface = Colors.white;
+  static const ink = Color(0xFF111827);
+  static const inkSub = Color(0xFF6B7280);
+
+  static List<BoxShadow> shadow() {
+    return [
+      BoxShadow(
+        color: Colors.black.withOpacity(.05),
+        blurRadius: 16,
+        offset: const Offset(0, 5),
+      ),
+    ];
+  }
+}
+
+TextStyle _ts(
+  double size,
+  FontWeight weight,
+  Color color, {
+  double height = 1.2,
+}) {
+  return TextStyle(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    height: height,
+  );
+}
+
 class EditarPerfilScreen extends StatefulWidget {
   final Map<String, dynamic> perfil;
 
@@ -60,9 +98,56 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
   String _texto(dynamic valor, {String fallback = 'No disponible'}) {
     if (valor == null) return fallback;
+
     final texto = valor.toString().trim();
-    if (texto.isEmpty || texto.toLowerCase() == 'null') return fallback;
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return fallback;
+    }
+
     return texto;
+  }
+
+  String get _email {
+    return _texto(
+      widget.perfil['email'] ?? widget.perfil['Email'],
+      fallback: 'Correo no disponible',
+    );
+  }
+
+  String get _rol {
+    return _texto(
+      widget.perfil['rol'] ?? widget.perfil['Rol'],
+      fallback: 'Rol no disponible',
+    );
+  }
+
+  String? _validarTexto(String? valor, String campo) {
+    final texto = valor?.trim() ?? '';
+
+    if (texto.isEmpty) {
+      return '$campo es obligatorio.';
+    }
+
+    if (texto.length < 2) {
+      return '$campo debe tener al menos 2 caracteres.';
+    }
+
+    return null;
+  }
+
+  String? _validarTelefono(String? valor) {
+    final texto = valor?.trim() ?? '';
+
+    if (texto.isEmpty) {
+      return 'El teléfono es obligatorio.';
+    }
+
+    if (texto.length < 8) {
+      return 'El teléfono es demasiado corto.';
+    }
+
+    return null;
   }
 
   Future<void> _guardar() async {
@@ -105,59 +190,42 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     }
   }
 
-  String? _validarTexto(String? valor, String campo) {
-    final texto = valor?.trim() ?? '';
-
-    if (texto.isEmpty) {
-      return '$campo es obligatorio.';
-    }
-
-    if (texto.length < 2) {
-      return '$campo debe tener al menos 2 caracteres.';
-    }
-
-    return null;
-  }
-
-  String? _validarTelefono(String? valor) {
-    final texto = valor?.trim() ?? '';
-
-    if (texto.isEmpty) {
-      return 'El teléfono es obligatorio.';
-    }
-
-    if (texto.length < 8) {
-      return 'El teléfono es demasiado corto.';
-    }
-
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final email = _texto(
-      widget.perfil['email'] ?? widget.perfil['Email'],
-      fallback: 'Correo no disponible',
-    );
-
-    final rol = _texto(
-      widget.perfil['rol'] ?? widget.perfil['Rol'],
-      fallback: 'Rol no disponible',
-    );
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
+      backgroundColor: _T.bg,
       appBar: AppBar(
-        title: const Text('Editar perfil'),
-        backgroundColor: const Color(0xFF1F8A70),
+        backgroundColor: _T.tealDeep,
         foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Text('✏️', style: TextStyle(fontSize: 17)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Editar perfil',
+              style: _ts(20, FontWeight.w900, Colors.white),
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: ListView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
-            _buildHeader(email, rol),
+            _buildHeader(),
             const SizedBox(height: 16),
             _buildFormulario(),
             const SizedBox(height: 18),
@@ -169,17 +237,24 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     );
   }
 
-  Widget _buildHeader(String email, String rol) {
+  Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F8A70),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF0EC9A0),
+            Color(0xFF057A5F),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
+            color: _T.teal.withOpacity(.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -189,8 +264,9 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.16),
+              color: Colors.white.withOpacity(.16),
               borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(.22)),
             ),
             child: const Icon(
               Icons.manage_accounts_rounded,
@@ -203,29 +279,26 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Actualiza tus datos',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: _ts(19, FontWeight.w900, Colors.white),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  email,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 13,
+                  _email,
+                  style: _ts(
+                    13,
+                    FontWeight.w500,
+                    Colors.white.withOpacity(.9),
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Rol: $rol',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                  'Rol: $_rol',
+                  style: _ts(
+                    12,
+                    FontWeight.w700,
+                    Colors.white.withOpacity(.85),
                   ),
                 ),
               ],
@@ -240,15 +313,9 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _T.surface,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.045),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          )
-        ],
+        boxShadow: _T.shadow(),
       ),
       child: Form(
         key: _formKey,
@@ -258,6 +325,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
               controller: _nombreController,
               label: 'Nombre',
               icono: Icons.person_rounded,
+              color: _T.teal,
+              surface: _T.tealSurface,
               validator: (valor) => _validarTexto(valor, 'El nombre'),
             ),
             const SizedBox(height: 14),
@@ -265,6 +334,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
               controller: _apellidoController,
               label: 'Apellido',
               icono: Icons.person_outline_rounded,
+              color: _T.violet,
+              surface: _T.violetSurf,
               validator: (valor) => _validarTexto(valor, 'El apellido'),
             ),
             const SizedBox(height: 14),
@@ -272,6 +343,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
               controller: _telefonoController,
               label: 'Teléfono',
               icono: Icons.phone_rounded,
+              color: _T.emerald,
+              surface: _T.emeraldSurf,
               keyboardType: TextInputType.phone,
               validator: _validarTelefono,
             ),
@@ -299,13 +372,14 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             : const Icon(Icons.save_rounded),
         label: Text(_guardando ? 'Guardando...' : 'Guardar cambios'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1F8A70),
+          backgroundColor: _T.teal,
           foregroundColor: Colors.white,
           disabledBackgroundColor: Colors.grey.shade300,
           disabledForegroundColor: Colors.grey.shade600,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(17),
           ),
+          elevation: 0,
         ),
       ),
     );
@@ -316,6 +390,8 @@ class _CampoPerfil extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final IconData icono;
+  final Color color;
+  final Color surface;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
 
@@ -323,6 +399,8 @@ class _CampoPerfil extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.icono,
+    required this.color,
+    required this.surface,
     this.keyboardType,
     this.validator,
   });
@@ -335,17 +413,32 @@ class _CampoPerfil extends StatelessWidget {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icono),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icono,
+              color: color,
+              size: 20,
+            ),
+          ),
+        ),
         filled: true,
-        fillColor: const Color(0xFFF4F6F8),
+        fillColor: const Color(0xFFF8F4EC),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(17),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(17),
-          borderSide: const BorderSide(
-            color: Color(0xFF1F8A70),
+          borderSide: BorderSide(
+            color: color,
             width: 1.4,
           ),
         ),

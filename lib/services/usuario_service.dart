@@ -1,53 +1,65 @@
 import 'api_service.dart';
 
 class UsuarioService {
-  Map<String, dynamic> _normalizarRespuesta(Map<String, dynamic> respuesta) {
-    final statusCode = respuesta['statusCode'];
-    final body = respuesta['body'];
+  Map<String, dynamic> _bodySeguro(dynamic body) {
+    if (body is Map<String, dynamic>) return body;
+    if (body is Map) return Map<String, dynamic>.from(body);
+    return {
+      'data': body,
+    };
+  }
 
-    if (statusCode is int && statusCode >= 200 && statusCode < 300) {
-      if (body is Map<String, dynamic>) {
-        final data = body['data'] ??
-            body['usuario'] ??
-            body['perfil'] ??
-            body['resultado'] ??
-            body['result'] ??
-            body['value'] ??
-            body;
-
-        if (data is Map<String, dynamic>) {
-          return data;
-        }
-
-        if (data is Map) {
-          return Map<String, dynamic>.from(data);
-        }
-
-        return body;
-      }
-
-      if (body is Map) {
-        return Map<String, dynamic>.from(body);
-      }
-
-      return {
-        'success': true,
-        'data': body,
-      };
-    }
-
-    String mensaje = 'Error en la solicitud.';
-
+  String _mensajeError(dynamic body, [String fallback = 'Error en la solicitud.']) {
     if (body is Map) {
-      mensaje = body['message']?.toString() ??
+      return body['message']?.toString() ??
           body['mensaje']?.toString() ??
           body['error']?.toString() ??
-          mensaje;
-    } else if (body != null) {
-      mensaje = body.toString();
+          body['title']?.toString() ??
+          fallback;
     }
 
-    throw Exception(mensaje);
+    if (body != null) {
+      final texto = body.toString().trim();
+      if (texto.isNotEmpty) return texto;
+    }
+
+    return fallback;
+  }
+
+  Map<String, dynamic> _normalizarRespuesta(
+    Map<String, dynamic> respuesta, {
+    String errorDefault = 'Error en la solicitud.',
+  }) {
+    final statusCode = respuesta['statusCode'];
+    final bodyRaw = respuesta['body'];
+    final body = _bodySeguro(bodyRaw);
+
+    final statusOk = statusCode is int && statusCode >= 200 && statusCode < 300;
+
+    if (!statusOk) {
+      throw Exception(_mensajeError(bodyRaw, errorDefault));
+    }
+
+    if (body.containsKey('success') && body['success'] == false) {
+      throw Exception(_mensajeError(body, errorDefault));
+    }
+
+    final data = body['data'] ??
+        body['usuario'] ??
+        body['perfil'] ??
+        body['resultado'] ??
+        body['result'] ??
+        body['value'];
+
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+
+    return body;
   }
 
   Future<Map<String, dynamic>> obtenerPerfil() async {
@@ -67,7 +79,10 @@ class UsuarioService {
     for (final endpoint in endpoints) {
       try {
         final respuesta = await ApiService.getAuth(endpoint);
-        return _normalizarRespuesta(respuesta);
+        return _normalizarRespuesta(
+          respuesta,
+          errorDefault: 'No se pudo obtener el perfil.',
+        );
       } catch (e) {
         ultimoError = Exception(e.toString());
       }
@@ -82,9 +97,12 @@ class UsuarioService {
     required String telefono,
   }) async {
     final body = {
-      'nombre': nombre,
-      'apellido': apellido,
-      'telefono': telefono,
+      'nombre': nombre.trim(),
+      'Nombre': nombre.trim(),
+      'apellido': apellido.trim(),
+      'Apellido': apellido.trim(),
+      'telefono': telefono.trim(),
+      'Telefono': telefono.trim(),
     };
 
     final endpoints = [
@@ -103,7 +121,10 @@ class UsuarioService {
     for (final endpoint in endpoints) {
       try {
         final respuesta = await ApiService.putAuth(endpoint, body);
-        return _normalizarRespuesta(respuesta);
+        return _normalizarRespuesta(
+          respuesta,
+          errorDefault: 'No se pudo actualizar el perfil.',
+        );
       } catch (e) {
         ultimoError = Exception(e.toString());
       }
@@ -118,10 +139,17 @@ class UsuarioService {
   }) async {
     final body = {
       'passwordActual': passwordActual,
-      'passwordNueva': passwordNueva,
-      'nuevaPassword': passwordNueva,
-      'newPassword': passwordNueva,
+      'PasswordActual': passwordActual,
+      'contrasenaActual': passwordActual,
+      'contraseñaActual': passwordActual,
       'currentPassword': passwordActual,
+      'oldPassword': passwordActual,
+      'passwordNueva': passwordNueva,
+      'PasswordNueva': passwordNueva,
+      'nuevaPassword': passwordNueva,
+      'NuevaPassword': passwordNueva,
+      'newPassword': passwordNueva,
+      'password': passwordNueva,
     };
 
     final endpoints = [
@@ -131,6 +159,8 @@ class UsuarioService {
       '/api/Auth/change-password',
       '/api/usuarios/cambiar-password',
       '/api/Usuarios/cambiar-password',
+      '/api/usuario/cambiar-password',
+      '/api/Usuario/cambiar-password',
     ];
 
     Exception? ultimoError;
@@ -138,7 +168,10 @@ class UsuarioService {
     for (final endpoint in endpoints) {
       try {
         final respuesta = await ApiService.putAuth(endpoint, body);
-        return _normalizarRespuesta(respuesta);
+        return _normalizarRespuesta(
+          respuesta,
+          errorDefault: 'No se pudo cambiar la contraseña.',
+        );
       } catch (e) {
         ultimoError = Exception(e.toString());
       }
