@@ -2,9 +2,67 @@ import 'package:flutter/material.dart';
 
 import '../services/paseos_service.dart';
 import '../services/session_service.dart';
+import '../services/storage_service.dart';
+import 'chat_paseo_screen.dart';
 import 'detalle_paseo_screen.dart';
 import 'mapa_paseo_screen.dart';
-import 'chat_paseo_screen.dart';
+
+class _T {
+  static const teal = Color(0xFF0EC9A0);
+  static const tealDeep = Color(0xFF089B7A);
+  static const tealSurface = Color(0xFFE4FAF4);
+
+  static const violet = Color(0xFF7C5CBF);
+  static const violetSurf = Color(0xFFF0EBFA);
+
+  static const amber = Color(0xFFFFAB2E);
+  static const amberSurf = Color(0xFFFFF4E0);
+
+  static const emerald = Color(0xFF22C55E);
+  static const emeraldSurf = Color(0xFFE6FAF0);
+
+  static const rose = Color(0xFFEF4444);
+  static const roseSurf = Color(0xFFFEEEEE);
+
+  static const blue = Color(0xFF2563EB);
+  static const blueSurf = Color(0xFFEFF6FF);
+
+  static const bg = Color(0xFFF4F0E8);
+  static const surface = Colors.white;
+  static const ink = Color(0xFF111827);
+  static const inkSub = Color(0xFF6B7280);
+  static const stroke = Color(0xFFE5E7EB);
+
+  static List<BoxShadow> shadow({
+    double opacity = .055,
+    double blur = 16,
+    Offset offset = const Offset(0, 5),
+  }) {
+    return [
+      BoxShadow(
+        color: Colors.black.withOpacity(opacity),
+        blurRadius: blur,
+        offset: offset,
+      ),
+    ];
+  }
+}
+
+TextStyle _ts(
+  double size,
+  FontWeight weight,
+  Color color, {
+  double spacing = 0,
+  double height = 1.2,
+}) {
+  return TextStyle(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    letterSpacing: spacing,
+    height: height,
+  );
+}
 
 class MisPaseosScreen extends StatefulWidget {
   final int? usuarioId;
@@ -30,6 +88,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
   bool _accionando = false;
   String? _error;
   String? _rolReal;
+  String? _baseUrl;
   String _filtroEstado = 'Todos';
 
   final List<String> _filtros = const [
@@ -73,8 +132,19 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
   }
 
   Future<void> _inicializar() async {
+    await _cargarBaseUrl();
     await _cargarRol();
     await _cargarPaseos();
+  }
+
+  Future<void> _cargarBaseUrl() async {
+    final url = await StorageService.obtenerBaseUrl();
+
+    if (!mounted) return;
+
+    setState(() {
+      _baseUrl = url;
+    });
   }
 
   Future<void> _cargarRol() async {
@@ -197,17 +267,51 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
   Color _colorEstado(String estado) {
     switch (_normalizarEstado(estado)) {
       case 'pendiente':
-        return Colors.orange;
+        return _T.amber;
       case 'aceptado':
-        return Colors.blue;
+        return _T.blue;
       case 'encurso':
-        return Colors.green;
+        return _T.emerald;
       case 'finalizado':
-        return Colors.purple;
+        return _T.violet;
       case 'cancelado':
-        return Colors.red;
+        return _T.rose;
       default:
-        return Colors.grey;
+        return _T.inkSub;
+    }
+  }
+
+  Color _surfaceEstado(String estado) {
+    switch (_normalizarEstado(estado)) {
+      case 'pendiente':
+        return _T.amberSurf;
+      case 'aceptado':
+        return _T.blueSurf;
+      case 'encurso':
+        return _T.emeraldSurf;
+      case 'finalizado':
+        return _T.violetSurf;
+      case 'cancelado':
+        return _T.roseSurf;
+      default:
+        return const Color(0xFFF3F4F6);
+    }
+  }
+
+  IconData _iconoEstado(String estado) {
+    switch (_normalizarEstado(estado)) {
+      case 'pendiente':
+        return Icons.schedule_rounded;
+      case 'aceptado':
+        return Icons.verified_rounded;
+      case 'encurso':
+        return Icons.directions_walk_rounded;
+      case 'finalizado':
+        return Icons.flag_rounded;
+      case 'cancelado':
+        return Icons.cancel_rounded;
+      default:
+        return Icons.info_outline_rounded;
     }
   }
 
@@ -362,7 +466,10 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
         paseo['fotoPerroUrl'] ??
         paseo['perro']?['fotoUrl'] ??
         paseo['perro']?['FotoUrl'] ??
-        paseo['Perro']?['FotoUrl'];
+        paseo['perro']?['imagenUrl'] ??
+        paseo['perro']?['ImagenUrl'] ??
+        paseo['Perro']?['FotoUrl'] ??
+        paseo['Perro']?['ImagenUrl'];
 
     final texto = valor?.toString().trim();
 
@@ -370,7 +477,19 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
       return null;
     }
 
-    return texto;
+    if (texto.startsWith('http://') || texto.startsWith('https://')) {
+      return texto;
+    }
+
+    final base = _baseUrl?.trim() ?? '';
+
+    if (base.isEmpty) return null;
+
+    if (texto.startsWith('/')) {
+      return '$base$texto';
+    }
+
+    return '$base/$texto';
   }
 
   String _direccionRecogida(Map<String, dynamic> paseo) {
@@ -529,14 +648,21 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
           title: const Text('Cancelar paseo'),
           content: TextField(
             controller: controller,
             maxLines: 3,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Motivo de cancelación',
               hintText: 'Ej. Cambio de horario, lluvia, emergencia...',
-              border: OutlineInputBorder(),
+              filled: true,
+              fillColor: const Color(0xFFF8F4EC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
           actions: [
@@ -544,13 +670,14 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
               onPressed: () => Navigator.pop(context, false),
               child: const Text('Volver'),
             ),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.cancel_rounded),
+              label: const Text('Cancelar paseo'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: _T.rose,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Cancelar paseo'),
             ),
           ],
         );
@@ -573,8 +700,8 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     );
   }
 
-  void _abrirDetalle(Map<String, dynamic> paseo) {
-    Navigator.push(
+  Future<void> _abrirDetalle(Map<String, dynamic> paseo) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => DetallePaseoScreen(
@@ -584,6 +711,10 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
         ),
       ),
     );
+
+    if (mounted) {
+      await _cargarPaseos();
+    }
   }
 
   void _abrirMapa(Map<String, dynamic> paseo) {
@@ -625,40 +756,81 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     final paseosFiltrados = _paseosFiltrados;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
+      backgroundColor: _T.bg,
       appBar: AppBar(
-        title: const Text('Mis paseos'),
-        backgroundColor: const Color(0xFF1F8A70),
+        backgroundColor: _T.tealDeep,
         foregroundColor: Colors.white,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Text(
+                  '🦮',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Mis paseos',
+              style: _ts(20, FontWeight.w900, Colors.white, spacing: -.4),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar',
+            onPressed: _cargarPaseos,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
       ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _cargarPaseos,
               child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: EdgeInsets.zero,
                 children: [
                   _buildResumen(),
-                  const SizedBox(height: 12),
-                  _buildRolCard(),
-                  const SizedBox(height: 16),
-                  _buildBuscador(),
-                  const SizedBox(height: 14),
-                  _buildFiltros(),
-                  const SizedBox(height: 16),
-                  if (_accionando) ...[
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: 16),
-                  ],
-                  if (_error != null)
-                    _buildError()
-                  else if (paseosFiltrados.isEmpty)
-                    _buildVacio()
-                  else
-                    ...paseosFiltrados.map(_buildPaseoCard),
-                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Column(
+                      children: [
+                        _buildRolCard(),
+                        const SizedBox(height: 14),
+                        _buildBuscador(),
+                        const SizedBox(height: 14),
+                        _buildFiltros(),
+                        const SizedBox(height: 16),
+                        if (_accionando) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: const LinearProgressIndicator(),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        if (_error != null)
+                          _buildError()
+                        else if (paseosFiltrados.isEmpty)
+                          _buildVacio()
+                        else
+                          ...paseosFiltrados.map(_buildPaseoCard),
+                        const SizedBox(height: 30),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -671,74 +843,122 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     final finalizados = _conteoPorEstado('Finalizado');
 
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           colors: [
-            Color(0xFF1F8A70),
-            Color(0xFF35A98A),
+            Color(0xFF089B7A),
+            Color(0xFFF4F0E8),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        borderRadius: BorderRadius.circular(24),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Seguimiento de paseos',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 22, 16, 12),
+        child: Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF0EC9A0),
+                Color(0xFF057A5F),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Acciones visibles según tu rol real.',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _ResumenItem(
-                  titulo: 'Total',
-                  valor: _paseos.length.toString(),
-                  icono: Icons.list_alt_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ResumenItem(
-                  titulo: 'Pendientes',
-                  valor: pendientes.toString(),
-                  icono: Icons.schedule_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ResumenItem(
-                  titulo: 'En curso',
-                  valor: enCurso.toString(),
-                  icono: Icons.directions_walk_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ResumenItem(
-                  titulo: 'Finalizados',
-                  valor: finalizados.toString(),
-                  icono: Icons.flag_rounded,
-                ),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: _T.teal.withOpacity(.28),
+                blurRadius: 28,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
-        ],
+          child: Stack(
+            children: [
+              Positioned(
+                top: -38,
+                right: -35,
+                child: Container(
+                  width: 145,
+                  height: 145,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(.06),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SmallPill(
+                    text: 'SEGUIMIENTO DOGGO',
+                    color: Colors.white,
+                    background: Colors.white.withOpacity(.18),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Mis paseos',
+                    style: _ts(
+                      31,
+                      FontWeight.w900,
+                      Colors.white,
+                      spacing: -.8,
+                      height: 1.05,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Acciones visibles según tu rol real.',
+                    style: _ts(
+                      14,
+                      FontWeight.w500,
+                      Colors.white.withOpacity(.82),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ResumenItem(
+                          titulo: 'Total',
+                          valor: _paseos.length.toString(),
+                          icono: Icons.list_alt_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: _ResumenItem(
+                          titulo: 'Pend.',
+                          valor: pendientes.toString(),
+                          icono: Icons.schedule_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: _ResumenItem(
+                          titulo: 'Curso',
+                          valor: enCurso.toString(),
+                          icono: Icons.directions_walk_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: _ResumenItem(
+                          titulo: 'Fin.',
+                          valor: finalizados.toString(),
+                          icono: Icons.flag_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -753,32 +973,43 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
             : 'No se detectó un rol claro. Solo se mostrarán acciones seguras.';
 
     final color = _esPaseador
-        ? Colors.green
+        ? _T.emerald
         : _esDuenio
-            ? Colors.blue
-            : Colors.orange;
+            ? _T.blue
+            : _T.amber;
+
+    final surface = _esPaseador
+        ? _T.emeraldSurf
+        : _esDuenio
+            ? _T.blueSurf
+            : _T.amberSurf;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.09),
-        borderRadius: BorderRadius.circular(18),
+        color: _T.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: _T.shadow(opacity: .045),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.badge_rounded,
-            color: color,
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.badge_rounded,
+              color: color,
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               '$rolTexto: $descripcion',
-              style: TextStyle(
-                color: Colors.grey.shade800,
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5,
-              ),
+              style: _ts(12.5, FontWeight.w700, _T.ink, height: 1.3),
             ),
           ),
         ],
@@ -821,6 +1052,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           final filtro = _filtros[index];
           final seleccionado = filtro == _filtroEstado;
           final conteo = _conteoPorEstado(filtro);
+          final color = filtro == 'Todos' ? _T.teal : _colorEstado(filtro);
 
           return ChoiceChip(
             selected: seleccionado,
@@ -830,17 +1062,15 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
                 _filtroEstado = filtro;
               });
             },
-            selectedColor: const Color(0xFF1F8A70),
+            selectedColor: color,
             backgroundColor: Colors.white,
             labelStyle: TextStyle(
-              color: seleccionado ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.w800,
+              color: seleccionado ? Colors.white : _T.ink,
+              fontWeight: FontWeight.w900,
               fontSize: 12,
             ),
             side: BorderSide(
-              color: seleccionado
-                  ? const Color(0xFF1F8A70)
-                  : Colors.grey.shade300,
+              color: seleccionado ? color : _T.stroke,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
@@ -853,34 +1083,29 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
 
   Widget _buildError() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        color: _T.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: _T.shadow(),
       ),
       child: Column(
         children: [
           Icon(
             Icons.error_outline_rounded,
-            size: 56,
-            color: Colors.red.shade400,
+            size: 64,
+            color: _T.rose.withOpacity(.88),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'No se pudieron cargar los paseos.',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-            ),
+            style: _ts(18, FontWeight.w900, _T.ink),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             _error ?? '',
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 12,
-            ),
+            style: _ts(12.5, FontWeight.w500, _T.inkSub, height: 1.3),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -889,7 +1114,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Reintentar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1F8A70),
+              backgroundColor: _T.teal,
               foregroundColor: Colors.white,
             ),
           ),
@@ -900,33 +1125,38 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
 
   Widget _buildVacio() {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        color: _T.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: _T.shadow(),
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.pets_rounded,
-            size: 58,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'No hay paseos para mostrar.',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
+          Container(
+            width: 82,
+            height: 82,
+            decoration: const BoxDecoration(
+              color: _T.tealSurface,
+              shape: BoxShape.circle,
             ),
+            child: const Center(
+              child: Text(
+                '🦮',
+                style: TextStyle(fontSize: 42),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No hay paseos para mostrar.',
+            style: _ts(18, FontWeight.w900, _T.ink),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
             'Prueba con otro filtro o actualiza la lista.',
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 13,
-            ),
+            style: _ts(13, FontWeight.w500, _T.inkSub, height: 1.3),
             textAlign: TextAlign.center,
           ),
         ],
@@ -938,146 +1168,164 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     final id = _idPaseo(paseo);
     final estado = _estado(paseo);
     final color = _colorEstado(estado);
+    final surface = _surfaceEstado(estado);
     final foto = _fotoPerro(paseo);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.045),
-            blurRadius: 14,
+    return GestureDetector(
+      onTap: () => _abrirDetalle(paseo),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: _T.surface,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: _T.shadow(
+            opacity: .055,
+            blur: 18,
             offset: const Offset(0, 6),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildFotoPerro(foto),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _nombrePerro(paseo),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Paseador: ${_nombrePaseador(paseo)}',
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (_esPaseador) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        'Dueño: ${_nombreDuenio(paseo)}',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    surface,
+                    Colors.white,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildFotoPerro(foto, color, surface),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _MiniDato(
-                          icono: Icons.calendar_month_rounded,
-                          texto: _fechaPrincipal(paseo),
+                        Text(
+                          _nombrePerro(paseo),
+                          style: _ts(
+                            19,
+                            FontWeight.w900,
+                            _T.ink,
+                            spacing: -.2,
+                          ),
                         ),
-                        _MiniDato(
-                          icono: Icons.timer_rounded,
-                          texto: _duracion(paseo),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Paseador: ${_nombrePaseador(paseo)}',
+                          style: _ts(12.8, FontWeight.w600, _T.inkSub),
                         ),
-                        _MiniDato(
-                          icono: Icons.attach_money_rounded,
-                          texto: _precio(paseo),
+                        if (_esPaseador) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            'Dueño: ${_nombreDuenio(paseo)}',
+                            style: _ts(12.8, FontWeight.w600, _T.inkSub),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _MiniDato(
+                              icono: Icons.calendar_month_rounded,
+                              texto: _fechaPrincipal(paseo),
+                            ),
+                            _MiniDato(
+                              icono: Icons.timer_rounded,
+                              texto: _duracion(paseo),
+                            ),
+                            _MiniDato(
+                              icono: Icons.attach_money_rounded,
+                              texto: _precio(paseo),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  _EstadoBadge(
+                    estado: estado,
+                    color: color,
+                    surface: surface,
+                    icono: _iconoEstado(estado),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(15, 0, 15, 15),
+              child: Column(
+                children: [
+                  _buildUbicacionPreview(paseo),
+                  const SizedBox(height: 10),
+                  _buildTrackingPreview(
+                    paseo: paseo,
+                    color: color,
+                    surface: surface,
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _BotonSecundario(
+                          texto: 'Detalle',
+                          icono: Icons.visibility_rounded,
+                          onPressed: () => _abrirDetalle(paseo),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _BotonPrincipal(
+                          texto: 'Mapa',
+                          icono: Icons.map_rounded,
+                          onPressed: () => _abrirMapa(paseo),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _BotonSecundario(
+                          texto: 'Chat',
+                          icono: Icons.chat_rounded,
+                          onPressed: () => _abrirChat(paseo),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (id != null && _tieneAccionesRapidas(paseo)) ...[
+                    const SizedBox(height: 10),
+                    _buildAccionesRapidas(
+                      id: id,
+                      paseo: paseo,
+                    ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(width: 8),
-              _EstadoBadge(
-                estado: estado,
-                color: color,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _buildUbicacionPreview(paseo),
-          const SizedBox(height: 10),
-          _buildTrackingPreview(
-            paseo: paseo,
-            color: color,
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _BotonSecundario(
-                  texto: 'Detalle',
-                  icono: Icons.visibility_rounded,
-                  onPressed: () => _abrirDetalle(paseo),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _BotonPrincipal(
-                  texto: 'Mapa',
-                  icono: Icons.map_rounded,
-                  onPressed: () => _abrirMapa(paseo),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _BotonSecundario(
-                  texto: 'Chat',
-                  icono: Icons.chat_rounded,
-                  onPressed: () => _abrirChat(paseo),
-                ),
-              ),
-            ],
-          ),
-          if (id != null && _tieneAccionesRapidas(paseo)) ...[
-            const SizedBox(height: 10),
-            _buildAccionesRapidas(
-              id: id,
-              paseo: paseo,
             ),
           ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildFotoPerro(String? foto) {
+  Widget _buildFotoPerro(String? foto, Color color, Color surface) {
     final tieneUrlAbsoluta =
         foto != null && (foto.startsWith('http://') || foto.startsWith('https://'));
 
     return Container(
-      width: 66,
-      height: 66,
+      width: 70,
+      height: 70,
       decoration: BoxDecoration(
-        color: const Color(0xFF1F8A70).withOpacity(0.10),
-        borderRadius: BorderRadius.circular(20),
+        color: surface,
+        borderRadius: BorderRadius.circular(22),
       ),
       clipBehavior: Clip.antiAlias,
       child: tieneUrlAbsoluta
@@ -1085,17 +1333,17 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
               foto,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) {
-                return const Icon(
+                return Icon(
                   Icons.pets_rounded,
-                  color: Color(0xFF1F8A70),
-                  size: 34,
+                  color: color,
+                  size: 36,
                 );
               },
             )
-          : const Icon(
+          : Icon(
               Icons.pets_rounded,
-              color: Color(0xFF1F8A70),
-              size: 34,
+              color: color,
+              size: 36,
             ),
     );
   }
@@ -1107,18 +1355,19 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: tieneUbicacion
-            ? const Color(0xFF1F8A70).withOpacity(0.08)
-            : Colors.orange.withOpacity(0.08),
+        color: tieneUbicacion ? _T.tealSurface : _T.amberSurf,
         borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: tieneUbicacion
+              ? _T.teal.withOpacity(.18)
+              : _T.amber.withOpacity(.22),
+        ),
       ),
       child: Row(
         children: [
           Icon(
-            tieneUbicacion
-                ? Icons.home_rounded
-                : Icons.location_off_rounded,
-            color: tieneUbicacion ? const Color(0xFF1F8A70) : Colors.orange,
+            tieneUbicacion ? Icons.home_rounded : Icons.location_off_rounded,
+            color: tieneUbicacion ? _T.tealDeep : _T.amber,
             size: 21,
           ),
           const SizedBox(width: 10),
@@ -1129,11 +1378,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
                   : 'Sin punto de recogida con coordenadas.',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.grey.shade800,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-              ),
+              style: _ts(12.5, FontWeight.w700, _T.ink, height: 1.3),
             ),
           ),
         ],
@@ -1144,12 +1389,13 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
   Widget _buildTrackingPreview({
     required Map<String, dynamic> paseo,
     required Color color,
+    required Color surface,
   }) {
     String texto;
     IconData icono;
 
     if (_estaEnCurso(paseo)) {
-      texto = 'Tracking visual activo. Puedes revisar el mapa del paseo.';
+      texto = 'Tracking activo. Puedes revisar el mapa del paseo.';
       icono = Icons.my_location_rounded;
     } else if (_estaFinalizado(paseo)) {
       texto = 'Paseo finalizado. Puedes ver la última ubicación registrada.';
@@ -1165,8 +1411,9 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: surface,
         borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: color.withOpacity(.18)),
       ),
       child: Row(
         children: [
@@ -1179,11 +1426,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           Expanded(
             child: Text(
               texto,
-              style: TextStyle(
-                color: Colors.grey.shade800,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-              ),
+              style: _ts(12.5, FontWeight.w700, _T.ink, height: 1.3),
             ),
           ),
         ],
@@ -1203,7 +1446,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           child: _BotonAccionChico(
             texto: 'Aceptar',
             icono: Icons.check_rounded,
-            color: Colors.green,
+            color: _T.emerald,
             onPressed: _accionando ? null : () => _aceptar(id),
           ),
         ),
@@ -1217,7 +1460,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           child: _BotonAccionChico(
             texto: 'Rechazar',
             icono: Icons.close_rounded,
-            color: Colors.red,
+            color: _T.rose,
             onPressed: _accionando ? null : () => _rechazar(id),
           ),
         ),
@@ -1231,7 +1474,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           child: _BotonAccionChico(
             texto: 'Iniciar',
             icono: Icons.play_arrow_rounded,
-            color: Colors.green,
+            color: _T.emerald,
             onPressed: _accionando ? null : () => _iniciar(id),
           ),
         ),
@@ -1245,7 +1488,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           child: _BotonAccionChico(
             texto: 'Finalizar',
             icono: Icons.flag_rounded,
-            color: Colors.purple,
+            color: _T.violet,
             onPressed: _accionando ? null : () => _finalizar(id),
           ),
         ),
@@ -1259,7 +1502,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           child: _BotonAccionChico(
             texto: 'Cancelar',
             icono: Icons.cancel_rounded,
-            color: Colors.red,
+            color: _T.rose,
             outlined: true,
             onPressed: _accionando ? null : () => _cancelar(id),
           ),
@@ -1292,10 +1535,10 @@ class _ResumenItem extends StatelessWidget {
         vertical: 10,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withOpacity(.15),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.18),
+          color: Colors.white.withOpacity(.18),
         ),
       ),
       child: Column(
@@ -1308,22 +1551,14 @@ class _ResumenItem extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             valor,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 17,
-            ),
+            style: _ts(17, FontWeight.w900, Colors.white),
           ),
           const SizedBox(height: 2),
           Text(
             titulo,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
+            style: _ts(10, FontWeight.w600, Colors.white.withOpacity(.9)),
           ),
         ],
       ),
@@ -1334,30 +1569,45 @@ class _ResumenItem extends StatelessWidget {
 class _EstadoBadge extends StatelessWidget {
   final String estado;
   final Color color;
+  final Color surface;
+  final IconData icono;
 
   const _EstadoBadge({
     required this.estado,
     required this.color,
+    required this.surface,
+    required this.icono,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 104),
       padding: const EdgeInsets.symmetric(
-        horizontal: 10,
+        horizontal: 9,
         vertical: 7,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: surface,
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Text(
-        estado,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w900,
-          fontSize: 11,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icono,
+            color: color,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              estado,
+              overflow: TextOverflow.ellipsis,
+              style: _ts(10.5, FontWeight.w900, color),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1380,7 +1630,7 @@ class _MiniDato extends StatelessWidget {
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(13),
       ),
       child: Row(
@@ -1389,16 +1639,12 @@ class _MiniDato extends StatelessWidget {
           Icon(
             icono,
             size: 15,
-            color: Colors.grey.shade700,
+            color: _T.inkSub,
           ),
           const SizedBox(width: 5),
           Text(
             texto,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade800,
-              fontWeight: FontWeight.w700,
-            ),
+            style: _ts(11, FontWeight.w700, _T.ink),
           ),
         ],
       ),
@@ -1429,9 +1675,10 @@ class _BotonPrincipal extends StatelessWidget {
           style: const TextStyle(fontSize: 12),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1F8A70),
+          backgroundColor: _T.teal,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 6),
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
@@ -1464,10 +1711,10 @@ class _BotonSecundario extends StatelessWidget {
           style: const TextStyle(fontSize: 12),
         ),
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF1F8A70),
+          foregroundColor: _T.tealDeep,
           padding: const EdgeInsets.symmetric(horizontal: 6),
           side: const BorderSide(
-            color: Color(0xFF1F8A70),
+            color: _T.tealDeep,
             width: 1.2,
           ),
           shape: RoundedRectangleBorder(
@@ -1536,10 +1783,44 @@ class _BotonAccionChico extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6),
           disabledBackgroundColor: Colors.grey.shade300,
           disabledForegroundColor: Colors.grey.shade600,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SmallPill extends StatelessWidget {
+  final String text;
+  final Color color;
+  final Color background;
+
+  const _SmallPill({
+    required this.text,
+    required this.color,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 11,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: Colors.white.withOpacity(.20),
+        ),
+      ),
+      child: Text(
+        text,
+        style: _ts(10, FontWeight.w900, color, spacing: 1.2),
       ),
     );
   }

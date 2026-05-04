@@ -55,20 +55,34 @@ class PerrosService {
   }) async {
     final data = {
       'nombre': nombre.trim(),
+      'Nombre': nombre.trim(),
       'raza': raza.trim(),
+      'Raza': raza.trim(),
       'edad': edad,
+      'Edad': edad,
       'tamano': tamano.trim(),
+      'Tamano': tamano.trim(),
       'tamanio': tamano.trim(),
+      'Tamanio': tamano.trim(),
       'tamaño': tamano.trim(),
+      'Tamaño': tamano.trim(),
       'notas': notas.trim(),
+      'Notas': notas.trim(),
       'observaciones': notas.trim(),
+      'Observaciones': notas.trim(),
     };
 
-    if (fotoUrl != null && fotoUrl.trim().isNotEmpty) {
-      data['fotoUrl'] = fotoUrl.trim();
-      data['FotoUrl'] = fotoUrl.trim();
-      data['imagenUrl'] = fotoUrl.trim();
-      data['urlFoto'] = fotoUrl.trim();
+    final foto = fotoUrl?.trim() ?? '';
+
+    if (foto.isNotEmpty) {
+      data['fotoUrl'] = foto;
+      data['FotoUrl'] = foto;
+      data['imagenUrl'] = foto;
+      data['ImagenUrl'] = foto;
+      data['urlFoto'] = foto;
+      data['UrlFoto'] = foto;
+      data['fotoPerroUrl'] = foto;
+      data['FotoPerroUrl'] = foto;
     }
 
     final response = await ApiService.postAuth(
@@ -110,20 +124,34 @@ class PerrosService {
   }) async {
     final data = {
       'nombre': nombre.trim(),
+      'Nombre': nombre.trim(),
       'raza': raza.trim(),
+      'Raza': raza.trim(),
       'edad': edad,
+      'Edad': edad,
       'tamano': tamano.trim(),
+      'Tamano': tamano.trim(),
       'tamanio': tamano.trim(),
+      'Tamanio': tamano.trim(),
       'tamaño': tamano.trim(),
+      'Tamaño': tamano.trim(),
       'notas': notas.trim(),
+      'Notas': notas.trim(),
       'observaciones': notas.trim(),
+      'Observaciones': notas.trim(),
     };
 
-    if (fotoUrl != null && fotoUrl.trim().isNotEmpty) {
-      data['fotoUrl'] = fotoUrl.trim();
-      data['FotoUrl'] = fotoUrl.trim();
-      data['imagenUrl'] = fotoUrl.trim();
-      data['urlFoto'] = fotoUrl.trim();
+    final foto = fotoUrl?.trim() ?? '';
+
+    if (foto.isNotEmpty) {
+      data['fotoUrl'] = foto;
+      data['FotoUrl'] = foto;
+      data['imagenUrl'] = foto;
+      data['ImagenUrl'] = foto;
+      data['urlFoto'] = foto;
+      data['UrlFoto'] = foto;
+      data['fotoPerroUrl'] = foto;
+      data['FotoPerroUrl'] = foto;
     }
 
     final response = await ApiService.putAuth(
