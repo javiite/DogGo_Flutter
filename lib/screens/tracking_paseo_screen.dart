@@ -1,10 +1,64 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-
 import '../services/location_service.dart';
 import '../services/tracking_service.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  DESIGN SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+class G {
+  static const brand = Color(0xFF0D9E7E);
+  static const brandPale = Color(0xFFE8F8F3);
+  static const brandDark = Color(0xFF0A7A62);
+  static const clay = Color(0xFFD4694A);
+  static const clayLight = Color(0xFFFAEDE8); // Faltaba este
+  static const sage = Color(0xFF5B8C5A);
+  static const sagePale = Color(0xFFECF4EB);
+  static const gold = Color(0xFFCB9B3B);
+  static const goldPale = Color(0xFFFBF3E0);
+  static const plum = Color(0xFF6B4E8A);
+  static const plumPale = Color(0xFFF2EDF8);
+  static const ink0 = Color(0xFFFAF7F2);
+  static const ink1 = Color(0xFFF3EFE8); // Faltaba este
+  static const ink2 = Color(0xFFE8E2D9);
+  static const ink3 = Color(0xFFC8C0B4);
+  static const ink4 = Color(0xFF8C8278);
+  static const ink5 = Color(0xFF4A4540);
+  static const ink6 = Color(0xFF1E1A16);
+  static const white = Color(0xFFFFFFFF);
+
+  static const r12 = BorderRadius.all(Radius.circular(12));
+  static const r16 = BorderRadius.all(Radius.circular(16));
+  static const r20 = BorderRadius.all(Radius.circular(20));
+  static const r24 = BorderRadius.all(Radius.circular(24));
+
+  static const shadow1 = [
+    BoxShadow(color: Color(0x0C000000), blurRadius: 16, offset: Offset(0, 4)),
+  ];
+
+  static TextStyle h2(Color c) => TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: c,
+    letterSpacing: -.4,
+    height: 1.15,
+  );
+  static TextStyle h3(Color c) => TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    color: c,
+    letterSpacing: -.2,
+  );
+  static TextStyle body(Color c, {double size = 13.5}) =>
+      TextStyle(fontSize: size, fontWeight: FontWeight.w400, color: c);
+  static TextStyle label(Color c, {double size = 12}) => TextStyle(
+    fontSize: size,
+    fontWeight: FontWeight.w700,
+    color: c,
+    letterSpacing: .3,
+  );
+}
 
 class TrackingPaseoScreen extends StatefulWidget {
   final int paseoId;
@@ -28,155 +82,115 @@ class _TrackingPaseoScreenState extends State<TrackingPaseoScreen> {
 
   StreamSubscription<Position>? _subscription;
   Timer? _timer;
-
   Position? _ultimaPosicion;
   DateTime? _ultimaActualizacion;
-
   bool _trackingActivo = false;
   bool _enviando = false;
   bool _huboCambios = false;
-
   int _enviosCorrectos = 0;
   String? _error;
 
-  static const Duration _intervaloEnvio = Duration(seconds: 15);
+  static const Duration _intervalo = Duration(seconds: 15);
 
   @override
   void dispose() {
-    _detenerTrackingSinDialogo();
+    _detener();
     super.dispose();
   }
 
-  Future<void> _obtenerYEnviarUnaVez() async {
+  Future<void> _obtenerYEnviar() async {
     if (_enviando) return;
-
     setState(() {
       _enviando = true;
       _error = null;
     });
-
     try {
       await _locationService.pedirPermisoUbicacion();
-
-      final posicion = await _locationService.obtenerUbicacionActual();
-
+      final pos = await _locationService.obtenerUbicacionActual();
       await _trackingService.enviarUbicacion(
         paseoId: widget.paseoId,
-        latitud: posicion.latitude,
-        longitud: posicion.longitude,
+        latitud: pos.latitude,
+        longitud: pos.longitude,
       );
-
       if (!mounted) return;
-
       setState(() {
-        _ultimaPosicion = posicion;
+        _ultimaPosicion = pos;
         _ultimaActualizacion = DateTime.now();
         _enviosCorrectos++;
         _error = null;
         _huboCambios = true;
       });
-
-      _mostrarMensaje('Ubicación enviada correctamente.');
+      _snack('Ubicación enviada ✅');
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
-        _error = _limpiarError(e);
+        _error = e.toString();
       });
-
-      _mostrarMensaje('No se pudo enviar la ubicación.');
+      _snack('No se pudo enviar la ubicación');
     } finally {
-      if (mounted) {
+      if (mounted)
         setState(() {
           _enviando = false;
         });
-      }
     }
   }
 
   Future<void> _iniciarTracking() async {
     if (_trackingActivo || _enviando) return;
-
     setState(() {
       _trackingActivo = true;
       _error = null;
     });
-
     try {
       await _locationService.pedirPermisoUbicacion();
-
-      await _obtenerYEnviarUnaVez();
-
+      await _obtenerYEnviar();
       if (!mounted || !_trackingActivo) return;
-
       _subscription?.cancel();
-
       _subscription = _locationService.escucharUbicacion().listen(
-        (posicion) async {
-          if (!_trackingActivo || _enviando) return;
-
-          setState(() {
-            _ultimaPosicion = posicion;
-          });
+        (pos) {
+          if (_trackingActivo && !_enviando)
+            setState(() => _ultimaPosicion = pos);
         },
-        onError: (error) {
+        onError: (e) {
           if (!mounted) return;
-
-          setState(() {
-            _error = _limpiarError(error);
-          });
+          setState(() => _error = e.toString());
         },
       );
-
       _timer?.cancel();
-
-      _timer = Timer.periodic(_intervaloEnvio, (_) async {
+      _timer = Timer.periodic(_intervalo, (_) async {
         if (!_trackingActivo || _enviando) return;
-
-        final posicion = _ultimaPosicion;
-
-        if (posicion != null) {
-          await _enviarPosicionSilenciosa(posicion);
-        } else {
-          await _obtenerYEnviarUnaVez();
-        }
+        final pos = _ultimaPosicion;
+        if (pos != null)
+          await _enviarSilencioso(pos);
+        else
+          await _obtenerYEnviar();
       });
-
       if (!mounted) return;
-
-      _mostrarMensaje('Tracking iniciado.');
+      _snack('Tracking iniciado 🐾');
     } catch (e) {
-      _detenerTrackingSinDialogo();
-
+      _detener();
       if (!mounted) return;
-
       setState(() {
-        _error = _limpiarError(e);
+        _error = e.toString();
       });
-
-      _mostrarMensaje('No se pudo iniciar el tracking.');
+      _snack('No se pudo iniciar el tracking');
     }
   }
 
-  Future<void> _enviarPosicionSilenciosa(Position posicion) async {
+  Future<void> _enviarSilencioso(Position pos) async {
     if (_enviando) return;
-
     setState(() {
       _enviando = true;
-      _error = null;
     });
-
     try {
       await _trackingService.enviarUbicacion(
         paseoId: widget.paseoId,
-        latitud: posicion.latitude,
-        longitud: posicion.longitude,
+        latitud: pos.latitude,
+        longitud: pos.longitude,
       );
-
       if (!mounted) return;
-
       setState(() {
-        _ultimaPosicion = posicion;
+        _ultimaPosicion = pos;
         _ultimaActualizacion = DateTime.now();
         _enviosCorrectos++;
         _error = null;
@@ -184,701 +198,489 @@ class _TrackingPaseoScreenState extends State<TrackingPaseoScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
-        _error = _limpiarError(e);
+        _error = e.toString();
       });
     } finally {
-      if (mounted) {
+      if (mounted)
         setState(() {
           _enviando = false;
         });
-      }
     }
   }
 
-  void _detenerTrackingSinDialogo() {
+  void _detener() {
     _trackingActivo = false;
-
     _subscription?.cancel();
     _subscription = null;
-
     _timer?.cancel();
     _timer = null;
   }
 
   Future<void> _confirmarDetener() async {
-    final confirmar = await showDialog<bool>(
+    final ok = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Detener tracking'),
-          content: const Text(
-            '¿Quieres detener el envío de ubicación en tiempo real?',
+      builder: (_) => AlertDialog(
+        backgroundColor: G.white,
+        shape: const RoundedRectangleBorder(borderRadius: G.r20),
+        title: Text('Detener tracking', style: G.h3(G.ink6)),
+        content: Text(
+          '¿Quieres detener el envío de ubicación?',
+          style: G.body(G.ink4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Seguir', style: G.label(G.ink4)),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Seguir enviando'),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: G.clay,
+              foregroundColor: G.white,
+              shape: const RoundedRectangleBorder(borderRadius: G.r12),
+              elevation: 0,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Detener'),
-            ),
-          ],
-        );
-      },
+            child: Text('Detener', style: G.label(G.white)),
+          ),
+        ],
+      ),
     );
-
-    if (confirmar != true) return;
-
-    _detenerTrackingSinDialogo();
-
+    if (ok != true) return;
+    _detener();
     if (!mounted) return;
-
     setState(() {});
-
-    _mostrarMensaje('Tracking detenido.');
+    _snack('Tracking detenido');
   }
 
-  Future<bool> _confirmarSalidaSiActivo() async {
+  Future<bool> _confirmarSalida() async {
     if (!_trackingActivo) return true;
-
-    final salir = await showDialog<bool>(
+    final ok = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Salir del tracking'),
-          content: const Text(
-            'Si sales de esta pantalla, se detendrá el envío de ubicación. '
-            'Para esta versión de prueba, mantén la pantalla abierta durante el paseo.',
+      builder: (_) => AlertDialog(
+        backgroundColor: G.white,
+        shape: const RoundedRectangleBorder(borderRadius: G.r20),
+        title: Text('Salir del tracking', style: G.h3(G.ink6)),
+        content: Text(
+          'Si sales se detendrá el envío de ubicación. Mantén la pantalla abierta durante el paseo.',
+          style: G.body(G.ink4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Quedarme', style: G.label(G.ink4)),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Quedarme'),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: G.brand,
+              foregroundColor: G.white,
+              shape: const RoundedRectangleBorder(borderRadius: G.r12),
+              elevation: 0,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1F8A70),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Salir'),
-            ),
-          ],
-        );
-      },
+            child: Text('Salir', style: G.label(G.white)),
+          ),
+        ],
+      ),
     );
-
-    return salir == true;
+    return ok == true;
   }
 
   Future<void> _salir() async {
-    final puedeSalir = await _confirmarSalidaSiActivo();
-
-    if (!puedeSalir) return;
-
-    _detenerTrackingSinDialogo();
-
-    if (!mounted) return;
-
-    Navigator.pop(context, _huboCambios);
+    if (await _confirmarSalida()) {
+      _detener();
+      if (!mounted) return;
+      Navigator.pop(context, _huboCambios);
+    }
   }
 
-  void _mostrarMensaje(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
+  void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        msg,
+        style: G.body(G.white).copyWith(fontWeight: FontWeight.w600),
       ),
-    );
+      backgroundColor: G.ink5,
+      behavior: SnackBarBehavior.floating,
+      shape: const RoundedRectangleBorder(borderRadius: G.r12),
+    ),
+  );
+
+  String _hora(DateTime? dt) {
+    if (dt == null) return 'Aún no enviada';
+    String d(int n) => n.toString().padLeft(2, '0');
+    return '${d(dt.hour)}:${d(dt.minute)}:${d(dt.second)}';
   }
 
-  String _limpiarError(dynamic error) {
-    final texto = error.toString().trim();
-
-    if (texto.isEmpty) {
-      return 'Ocurrió un error desconocido.';
-    }
-
-    return texto;
+  String get _coordenadas {
+    final p = _ultimaPosicion;
+    if (p == null) return 'Sin ubicación';
+    return _locationService.formatearCoordenadas(p);
   }
 
-  String _fechaBonita(DateTime? fecha) {
-    if (fecha == null) return 'Aún no enviada';
-
-    String dos(int n) => n.toString().padLeft(2, '0');
-
-    return '${dos(fecha.hour)}:${dos(fecha.minute)}:${dos(fecha.second)}';
+  String get _precision => _ultimaPosicion == null
+      ? 'N/D'
+      : '${_ultimaPosicion!.accuracy.toStringAsFixed(1)} m';
+  String get _velocidad {
+    final v = _ultimaPosicion?.speed ?? -1;
+    if (v < 0 || v.isNaN) return 'N/D';
+    return '${(v * 3.6).toStringAsFixed(1)} km/h';
   }
 
-  String _coordenadas() {
-    final posicion = _ultimaPosicion;
+  String get _altura => _ultimaPosicion == null
+      ? 'N/D'
+      : '${_ultimaPosicion!.altitude.toStringAsFixed(1)} m';
 
-    if (posicion == null) {
-      return 'Sin ubicación todavía';
-    }
-
-    return _locationService.formatearCoordenadas(posicion);
-  }
-
-  String _precision() {
-    final posicion = _ultimaPosicion;
-
-    if (posicion == null) {
-      return 'No disponible';
-    }
-
-    return '${posicion.accuracy.toStringAsFixed(1)} m';
-  }
-
-  String _velocidad() {
-    final posicion = _ultimaPosicion;
-
-    if (posicion == null) {
-      return 'No disponible';
-    }
-
-    final velocidadMps = posicion.speed;
-
-    if (velocidadMps.isNaN || velocidadMps < 0) {
-      return 'No disponible';
-    }
-
-    final velocidadKmh = velocidadMps * 3.6;
-
-    return '${velocidadKmh.toStringAsFixed(1)} km/h';
-  }
-
-  String _altura() {
-    final posicion = _ultimaPosicion;
-
-    if (posicion == null) {
-      return 'No disponible';
-    }
-
-    return '${posicion.altitude.toStringAsFixed(1)} m';
-  }
-
-  String _estadoTexto() {
-    if (_trackingActivo) {
-      return 'Tracking activo';
-    }
-
-    if (_enviosCorrectos > 0) {
-      return 'Tracking detenido';
-    }
-
-    return 'Tracking sin iniciar';
-  }
-
-  String _estadoDescripcion() {
-    if (_trackingActivo) {
-      return 'La app está enviando ubicación al servidor cada ${_intervaloEnvio.inSeconds} segundos.';
-    }
-
-    if (_enviosCorrectos > 0) {
-      return 'Ya se enviaron ubicaciones. Puedes volver a iniciar si el paseo sigue activo.';
-    }
-
-    return 'Presiona iniciar para comenzar a enviar ubicación GPS.';
-  }
+  Color get _color => _trackingActivo
+      ? G.sage
+      : _enviosCorrectos > 0
+      ? G.gold
+      : Colors.grey;
+  String get _estadoTexto => _trackingActivo
+      ? 'Tracking activo'
+      : _enviosCorrectos > 0
+      ? 'Tracking detenido'
+      : 'Sin iniciar';
+  String get _estadoDesc => _trackingActivo
+      ? 'Enviando ubicación al servidor cada ${_intervalo.inSeconds}s.'
+      : _enviosCorrectos > 0
+      ? 'Ya se enviaron ubicaciones. Puedes volver a iniciar.'
+      : 'Presiona iniciar para comenzar a enviar GPS.';
 
   @override
-  Widget build(BuildContext context) {
-    final color = _trackingActivo
-        ? Colors.green
-        : _enviosCorrectos > 0
-            ? Colors.orange
-            : Colors.grey;
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvoked: (did) async {
+      if (!did) await _salir();
+    },
+    child: Scaffold(
+      backgroundColor: G.ink0,
+      appBar: AppBar(
+        backgroundColor: G.ink0,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: G.ink6,
+            size: 20,
+          ),
+          onPressed: _salir,
+        ),
+        title: Text('Tracking GPS', style: G.h2(G.ink6)),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: G.ink6),
+            onPressed: _obtenerYEnviar,
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        children: [
+          _headerCard(),
+          const SizedBox(height: 16),
+          _estadoCard(),
+          const SizedBox(height: 16),
+          _ubicacionCard(),
+          const SizedBox(height: 16),
+          _enviosCard(),
+          if (_error != null) ...[const SizedBox(height: 16), _errorCard()],
+          const SizedBox(height: 24),
+          _botones(),
+          const SizedBox(height: 16),
+          _nota(),
+          const SizedBox(height: 24),
+        ],
+      ),
+    ),
+  );
 
-    return WillPopScope(
-      onWillPop: () async {
-        await _salir();
-        return false;
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF4F6F8),
-        appBar: AppBar(
-          title: const Text('Tracking GPS'),
-          backgroundColor: const Color(0xFF1F8A70),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            onPressed: _salir,
-            icon: const Icon(Icons.arrow_back_rounded),
+  Widget _headerCard() => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          _trackingActivo ? G.brandDark : G.ink5,
+          _trackingActivo ? G.brand : G.ink4,
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: G.r24,
+      boxShadow: [
+        BoxShadow(
+          color: (_trackingActivo ? G.brand : G.ink5).withOpacity(.3),
+          blurRadius: 24,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.15),
+            borderRadius: G.r16,
+            border: Border.all(color: Colors.white.withOpacity(.22)),
+          ),
+          child: Icon(
+            _trackingActivo
+                ? Icons.my_location_rounded
+                : Icons.location_searching_rounded,
+            color: Colors.white,
+            size: 34,
           ),
         ),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(color),
-              const SizedBox(height: 16),
-              _buildEstadoCard(color),
-              const SizedBox(height: 16),
-              _buildUbicacionCard(),
-              const SizedBox(height: 16),
-              _buildEnviosCard(),
-              const SizedBox(height: 16),
-              if (_error != null) ...[
-                _buildErrorCard(),
-                const SizedBox(height: 16),
-              ],
-              _buildBotones(),
-              const SizedBox(height: 14),
-              _buildNota(),
-              const SizedBox(height: 24),
+              Text('GPS del paseo', style: G.h2(Colors.white)),
+              const SizedBox(height: 5),
+              Text(
+                'Perro: ${widget.nombrePerro}',
+                style: G.label(Colors.white.withOpacity(.9)),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Paseador: ${widget.nombrePaseador}',
+                style: G.body(Colors.white.withOpacity(.8), size: 12),
+              ),
             ],
           ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
 
-  Widget _buildHeader(Color color) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color == Colors.green ? const Color(0xFF1F8A70) : color,
-            color == Colors.green
-                ? const Color(0xFF35A98A)
-                : color.withOpacity(0.72),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.24),
-              ),
-            ),
-            child: Icon(
-              _trackingActivo
-                  ? Icons.my_location_rounded
-                  : Icons.location_searching_rounded,
-              color: Colors.white,
-              size: 36,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'GPS del paseo',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  'Perro: ${widget.nombrePerro}',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.92),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Paseador: ${widget.nombrePaseador}',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.88),
-                    fontSize: 12.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEstadoCard(Color color) {
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.045),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              _trackingActivo
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
-              color: color,
-              size: 27,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _estadoTexto(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _estadoDescripcion(),
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 12.5,
-                    height: 1.25,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUbicacionCard() {
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.045),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _InfoTrackingRow(
-            icono: Icons.pin_drop_rounded,
-            titulo: 'Coordenadas',
-            valor: _coordenadas(),
-          ),
-          _InfoTrackingRow(
-            icono: Icons.gps_fixed_rounded,
-            titulo: 'Precisión',
-            valor: _precision(),
-          ),
-          _InfoTrackingRow(
-            icono: Icons.speed_rounded,
-            titulo: 'Velocidad',
-            valor: _velocidad(),
-          ),
-          _InfoTrackingRow(
-            icono: Icons.terrain_rounded,
-            titulo: 'Altura',
-            valor: _altura(),
-          ),
-          _InfoTrackingRow(
-            icono: Icons.access_time_rounded,
-            titulo: 'Último envío',
-            valor: _fechaBonita(_ultimaActualizacion),
-          ),
-          if (_enviando)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: LinearProgressIndicator(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEnviosCard() {
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.045),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1F8A70).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.cloud_done_rounded,
-              color: Color(0xFF1F8A70),
-              size: 27,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Envíos correctos: $_enviosCorrectos',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _enviosCorrectos == 0
-                      ? 'Todavía no se ha enviado ninguna ubicación al servidor.'
-                      : 'El mapa del dueño podrá mostrar la última ubicación enviada.',
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 12.5,
-                    height: 1.25,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.red.withOpacity(0.18),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: Colors.red,
-            size: 22,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              _error ?? '',
-              style: TextStyle(
-                color: Colors.grey.shade800,
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5,
-                height: 1.25,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBotones() {
-    return Column(
+  Widget _estadoCard() => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: const BoxDecoration(
+      color: G.white,
+      borderRadius: G.r20,
+      boxShadow: G.shadow1,
+    ),
+    child: Row(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton.icon(
-            onPressed: _trackingActivo || _enviando ? null : _iniciarTracking,
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: const Text('Iniciar tracking'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.grey.shade300,
-              disabledForegroundColor: Colors.grey.shade600,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(17),
-              ),
-            ),
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: _color.withOpacity(.12),
+            borderRadius: G.r12,
+          ),
+          child: Icon(
+            _trackingActivo
+                ? Icons.radio_button_checked_rounded
+                : Icons.radio_button_off_rounded,
+            color: _color,
+            size: 26,
           ),
         ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: OutlinedButton.icon(
-            onPressed: _trackingActivo ? _confirmarDetener : null,
-            icon: const Icon(Icons.stop_rounded),
-            label: const Text('Detener tracking'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              disabledForegroundColor: Colors.grey.shade500,
-              side: BorderSide(
-                color: _trackingActivo ? Colors.red : Colors.grey.shade300,
-                width: 1.3,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(17),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: OutlinedButton.icon(
-            onPressed: _enviando ? null : _obtenerYEnviarUnaVez,
-            icon: const Icon(Icons.near_me_rounded),
-            label: const Text('Enviar ubicación una vez'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1F8A70),
-              side: const BorderSide(
-                color: Color(0xFF1F8A70),
-                width: 1.3,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(17),
-              ),
-            ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_estadoTexto, style: G.h3(G.ink6)),
+              const SizedBox(height: 4),
+              Text(_estadoDesc, style: G.body(G.ink4), maxLines: 2),
+            ],
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
 
-  Widget _buildNota() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.09),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: Colors.blue,
-            size: 22,
+  Widget _ubicacionCard() => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: const BoxDecoration(
+      color: G.white,
+      borderRadius: G.r20,
+      boxShadow: G.shadow1,
+    ),
+    child: Column(
+      children: [
+        _infoRow(Icons.pin_drop_rounded, 'Coordenadas', _coordenadas),
+        _infoRow(Icons.gps_fixed_rounded, 'Precisión', _precision),
+        _infoRow(Icons.speed_rounded, 'Velocidad', _velocidad),
+        _infoRow(Icons.terrain_rounded, 'Altura', _altura),
+        _infoRow(
+          Icons.access_time_rounded,
+          'Último envío',
+          _hora(_ultimaActualizacion),
+          isLast: true,
+        ),
+        if (_enviando)
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: LinearProgressIndicator(color: G.brand),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Para esta versión de prueba, mantén esta pantalla abierta durante el paseo. '
-              'Si sales, se detiene el envío automático. Con Cloudflare usa tu URL HTTPS como base URL en configuración, sin agregar /api al final.',
-              style: TextStyle(
-                color: Colors.grey.shade800,
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5,
-                height: 1.25,
+      ],
+    ),
+  );
+
+  Widget _infoRow(
+    IconData icon,
+    String titulo,
+    String valor, {
+    bool isLast = false,
+  }) => Padding(
+    padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+    child: Row(
+      children: [
+        Icon(icon, color: G.ink4, size: 22),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(titulo, style: G.label(G.ink4).copyWith(fontSize: 11)),
+              const SizedBox(height: 2),
+              Text(valor, style: G.h3(G.ink6).copyWith(fontSize: 14)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _enviosCard() => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: const BoxDecoration(
+      color: G.white,
+      borderRadius: G.r20,
+      boxShadow: G.shadow1,
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: const BoxDecoration(
+            color: G.brandPale,
+            borderRadius: G.r12,
+          ),
+          child: const Icon(Icons.cloud_done_rounded, color: G.brand, size: 26),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Envíos correctos: $_enviosCorrectos', style: G.h3(G.ink6)),
+              const SizedBox(height: 4),
+              Text(
+                _enviosCorrectos == 0
+                    ? 'No se ha enviado ninguna ubicación.'
+                    : 'El dueño puede ver la última ubicación.',
+                style: G.body(G.ink4),
+                maxLines: 2,
               ),
-            ),
+            ],
           ),
-        ],
+        ),
+      ],
+    ),
+  );
+
+  Widget _errorCard() => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: G.clayLight,
+      borderRadius: G.r16,
+      border: Border.all(color: G.clay.withOpacity(.3)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.error_outline_rounded, color: G.clay, size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            _error ?? '',
+            style: G.body(G.ink6).copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _botones() => Column(
+    children: [
+      SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton.icon(
+          onPressed: _trackingActivo || _enviando ? null : _iniciarTracking,
+          icon: const Icon(Icons.play_arrow_rounded),
+          label: const Text('Iniciar tracking'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: G.brand,
+            foregroundColor: G.white,
+            disabledBackgroundColor: G.ink2,
+            shape: const RoundedRectangleBorder(borderRadius: G.r16),
+          ),
+        ),
       ),
-    );
-  }
-}
-
-class _InfoTrackingRow extends StatelessWidget {
-  final IconData icono;
-  final String titulo;
-  final String valor;
-
-  const _InfoTrackingRow({
-    required this.icono,
-    required this.titulo,
-    required this.valor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 13),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icono,
-            color: Colors.grey.shade700,
-            size: 21,
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  titulo,
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  valor,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
+      const SizedBox(height: 12),
+      SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: OutlinedButton.icon(
+          onPressed: _trackingActivo ? _confirmarDetener : null,
+          icon: const Icon(Icons.stop_rounded),
+          label: const Text('Detener tracking'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: G.clay,
+            side: BorderSide(
+              color: _trackingActivo ? G.clay : G.ink2,
+              width: 1.5,
             ),
+            shape: const RoundedRectangleBorder(borderRadius: G.r16),
           ),
-        ],
+        ),
       ),
-    );
-  }
+      const SizedBox(height: 12),
+      SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: OutlinedButton.icon(
+          onPressed: _enviando ? null : _obtenerYEnviar,
+          icon: const Icon(Icons.near_me_rounded),
+          label: const Text('Enviar una vez'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: G.brandDark,
+            side: const BorderSide(color: G.brandDark, width: 1.5),
+            shape: const RoundedRectangleBorder(borderRadius: G.r16),
+          ),
+        ),
+      ),
+    ],
+  );
+
+  Widget _nota() => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: const BoxDecoration(color: G.ink1, borderRadius: G.r16),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.info_outline_rounded, color: G.ink4, size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Mantén esta pantalla abierta durante el paseo. Si sales se detiene el envío automático.',
+            style: G.body(G.ink5).copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    ),
+  );
 }

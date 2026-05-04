@@ -2,9 +2,65 @@ import 'package:flutter/material.dart';
 import '../services/paseadores_service.dart';
 import 'detalle_paseador_screen.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  DESIGN SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+class G {
+  static const brand = Color(0xFF0D9E7E);
+  static const brandPale = Color(0xFFE8F8F3);
+  static const brandDark = Color(0xFF0A7A62);
+  static const clay = Color(0xFFD4694A);
+  static const clayLight = Color(0xFFFAEDE8);
+  static const sage = Color(0xFF5B8C5A);
+  static const sagePale = Color(0xFFECF4EB);
+  static const gold = Color(0xFFCB9B3B);
+  static const goldPale = Color(0xFFFBF3E0);
+  static const plum = Color(0xFF6B4E8A);
+  static const plumPale = Color(0xFFF2EDF8);
+  static const ink0 = Color(0xFFFAF7F2);
+  static const ink1 = Color(0xFFF3EFE8);
+  static const ink2 = Color(0xFFE8E2D9);
+  static const ink3 = Color(0xFFC8C0B4);
+  static const ink4 = Color(0xFF8C8278);
+  static const ink5 = Color(0xFF4A4540);
+  static const ink6 = Color(0xFF1E1A16);
+  static const white = Color(0xFFFFFFFF);
+
+  static const r8 = BorderRadius.all(Radius.circular(8));
+  static const r12 = BorderRadius.all(Radius.circular(12));
+  static const r16 = BorderRadius.all(Radius.circular(16));
+  static const r20 = BorderRadius.all(Radius.circular(20));
+  static const r24 = BorderRadius.all(Radius.circular(24));
+
+  static const shadow1 = [
+    BoxShadow(color: Color(0x0C000000), blurRadius: 16, offset: Offset(0, 4)),
+  ];
+
+  static TextStyle h2(Color c) => TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: c,
+    letterSpacing: -.4,
+    height: 1.15,
+  );
+  static TextStyle h3(Color c) => TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    color: c,
+    letterSpacing: -.2,
+  );
+  static TextStyle body(Color c, {double size = 13.5}) =>
+      TextStyle(fontSize: size, fontWeight: FontWeight.w400, color: c);
+  static TextStyle label(Color c, {double size = 12}) => TextStyle(
+    fontSize: size,
+    fontWeight: FontWeight.w700,
+    color: c,
+    letterSpacing: .3,
+  );
+}
+
 class PaseadoresScreen extends StatefulWidget {
   const PaseadoresScreen({super.key});
-
   @override
   State<PaseadoresScreen> createState() => _PaseadoresScreenState();
 }
@@ -13,7 +69,6 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
   bool _cargando = true;
   String? _error;
   List<dynamic> _paseadores = [];
-
   final TextEditingController _busquedaController = TextEditingController();
 
   @override
@@ -33,29 +88,22 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       _cargando = true;
       _error = null;
     });
-
     try {
       final result = await PaseadoresService.obtenerPaseadores();
-
       if (!mounted) return;
-
       if (result['success'] == true) {
-        final data = result['data'];
-
         setState(() {
-          _paseadores = data is List ? data : [];
+          _paseadores = result['data'] is List ? result['data'] : [];
           _cargando = false;
         });
       } else {
         setState(() {
-          _error = result['message']?.toString() ??
-              'No se pudieron obtener los paseadores.';
+          _error = result['message']?.toString() ?? 'Error al cargar.';
           _cargando = false;
         });
       }
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _error = 'Error de conexión: $e';
         _cargando = false;
@@ -63,652 +111,321 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
     }
   }
 
-  String _textoSeguro(dynamic valor, [String fallback = 'Sin dato']) {
-    if (valor == null) return fallback;
-
-    final texto = valor.toString().trim();
-
-    if (texto.isEmpty || texto.toLowerCase() == 'null') {
-      return fallback;
-    }
-
-    return texto;
+  // Helpers lógicos de Gera intactos
+  String _ts2(dynamic v, [String fb = 'Sin dato']) {
+    if (v == null) return fb;
+    final t = v.toString().trim();
+    return (t.isEmpty || t.toLowerCase() == 'null') ? fb : t;
   }
 
-  Map<String, dynamic> _mapaSeguro(dynamic valor) {
-    if (valor is Map<String, dynamic>) {
-      return valor;
-    }
-
-    if (valor is Map) {
-      return Map<String, dynamic>.from(valor);
-    }
-
+  Map<String, dynamic> _map(dynamic v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return Map<String, dynamic>.from(v);
     return {};
   }
 
-  dynamic _valor(Map<String, dynamic> mapa, List<String> keys) {
-    for (final key in keys) {
-      if (mapa.containsKey(key) && mapa[key] != null) {
-        return mapa[key];
-      }
-    }
-
+  dynamic _val(Map<String, dynamic> m, List<String> keys) {
+    for (final k in keys) if (m.containsKey(k) && m[k] != null) return m[k];
     return null;
   }
 
-  Map<String, dynamic> _usuarioDe(Map<String, dynamic> paseador) {
-    final usuario = _valor(
-      paseador,
-      [
-        'usuario',
-        'Usuario',
-        'user',
-        'User',
-        'datosUsuario',
-        'DatosUsuario',
-      ],
-    );
+  Map<String, dynamic> _usuario(Map<String, dynamic> p) =>
+      _map(_val(p, ['usuario', 'Usuario', 'user', 'User']));
 
-    return _mapaSeguro(usuario);
-  }
-
-  String _nombrePaseador(Map<String, dynamic> paseador) {
-    final usuario = _usuarioDe(paseador);
-
-    final nombreDirecto = _valor(
-      paseador,
-      [
-        'nombreCompleto',
-        'NombreCompleto',
-        'paseadorNombreCompleto',
-        'nombrePaseadorCompleto',
-      ],
-    );
-
-    final nombreDirectoTexto = _textoSeguro(nombreDirecto, '');
-
-    if (nombreDirectoTexto.isNotEmpty) {
-      return nombreDirectoTexto;
-    }
-
-    final nombre = _textoSeguro(
-      _valor(
-            paseador,
-            [
-              'nombre',
-              'Nombre',
-              'paseadorNombre',
-              'PaseadorNombre',
-              'nombrePaseador',
-              'NombrePaseador',
-            ],
-          ) ??
-          _valor(
-            usuario,
-            [
-              'nombre',
-              'Nombre',
-              'name',
-              'Name',
-            ],
-          ),
+  String _nombre(Map<String, dynamic> p) {
+    final u = _usuario(p);
+    final n = _ts2(
+      _val(p, ['nombre', 'Nombre', 'paseadorNombre', 'PaseadorNombre']) ??
+          _val(u, ['nombre', 'Nombre']),
       '',
     );
-
-    final apellido = _textoSeguro(
-      _valor(
-            paseador,
-            [
-              'apellido',
-              'Apellido',
-              'paseadorApellido',
-              'PaseadorApellido',
-              'apellidoPaseador',
-              'ApellidoPaseador',
-            ],
-          ) ??
-          _valor(
-            usuario,
-            [
-              'apellido',
-              'Apellido',
-              'lastName',
-              'LastName',
-            ],
-          ),
+    final a = _ts2(
+      _val(p, [
+            'apellido',
+            'Apellido',
+            'paseadorApellido',
+            'PaseadorApellido',
+          ]) ??
+          _val(u, ['apellido', 'Apellido']),
       '',
     );
-
-    final completo = '$nombre $apellido'.trim();
-
-    return completo.isEmpty ? 'Sin dato' : completo;
+    final c = '$n $a'.trim();
+    return c.isEmpty ? 'Sin dato' : c;
   }
 
-  String _emailPaseador(Map<String, dynamic> paseador) {
-    final usuario = _usuarioDe(paseador);
-
-    return _textoSeguro(
-      _valor(
-            paseador,
-            [
-              'email',
-              'Email',
-              'correo',
-              'Correo',
-              'paseadorEmail',
-              'PaseadorEmail',
-            ],
-          ) ??
-          _valor(
-            usuario,
-            [
-              'email',
-              'Email',
-              'correo',
-              'Correo',
-            ],
-          ),
+  String _descripcion(Map<String, dynamic> p) => _ts2(
+    _val(p, ['descripcion', 'Descripcion', 'bio', 'Bio']),
+    'Sin descripción',
+  );
+  String _zona(Map<String, dynamic> p) => _ts2(
+    _val(p, ['zonaServicio', 'ZonaServicio', 'zona', 'Zona']),
+    'Sin zona',
+  );
+  String _foto(Map<String, dynamic> p) {
+    final u = _usuario(p);
+    return _ts2(
+      _val(p, ['fotoUrl', 'FotoUrl', 'imagenUrl', 'ImagenUrl']) ??
+          _val(u, ['fotoUrl', 'FotoUrl', 'imagenUrl', 'ImagenUrl']),
       '',
     );
   }
 
-  String _descripcion(Map<String, dynamic> paseador) {
-    return _textoSeguro(
-      _valor(
-        paseador,
-        [
-          'descripcion',
-          'Descripcion',
-          'descripción',
-          'bio',
-          'Bio',
-          'presentacion',
-          'Presentacion',
-        ],
-      ),
-      'Sin descripción',
-    );
+  String _tarifa(Map<String, dynamic> p) {
+    final t = _val(p, ['tarifaPorHora', 'TarifaPorHora', 'tarifa', 'Tarifa']);
+    if (t == null) return 'Tarifa n/d';
+    final n = double.tryParse(t.toString());
+    return n == null ? '\$$t/h' : '\$${n.toStringAsFixed(2)}/h';
   }
 
-  String _zona(Map<String, dynamic> paseador) {
-    return _textoSeguro(
-      _valor(
-        paseador,
-        [
-          'zonaServicio',
-          'ZonaServicio',
-          'zona',
-          'Zona',
-          'zonas',
-          'Zonas',
-          'ubicacion',
-          'Ubicacion',
-        ],
-      ),
-      'Sin zona',
-    );
+  String _rating(Map<String, dynamic> p) {
+    final c = _val(p, [
+      'calificacionPromedio',
+      'CalificacionPromedio',
+      'rating',
+      'Rating',
+    ]);
+    if (c == null) return 'Sin cal.';
+    final n = double.tryParse(c.toString());
+    return n == null ? '⭐ $c' : '⭐ ${n.toStringAsFixed(1)}';
   }
 
-  String _fotoUrl(Map<String, dynamic> paseador) {
-    final usuario = _usuarioDe(paseador);
-
-    return _textoSeguro(
-      _valor(
-            paseador,
-            [
-              'fotoUrl',
-              'FotoUrl',
-              'fotoPerfilUrl',
-              'FotoPerfilUrl',
-              'imagenUrl',
-              'ImagenUrl',
-            ],
-          ) ??
-          _valor(
-            usuario,
-            [
-              'fotoUrl',
-              'FotoUrl',
-              'fotoPerfilUrl',
-              'FotoPerfilUrl',
-              'imagenUrl',
-              'ImagenUrl',
-            ],
-          ),
-      '',
-    );
+  String _exp(Map<String, dynamic> p) {
+    final e = _val(p, [
+      'experienciaAnios',
+      'ExperienciaAnios',
+      'experiencia',
+      'Experiencia',
+    ]);
+    return e == null ? 'Sin exp.' : '$e año(s)';
   }
 
-  String _tarifaTexto(Map<String, dynamic> paseador) {
-    final tarifa = _valor(
-      paseador,
-      [
-        'tarifaPorHora',
-        'TarifaPorHora',
-        'tarifa',
-        'Tarifa',
-        'precioHora',
-        'PrecioHora',
-      ],
-    );
-
-    if (tarifa == null) return 'Tarifa no disponible';
-
-    final numero = double.tryParse(tarifa.toString());
-
-    if (numero == null) {
-      return '\$${tarifa.toString()} / hora';
-    }
-
-    return '\$${numero.toStringAsFixed(2)} / hora';
+  bool _disponible(Map<String, dynamic> p) {
+    final v = _val(p, ['disponible', 'Disponible', 'activo', 'Activo']);
+    if (v is bool) return v;
+    final t = v?.toString().trim().toLowerCase();
+    if (t == null || t.isEmpty || t == 'null') return true;
+    return t == 'true' || t == '1' || t == 'si' || t == 'sí';
   }
 
-  String _calificacionTexto(Map<String, dynamic> paseador) {
-    final calificacion = _valor(
-      paseador,
-      [
-        'calificacionPromedio',
-        'CalificacionPromedio',
-        'rating',
-        'Rating',
-        'calificacion',
-        'Calificacion',
-      ],
-    );
-
-    if (calificacion == null) return 'Sin calificación';
-
-    final numero = double.tryParse(calificacion.toString());
-
-    if (numero == null) {
-      return '⭐ ${calificacion.toString()}';
-    }
-
-    return '⭐ ${numero.toStringAsFixed(1)}';
-  }
-
-  String _experienciaTexto(Map<String, dynamic> paseador) {
-    final experiencia = _valor(
-      paseador,
-      [
-        'experienciaAnios',
-        'ExperienciaAnios',
-        'experienciaAños',
-        'ExperienciaAños',
-        'experiencia',
-        'Experiencia',
-      ],
-    );
-
-    if (experiencia == null) return 'Sin experiencia';
-
-    return '$experiencia año(s) exp.';
-  }
-
-  bool _disponible(Map<String, dynamic> paseador) {
-    final valor = _valor(
-      paseador,
-      [
-        'disponible',
-        'Disponible',
-        'estaDisponible',
-        'EstaDisponible',
-        'activo',
-        'Activo',
-      ],
-    );
-
-    if (valor is bool) return valor;
-
-    final texto = valor?.toString().trim().toLowerCase();
-
-    if (texto == null || texto.isEmpty || texto == 'null') {
-      return true;
-    }
-
-    return texto == 'true' || texto == '1' || texto == 'si' || texto == 'sí';
-  }
-
-  List<String> _zonasLista(Map<String, dynamic> paseador) {
-    final zona = _zona(paseador);
-
-    if (zona == 'Sin zona') {
-      return [zona];
-    }
-
-    final separadas = zona
+  List<String> _zonas(Map<String, dynamic> p) {
+    final z = _zona(p);
+    if (z == 'Sin zona') return [z];
+    final s = z
         .split(',')
-        .map((z) => z.trim())
-        .where((z) => z.isNotEmpty)
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
         .toList();
-
-    return separadas.isEmpty ? [zona] : separadas;
+    return s.isEmpty ? [z] : s;
   }
 
-  Map<String, dynamic> _normalizarPaseadorParaDetalle(
-    Map<String, dynamic> paseador,
-  ) {
-    final normalizado = Map<String, dynamic>.from(paseador);
-
-    normalizado['nombre'] = _nombrePaseador(paseador);
-    normalizado['email'] = _emailPaseador(paseador);
-    normalizado['descripcion'] = _descripcion(paseador);
-    normalizado['zonaServicio'] = _zona(paseador);
-    normalizado['fotoUrl'] = _fotoUrl(paseador);
-    normalizado['disponible'] = _disponible(paseador);
-
-    final tarifa = _valor(
-      paseador,
-      [
-        'tarifaPorHora',
-        'TarifaPorHora',
-        'tarifa',
-        'Tarifa',
-        'precioHora',
-        'PrecioHora',
-      ],
-    );
-
-    final calificacion = _valor(
-      paseador,
-      [
-        'calificacionPromedio',
-        'CalificacionPromedio',
-        'rating',
-        'Rating',
-        'calificacion',
-        'Calificacion',
-      ],
-    );
-
-    final experiencia = _valor(
-      paseador,
-      [
-        'experienciaAnios',
-        'ExperienciaAnios',
-        'experienciaAños',
-        'ExperienciaAños',
-        'experiencia',
-        'Experiencia',
-      ],
-    );
-
-    normalizado['tarifaPorHora'] = tarifa;
-    normalizado['calificacionPromedio'] = calificacion;
-    normalizado['experienciaAnios'] = experiencia;
-
-    return normalizado;
+  Map<String, dynamic> _normalizar(Map<String, dynamic> p) {
+    final n = Map<String, dynamic>.from(p);
+    n['nombre'] = _nombre(p);
+    n['descripcion'] = _descripcion(p);
+    n['zonaServicio'] = _zona(p);
+    n['fotoUrl'] = _foto(p);
+    n['disponible'] = _disponible(p);
+    n['tarifaPorHora'] = _val(p, [
+      'tarifaPorHora',
+      'TarifaPorHora',
+      'tarifa',
+      'Tarifa',
+    ]);
+    n['calificacionPromedio'] = _val(p, [
+      'calificacionPromedio',
+      'CalificacionPromedio',
+      'rating',
+      'Rating',
+    ]);
+    n['experienciaAnios'] = _val(p, [
+      'experienciaAnios',
+      'ExperienciaAnios',
+      'experiencia',
+      'Experiencia',
+    ]);
+    return n;
   }
 
-  List<dynamic> get _paseadoresFiltrados {
-    final texto = _busquedaController.text.trim().toLowerCase();
-
-    if (texto.isEmpty) return _paseadores;
-
+  List<dynamic> get _filtrados {
+    final q = _busquedaController.text.trim().toLowerCase();
+    if (q.isEmpty) return _paseadores;
     return _paseadores.where((item) {
-      final paseador = _mapaSeguro(item);
-
-      final nombre = _nombrePaseador(paseador).toLowerCase();
-      final descripcion = _descripcion(paseador).toLowerCase();
-      final zona = _zona(paseador).toLowerCase();
-      final email = _emailPaseador(paseador).toLowerCase();
-
-      return nombre.contains(texto) ||
-          descripcion.contains(texto) ||
-          zona.contains(texto) ||
-          email.contains(texto);
+      final p = _map(item);
+      return [
+        _nombre(p),
+        _descripcion(p),
+        _zona(p),
+      ].join(' ').toLowerCase().contains(q);
     }).toList();
-  }
-
-  Future<void> _abrirDetalle(Map<String, dynamic> paseador) async {
-    final paseadorNormalizado = _normalizarPaseadorParaDetalle(paseador);
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DetallePaseadorScreen(
-          paseador: paseadorNormalizado,
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final lista = _paseadoresFiltrados;
-
+    final lista = _filtrados;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F6EF),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: const Row(
-          children: [
-            Icon(Icons.pets, color: Color(0xFF14A89A)),
-            SizedBox(width: 8),
-            Text(
-              'DogGo',
-              style: TextStyle(
-                color: Color(0xFF25324A),
-                fontWeight: FontWeight.bold,
+      backgroundColor: G.ink0,
+      body: NestedScrollView(
+        headerSliverBuilder: (_, __) => [
+          SliverAppBar(
+            pinned: true,
+            floating: true,
+            snap: true,
+            backgroundColor: G.ink0,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: G.ink6,
+                size: 20,
               ),
+              onPressed: () => Navigator.pop(context),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Volver',
-              style: TextStyle(color: Color(0xFF25324A)),
-            ),
+            title: Text('Paseadores', style: G.h2(G.ink6)),
+            centerTitle: true,
           ),
-          const SizedBox(width: 8),
         ],
-      ),
-      body: _cargando
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 72,
-                          color: Colors.redAccent,
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _cargarPaseadores,
-                          child: const Text('Reintentar'),
-                        ),
-                      ],
-                    ),
+        body: _cargando
+            ? const Center(child: CircularProgressIndicator(color: G.brand))
+            : _error != null
+            ? _buildError()
+            : Column(
+                children: [
+                  _buildHeader(lista.length),
+                  Expanded(
+                    child: lista.isEmpty ? _buildVacio() : _buildLista(lista),
                   ),
-                )
-              : Column(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF4EDE3),
-                        border: Border(
-                          bottom: BorderSide(color: Color(0xFFE7E0D5)),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'ENCUENTRA TU PASEADOR',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF14A89A),
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Paseadores disponibles',
-                            style: TextStyle(
-                              fontSize: 30,
-                              height: 1.1,
-                              color: Color(0xFF25324A),
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Se encontraron ${lista.length} paseadores.',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _busquedaController,
-                            onChanged: (_) {
-                              setState(() {});
-                            },
-                            decoration: InputDecoration(
-                              hintText: 'Buscar por nombre, zona o descripción',
-                              filled: true,
-                              fillColor: Colors.white,
-                              prefixIcon: const Icon(Icons.search),
-                              suffixIcon:
-                                  _busquedaController.text.trim().isEmpty
-                                      ? null
-                                      : IconButton(
-                                          onPressed: () {
-                                            _busquedaController.clear();
-                                            setState(() {});
-                                          },
-                                          icon: const Icon(Icons.close_rounded),
-                                        ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: lista.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.person_search,
-                                      size: 76,
-                                      color: Color(0xFFB8B3AA),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    const Text(
-                                      'No se encontraron paseadores',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Color(0xFF25324A),
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Prueba con otra búsqueda o vuelve a cargar.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton(
-                                      onPressed: _cargarPaseadores,
-                                      child: const Text('Recargar'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _cargarPaseadores,
-                              child: ListView.builder(
-                                padding: const EdgeInsets.all(18),
-                                itemCount: lista.length,
-                                itemBuilder: (context, index) {
-                                  final paseador = _mapaSeguro(lista[index]);
-
-                                  final nombre = _nombrePaseador(paseador);
-                                  final tarifa = _tarifaTexto(paseador);
-                                  final descripcion = _descripcion(paseador);
-                                  final zonas = _zonasLista(paseador);
-                                  final experiencia =
-                                      _experienciaTexto(paseador);
-                                  final rating =
-                                      _calificacionTexto(paseador);
-                                  final disponible = _disponible(paseador);
-                                  final fotoUrl = _fotoUrl(paseador);
-
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 14),
-                                    child: _PaseadorCard(
-                                      nombre: nombre,
-                                      precio: tarifa,
-                                      descripcion: descripcion,
-                                      zonas: zonas,
-                                      experiencia: experiencia,
-                                      disponible: disponible,
-                                      rating: rating,
-                                      fotoUrl: fotoUrl,
-                                      onVerPerfil: () async {
-                                        await _abrirDetalle(paseador);
-                                      },
-                                      onSolicitar: () async {
-                                        await _abrirDetalle(paseador);
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
+                ],
+              ),
+      ),
     );
   }
+
+  Widget _buildHeader(int count) => Container(
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+    color: G.ink0,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$count paseadores encontrados', style: G.label(G.ink4)),
+        const SizedBox(height: 10),
+        Container(
+          height: 48,
+          decoration: const BoxDecoration(
+            color: G.white,
+            borderRadius: G.r16,
+            boxShadow: G.shadow1,
+          ),
+          child: TextField(
+            controller: _busquedaController,
+            onChanged: (_) => setState(() {}),
+            style: G.body(G.ink6),
+            decoration: InputDecoration(
+              hintText: 'Buscar paseador o zona...',
+              hintStyle: G.body(G.ink3),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: G.ink4,
+                size: 20,
+              ),
+              suffixIcon: _busquedaController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: G.ink4,
+                      ),
+                      onPressed: () {
+                        _busquedaController.clear();
+                        setState(() {});
+                      },
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildLista(List<dynamic> lista) => RefreshIndicator(
+    color: G.brand,
+    onRefresh: _cargarPaseadores,
+    child: ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      itemCount: lista.length,
+      itemBuilder: (_, i) {
+        final p = _map(lista[i]);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _PaseadorCard(
+            nombre: _nombre(p),
+            precio: _tarifa(p),
+            descripcion: _descripcion(p),
+            zonas: _zonas(p),
+            experiencia: _exp(p),
+            disponible: _disponible(p),
+            rating: _rating(p),
+            fotoUrl: _foto(p),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DetallePaseadorScreen(paseador: _normalizar(p)),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+
+  Widget _buildError() => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline_rounded, size: 64, color: G.clay),
+          const SizedBox(height: 14),
+          Text(_error!, textAlign: TextAlign.center, style: G.h3(G.ink6)),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _cargarPaseadores,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Reintentar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: G.brand,
+              foregroundColor: G.white,
+              shape: const RoundedRectangleBorder(borderRadius: G.r12),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildVacio() => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.person_search_rounded, size: 72, color: G.ink3),
+        const SizedBox(height: 14),
+        Text('No se encontraron paseadores', style: G.h3(G.ink6)),
+        const SizedBox(height: 6),
+        Text('Prueba con otra búsqueda', style: G.body(G.ink4)),
+      ],
+    ),
+  );
 }
 
 class _PaseadorCard extends StatelessWidget {
-  final String nombre;
-  final String precio;
-  final String descripcion;
+  final String nombre, precio, descripcion, experiencia, rating, fotoUrl;
   final List<String> zonas;
-  final String experiencia;
   final bool disponible;
-  final String rating;
-  final String fotoUrl;
-  final VoidCallback onVerPerfil;
-  final VoidCallback onSolicitar;
+  final VoidCallback onTap;
 
   const _PaseadorCard({
     required this.nombre,
@@ -719,215 +436,160 @@ class _PaseadorCard extends StatelessWidget {
     required this.disponible,
     required this.rating,
     required this.fotoUrl,
-    required this.onVerPerfil,
-    required this.onSolicitar,
+    required this.onTap,
   });
 
-  bool get _tieneFotoAbsoluta {
-    return fotoUrl.startsWith('http://') || fotoUrl.startsWith('https://');
-  }
+  bool get _tieneFoto =>
+      fotoUrl.startsWith('http://') || fotoUrl.startsWith('https://');
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.94),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE7E2D9)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 62,
-                  height: 62,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4EDE3),
-                    borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: G.white,
+          borderRadius: G.r20,
+          boxShadow: G.shadow1,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: const BoxDecoration(
+                      color: G.brandPale,
+                      borderRadius: G.r16,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _tieneFoto
+                        ? Image.network(
+                            fotoUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.person,
+                              color: G.brand,
+                              size: 28,
+                            ),
+                          )
+                        : const Icon(Icons.person, color: G.brand, size: 28),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _tieneFotoAbsoluta
-                      ? Image.network(
-                          fotoUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) {
-                            return const Center(
-                              child: Icon(
-                                Icons.person,
-                                color: Color(0xFF6B7280),
-                                size: 30,
-                              ),
-                            );
-                          },
-                        )
-                      : const Center(
-                          child: Icon(
-                            Icons.person,
-                            color: Color(0xFF6B7280),
-                            size: 30,
-                          ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          nombre,
+                          style: G.h3(G.ink6).copyWith(fontSize: 15),
                         ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 3),
+                        Text(precio, style: G.label(G.ink4)),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        nombre,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Color(0xFF25324A),
-                          fontWeight: FontWeight.w900,
-                        ),
+                      const Text(
+                        '★★★★★',
+                        style: TextStyle(color: G.gold, fontSize: 12),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        precio,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF6B7280),
-                        ),
+                        rating,
+                        style: G.label(G.ink4).copyWith(fontSize: 11),
                       ),
                     ],
                   ),
-                ),
-                Text(
-                  rating,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B7280),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                descripcion,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF6B7280),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  descripcion,
+                  style: G.body(G.ink5).copyWith(height: 1.4),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ...zonas.map(
-                  (z) => _TagChip(
-                    texto: z,
-                    colorFondo: const Color(0xFFDDF4F1),
-                    colorTexto: const Color(0xFF14A89A),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ...zonas.map((z) => _Chip(z, G.brandDark, G.brandPale)),
+                  _Chip(experiencia, G.gold, G.goldPale),
+                  _Chip(
+                    disponible ? 'Disponible' : 'Ocupado',
+                    disponible ? G.sage : G.clay,
+                    disponible ? G.sagePale : G.clayLight,
                   ),
-                ),
-                _TagChip(
-                  texto: experiencia,
-                  colorFondo: const Color(0xFFF6ECD8),
-                  colorTexto: const Color(0xFFB57A4B),
-                ),
-                _TagChip(
-                  texto: disponible ? 'Disponible' : 'No disponible',
-                  colorFondo: disponible
-                      ? const Color(0xFFE6F6E9)
-                      : const Color(0xFFFBE4E6),
-                  colorTexto: disponible
-                      ? const Color(0xFF4AA564)
-                      : const Color(0xFFE56B6F),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: onVerPerfil,
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF14A89A)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                    child: const Text(
-                      'Ver perfil',
-                      style: TextStyle(
-                        color: Color(0xFF14A89A),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: onSolicitar,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF14A89A),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Solicitar paseo',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: _OutBtn('Ver perfil', onTap)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _FillBtn('Solicitar', onTap)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _TagChip extends StatelessWidget {
-  final String texto;
-  final Color colorFondo;
-  final Color colorTexto;
-
-  const _TagChip({
-    required this.texto,
-    required this.colorFondo,
-    required this.colorTexto,
-  });
-
+class _Chip extends StatelessWidget {
+  final String label;
+  final Color fg, bg;
+  const _Chip(this.label, this.fg, this.bg);
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: colorFondo,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        texto,
-        style: TextStyle(
-          fontSize: 12,
-          color: colorTexto,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(color: bg, borderRadius: G.r8),
+    child: Text(label, style: G.label(fg).copyWith(fontSize: 10.5)),
+  );
+}
+
+class _OutBtn extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _OutBtn(this.label, this.onTap);
+  @override
+  Widget build(BuildContext context) => OutlinedButton(
+    onPressed: onTap,
+    style: OutlinedButton.styleFrom(
+      foregroundColor: G.brand,
+      side: const BorderSide(color: G.brand, width: 1.5),
+      shape: const RoundedRectangleBorder(borderRadius: G.r12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+    ),
+    child: Text(label, style: G.label(G.brand).copyWith(fontSize: 13)),
+  );
+}
+
+class _FillBtn extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _FillBtn(this.label, this.onTap);
+  @override
+  Widget build(BuildContext context) => ElevatedButton(
+    onPressed: onTap,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: G.brand,
+      foregroundColor: G.white,
+      shape: const RoundedRectangleBorder(borderRadius: G.r12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      elevation: 0,
+    ),
+    child: Text(label, style: G.label(G.white).copyWith(fontSize: 13)),
+  );
 }
