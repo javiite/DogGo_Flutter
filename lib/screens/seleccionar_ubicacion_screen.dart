@@ -1,17 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  DESIGN SYSTEM
-// ─────────────────────────────────────────────────────────────────────────────
 class G {
   static const brand = Color(0xFF0D9E7E);
   static const brandPale = Color(0xFFE8F8F3);
   static const brandDark = Color(0xFF0A7A62);
+  static const clay = Color(0xFFD4694A);
   static const ink0 = Color(0xFFFAF7F2);
   static const ink2 = Color(0xFFE8E2D9);
   static const ink3 = Color(0xFFC8C0B4);
@@ -30,29 +29,33 @@ class G {
   ];
 
   static TextStyle h3(Color c) => TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
-    color: c,
-    letterSpacing: -.2,
-  );
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: c,
+        letterSpacing: -.2,
+      );
+
   static TextStyle body(Color c, {double size = 13.5}) =>
       TextStyle(fontSize: size, fontWeight: FontWeight.w400, color: c);
+
   static TextStyle label(Color c, {double size = 12}) => TextStyle(
-    fontSize: size,
-    fontWeight: FontWeight.w700,
-    color: c,
-    letterSpacing: .3,
-  );
+        fontSize: size,
+        fontWeight: FontWeight.w700,
+        color: c,
+        letterSpacing: .3,
+      );
 }
 
 class SeleccionarUbicacionScreen extends StatefulWidget {
   final LatLng? ubicacionInicial;
   final String? textoInicial;
+
   const SeleccionarUbicacionScreen({
     super.key,
     this.ubicacionInicial,
     this.textoInicial,
   });
+
   @override
   State<SeleccionarUbicacionScreen> createState() =>
       _SeleccionarUbicacionScreenState();
@@ -61,7 +64,9 @@ class SeleccionarUbicacionScreen extends StatefulWidget {
 class _SeleccionarUbicacionScreenState
     extends State<SeleccionarUbicacionScreen> {
   LatLng? _ubicacionSeleccionada;
+
   late final TextEditingController _descripcionController;
+
   final TextEditingController _buscarController = TextEditingController();
   final MapController _mapController = MapController();
 
@@ -71,7 +76,9 @@ class _SeleccionarUbicacionScreenState
   @override
   void initState() {
     super.initState();
+
     _ubicacionSeleccionada = widget.ubicacionInicial;
+
     _descripcionController = TextEditingController(
       text: widget.textoInicial ?? '',
     );
@@ -89,52 +96,64 @@ class _SeleccionarUbicacionScreenState
 
   Future<void> _obtenerMiUbicacion() async {
     setState(() => _buscandoGPS = true);
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled)
-        throw Exception('El GPS está desactivado. Enciéndelo.');
 
-      LocationPermission permission = await Geolocator.checkPermission();
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+      if (!serviceEnabled) {
+        throw Exception('El GPS está desactivado. Enciéndelo.');
+      }
+
+      var permission = await Geolocator.checkPermission();
+
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied)
+
+        if (permission == LocationPermission.denied) {
           throw Exception('Permiso de ubicación denegado.');
+        }
       }
+
       if (permission == LocationPermission.deniedForever) {
         throw Exception(
           'Los permisos de ubicación están denegados permanentemente.',
         );
       }
 
-      Position position = await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+
       final miUbi = LatLng(position.latitude, position.longitude);
 
       _mapController.move(miUbi, 17.0);
-      setState(() => _ubicacionSeleccionada = miUbi);
+
+      setState(() {
+        _ubicacionSeleccionada = miUbi;
+      });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString(), style: G.body(G.white)),
-          backgroundColor: G.ink5,
-        ),
-      );
+
+      _snack(e.toString());
     } finally {
       if (mounted) setState(() => _buscandoGPS = false);
     }
   }
 
   Future<void> _buscarDireccion(String query) async {
-    if (query.isEmpty) return;
+    final q = query.trim();
+
+    if (q.isEmpty) return;
+
     FocusScope.of(context).unfocus();
+
     setState(() => _buscandoTexto = true);
 
     try {
       final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1',
+        'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(q)}&format=json&limit=1',
       );
+
       final response = await http.get(
         url,
         headers: {'User-Agent': 'DogGoApp_Flutter'},
@@ -142,40 +161,44 @@ class _SeleccionarUbicacionScreenState
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
+
         if (data.isNotEmpty) {
           final lat = double.parse(data[0]['lat']);
           final lon = double.parse(data[0]['lon']);
           final ubi = LatLng(lat, lon);
 
           _mapController.move(ubi, 16.0);
+
           setState(() {
             _ubicacionSeleccionada = ubi;
-            if (_descripcionController.text.isEmpty) {
-              _descripcionController.text = data[0]['name'] ?? query;
+
+            if (_descripcionController.text.trim().isEmpty) {
+              _descripcionController.text =
+                  data[0]['display_name'] ?? data[0]['name'] ?? q;
             }
           });
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'No se encontró la dirección 📍',
-                style: G.body(G.white),
-              ),
-              backgroundColor: G.ink5,
-            ),
-          );
+          _snack('No se encontró la dirección 📍');
         }
+      } else {
+        _snack('No se pudo buscar la dirección.');
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al buscar', style: G.body(G.white)),
-          backgroundColor: G.ink5,
-        ),
-      );
+    } catch (_) {
+      _snack('Error al buscar.');
     } finally {
       if (mounted) setState(() => _buscandoTexto = false);
     }
+  }
+
+  void _snack(String texto) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texto, style: G.body(G.white)),
+        backgroundColor: G.ink5,
+        behavior: SnackBarBehavior.floating,
+        shape: const RoundedRectangleBorder(borderRadius: G.r12),
+      ),
+    );
   }
 
   void _confirmar() {
@@ -183,15 +206,7 @@ class _SeleccionarUbicacionScreenState
     final descripcion = _descripcionController.text.trim();
 
     if (ubicacion == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Toca el mapa para fijar un punto.',
-            style: G.body(G.white),
-          ),
-          backgroundColor: G.ink5,
-        ),
-      );
+      _snack('Toca el mapa para fijar un punto.');
       return;
     }
 
@@ -199,6 +214,12 @@ class _SeleccionarUbicacionScreenState
       'latitud': ubicacion.latitude,
       'longitud': ubicacion.longitude,
       'texto': descripcion.isEmpty ? 'Ubicación seleccionada' : descripcion,
+      'ubicacionTexto': descripcion.isEmpty
+          ? 'Ubicación seleccionada'
+          : descripcion,
+      'direccionRecogida': descripcion.isEmpty
+          ? 'Ubicación seleccionada'
+          : descripcion,
     });
   }
 
@@ -215,8 +236,11 @@ class _SeleccionarUbicacionScreenState
               initialZoom: 15,
               minZoom: 3,
               maxZoom: 19,
-              onTap: (tapPosition, point) =>
-                  setState(() => _ubicacionSeleccionada = point),
+              onTap: (tapPosition, point) {
+                setState(() {
+                  _ubicacionSeleccionada = point;
+                });
+              },
             ),
             children: [
               TileLayer(
@@ -237,10 +261,9 @@ class _SeleccionarUbicacionScreenState
                 ),
             ],
           ),
-
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   Container(
@@ -310,8 +333,6 @@ class _SeleccionarUbicacionScreenState
               ),
             ),
           ),
-
-          // TARJETA DE ABAJO
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -343,7 +364,7 @@ class _SeleccionarUbicacionScreenState
                     children: [
                       Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: G.brandPale,
                           borderRadius: G.r12,
                         ),
@@ -382,13 +403,13 @@ class _SeleccionarUbicacionScreenState
                       prefixIcon: const Icon(Icons.home_rounded, color: G.ink3),
                       filled: true,
                       fillColor: G.ink0,
-                      border: OutlineInputBorder(
+                      border: const OutlineInputBorder(
                         borderRadius: G.r16,
                         borderSide: BorderSide.none,
                       ),
-                      focusedBorder: OutlineInputBorder(
+                      focusedBorder: const OutlineInputBorder(
                         borderRadius: G.r16,
-                        borderSide: const BorderSide(
+                        borderSide: BorderSide(
                           color: G.brand,
                           width: 1.5,
                         ),
@@ -403,7 +424,9 @@ class _SeleccionarUbicacionScreenState
                       style: ElevatedButton.styleFrom(
                         backgroundColor: G.brand,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: G.r16),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: G.r16,
+                        ),
                         elevation: 0,
                       ),
                       child: Text(
@@ -416,8 +439,6 @@ class _SeleccionarUbicacionScreenState
               ),
             ),
           ),
-
-          // BOTÓN DE GPS - AHORA ESTÁ HASTA EL FINAL DEL STACK PARA QUE FLOTE POR ENCIMA
           Positioned(
             right: 16,
             bottom: 280,
@@ -455,6 +476,7 @@ class _SeleccionarUbicacionScreenState
 
 class _MarcadorAnimado extends StatefulWidget {
   const _MarcadorAnimado();
+
   @override
   State<_MarcadorAnimado> createState() => _MarcadorAnimadoState();
 }
@@ -465,6 +487,7 @@ class _MarcadorAnimadoState extends State<_MarcadorAnimado>
     vsync: this,
     duration: const Duration(milliseconds: 400),
   )..forward();
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -484,7 +507,7 @@ class _MarcadorAnimadoState extends State<_MarcadorAnimado>
       ),
       child: const Icon(
         Icons.location_on_rounded,
-        color: Color(0xFFD4694A),
+        color: G.clay,
         size: 50,
       ),
     );

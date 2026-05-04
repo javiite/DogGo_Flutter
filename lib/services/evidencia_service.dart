@@ -13,7 +13,13 @@ class EvidenciaService {
       throw Exception('No hay URL del servidor configurada.');
     }
 
-    return baseUrl.trim();
+    final limpia = baseUrl.trim();
+
+    if (limpia.endsWith('/')) {
+      return limpia.substring(0, limpia.length - 1);
+    }
+
+    return limpia;
   }
 
   Future<String> _token() async {
@@ -63,7 +69,7 @@ class EvidenciaService {
       mensaje = body.toString();
     }
 
-    throw Exception(mensaje);
+    throw Exception('$mensaje Código: ${response.statusCode}');
   }
 
   Future<Map<String, dynamic>> subirFotoInicio({
@@ -93,6 +99,10 @@ class EvidenciaService {
     required File archivo,
     required String tipo,
   }) async {
+    if (!await archivo.exists()) {
+      throw Exception('El archivo seleccionado ya no existe.');
+    }
+
     final baseUrl = await _baseUrl();
     final token = await _token();
 
@@ -114,32 +124,47 @@ class EvidenciaService {
             '/api/Evidencias/paseo/$paseoId/fin',
           ];
 
+    final fileFields = [
+      'archivo',
+      'Archivo',
+      'foto',
+      'Foto',
+      'imagen',
+      'Imagen',
+      'file',
+      'File',
+    ];
+
     Exception? ultimoError;
 
     for (final endpoint in endpoints) {
-      try {
-        final uri = Uri.parse('$baseUrl$endpoint');
+      for (final fileField in fileFields) {
+        try {
+          final uri = Uri.parse('$baseUrl$endpoint');
 
-        final request = http.MultipartRequest('POST', uri);
+          final request = http.MultipartRequest('POST', uri);
 
-        request.headers['Authorization'] = 'Bearer $token';
-        request.fields['paseoId'] = paseoId.toString();
-        request.fields['PaseoId'] = paseoId.toString();
-        request.fields['tipo'] = tipo;
-        request.fields['Tipo'] = tipo;
+          request.headers['Authorization'] = 'Bearer $token';
+          request.headers['Accept'] = 'application/json';
 
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'archivo',
-            archivo.path,
-          ),
-        );
+          request.fields['paseoId'] = paseoId.toString();
+          request.fields['PaseoId'] = paseoId.toString();
+          request.fields['tipo'] = tipo;
+          request.fields['Tipo'] = tipo;
 
-        final response = await _enviarMultipart(request);
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              fileField,
+              archivo.path,
+            ),
+          );
 
-        return _normalizarRespuesta(response);
-      } catch (e) {
-        ultimoError = Exception(e.toString());
+          final response = await _enviarMultipart(request);
+
+          return _normalizarRespuesta(response);
+        } catch (e) {
+          ultimoError = Exception(e.toString());
+        }
       }
     }
 
@@ -148,6 +173,6 @@ class EvidenciaService {
 
   Future<http.Response> _enviarMultipart(http.MultipartRequest request) async {
     final streamedResponse = await request.send();
-    return await http.Response.fromStream(streamedResponse);
+    return http.Response.fromStream(streamedResponse);
   }
 }

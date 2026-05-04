@@ -7,7 +7,7 @@ class PaseosService {
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if (statusCode == 200 && body['success'] == true) {
+    if (statusCode == 200 && body is Map && body['success'] == true) {
       return {
         'success': true,
         'data': body['data'],
@@ -16,7 +16,9 @@ class PaseosService {
 
     return {
       'success': false,
-      'message': body['message'] ?? 'No se pudieron obtener los paseos.',
+      'message': body is Map
+          ? body['message'] ?? 'No se pudieron obtener los paseos.'
+          : 'No se pudieron obtener los paseos.',
       'statusCode': statusCode,
     };
   }
@@ -27,7 +29,7 @@ class PaseosService {
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if (statusCode == 200 && body['success'] == true) {
+    if (statusCode == 200 && body is Map && body['success'] == true) {
       return {
         'success': true,
         'data': body['data'],
@@ -36,7 +38,9 @@ class PaseosService {
 
     return {
       'success': false,
-      'message': body['message'] ?? 'No se pudo obtener el paseo.',
+      'message': body is Map
+          ? body['message'] ?? 'No se pudo obtener el paseo.'
+          : 'No se pudo obtener el paseo.',
       'statusCode': statusCode,
     };
   }
@@ -53,28 +57,39 @@ class PaseosService {
   }) async {
     final data = <String, dynamic>{
       'paseadorId': paseadorId,
+      'PaseadorId': paseadorId,
       'perroId': perroId,
+      'PerroId': perroId,
       'fechaProgramada': fechaProgramada.toIso8601String(),
+      'FechaProgramada': fechaProgramada.toIso8601String(),
       'duracionMinutos': duracionMinutos,
+      'DuracionMinutos': duracionMinutos,
     };
 
     if (latitudRecogida != null) {
       data['latitudRecogida'] = latitudRecogida;
+      data['LatitudRecogida'] = latitudRecogida;
     }
 
     if (longitudRecogida != null) {
       data['longitudRecogida'] = longitudRecogida;
+      data['LongitudRecogida'] = longitudRecogida;
     }
 
     if (ubicacionTexto != null && ubicacionTexto.trim().isNotEmpty) {
       data['ubicacionTexto'] = ubicacionTexto.trim();
+      data['UbicacionTexto'] = ubicacionTexto.trim();
       data['direccionRecogida'] = ubicacionTexto.trim();
+      data['DireccionRecogida'] = ubicacionTexto.trim();
       data['ubicacionRecogidaTexto'] = ubicacionTexto.trim();
+      data['UbicacionRecogidaTexto'] = ubicacionTexto.trim();
     }
 
     if (notas != null && notas.trim().isNotEmpty) {
       data['notas'] = notas.trim();
+      data['Notas'] = notas.trim();
       data['observaciones'] = notas.trim();
+      data['Observaciones'] = notas.trim();
     }
 
     final response = await ApiService.postAuth(
@@ -85,7 +100,9 @@ class PaseosService {
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if ((statusCode == 200 || statusCode == 201) && body['success'] == true) {
+    if ((statusCode == 200 || statusCode == 201) &&
+        body is Map &&
+        body['success'] == true) {
       return {
         'success': true,
         'message': body['message'] ?? 'Paseo creado correctamente.',
@@ -93,7 +110,9 @@ class PaseosService {
       };
     }
 
-    final mensajeBase = body['message'] ?? 'No se pudo crear el paseo.';
+    final mensajeBase = body is Map
+        ? body['message'] ?? 'No se pudo crear el paseo.'
+        : 'No se pudo crear el paseo.';
 
     return {
       'success': false,
@@ -123,15 +142,21 @@ class PaseosService {
     return _normalizarRespuesta(response, 'Paseo finalizado correctamente.');
   }
 
-  static Future<Map<String, dynamic>> cancelarPaseo(int id, {String? motivo}) async {
+  static Future<Map<String, dynamic>> cancelarPaseo(
+    int id, {
+    String? motivo,
+  }) async {
     final data = <String, dynamic>{};
 
     if (motivo != null && motivo.trim().isNotEmpty) {
       data['motivo'] = motivo.trim();
+      data['Motivo'] = motivo.trim();
       data['motivoCancelacion'] = motivo.trim();
+      data['MotivoCancelacion'] = motivo.trim();
     }
 
     final response = await ApiService.putAuth('/api/paseos/$id/cancelar', data);
+
     return _normalizarRespuesta(response, 'Paseo cancelado correctamente.');
   }
 
@@ -142,7 +167,7 @@ class PaseosService {
     final statusCode = response['statusCode'];
     final body = response['body'];
 
-    if (statusCode == 200 && body['success'] == true) {
+    if (statusCode == 200 && body is Map && body['success'] == true) {
       return {
         'success': true,
         'message': body['message'] ?? okMessage,
@@ -152,8 +177,9 @@ class PaseosService {
 
     return {
       'success': false,
-      'message':
-          '${body['message'] ?? 'No se pudo completar la acción.'} Código: $statusCode',
+      'message': body is Map
+          ? '${body['message'] ?? 'No se pudo completar la acción.'} Código: $statusCode'
+          : 'No se pudo completar la acción. Código: $statusCode',
       'statusCode': statusCode,
       'data': body,
     };

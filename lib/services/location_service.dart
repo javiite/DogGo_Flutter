@@ -4,7 +4,7 @@ import 'permiso_service.dart';
 
 class LocationService {
   Future<bool> servicioUbicacionActivo() async {
-    return await Geolocator.isLocationServiceEnabled();
+    return Geolocator.isLocationServiceEnabled();
   }
 
   Future<bool> pedirPermisoUbicacion() async {
@@ -42,7 +42,7 @@ class LocationService {
   Future<Position> obtenerUbicacionActual() async {
     await pedirPermisoUbicacion();
 
-    return await Geolocator.getCurrentPosition(
+    return Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
       timeLimit: const Duration(seconds: 12),
     );

@@ -39,7 +39,7 @@ class TrackingService {
       mensaje = body.toString();
     }
 
-    throw Exception(mensaje);
+    throw Exception('$mensaje Código: $statusCode');
   }
 
   Future<Map<String, dynamic>> enviarUbicacion({

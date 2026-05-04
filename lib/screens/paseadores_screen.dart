@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../services/paseadores_service.dart';
 import 'detalle_paseador_screen.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  DESIGN SYSTEM
-// ─────────────────────────────────────────────────────────────────────────────
 class G {
   static const brand = Color(0xFF0D9E7E);
   static const brandPale = Color(0xFFE8F8F3);
@@ -37,30 +35,34 @@ class G {
   ];
 
   static TextStyle h2(Color c) => TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.w700,
-    color: c,
-    letterSpacing: -.4,
-    height: 1.15,
-  );
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: c,
+        letterSpacing: -.4,
+        height: 1.15,
+      );
+
   static TextStyle h3(Color c) => TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
-    color: c,
-    letterSpacing: -.2,
-  );
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: c,
+        letterSpacing: -.2,
+      );
+
   static TextStyle body(Color c, {double size = 13.5}) =>
       TextStyle(fontSize: size, fontWeight: FontWeight.w400, color: c);
+
   static TextStyle label(Color c, {double size = 12}) => TextStyle(
-    fontSize: size,
-    fontWeight: FontWeight.w700,
-    color: c,
-    letterSpacing: .3,
-  );
+        fontSize: size,
+        fontWeight: FontWeight.w700,
+        color: c,
+        letterSpacing: .3,
+      );
 }
 
 class PaseadoresScreen extends StatefulWidget {
   const PaseadoresScreen({super.key});
+
   @override
   State<PaseadoresScreen> createState() => _PaseadoresScreenState();
 }
@@ -69,6 +71,7 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
   bool _cargando = true;
   String? _error;
   List<dynamic> _paseadores = [];
+
   final TextEditingController _busquedaController = TextEditingController();
 
   @override
@@ -88,9 +91,12 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       _cargando = true;
       _error = null;
     });
+
     try {
       final result = await PaseadoresService.obtenerPaseadores();
+
       if (!mounted) return;
+
       if (result['success'] == true) {
         setState(() {
           _paseadores = result['data'] is List ? result['data'] : [];
@@ -104,6 +110,7 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _error = 'Error de conexión: $e';
         _cargando = false;
@@ -111,7 +118,6 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
     }
   }
 
-  // Helpers lógicos de Gera intactos
   String _ts2(dynamic v, [String fb = 'Sin dato']) {
     if (v == null) return fb;
     final t = v.toString().trim();
@@ -125,7 +131,9 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
   }
 
   dynamic _val(Map<String, dynamic> m, List<String> keys) {
-    for (final k in keys) if (m.containsKey(k) && m[k] != null) return m[k];
+    for (final k in keys) {
+      if (m.containsKey(k) && m[k] != null) return m[k];
+    }
     return null;
   }
 
@@ -134,11 +142,18 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
 
   String _nombre(Map<String, dynamic> p) {
     final u = _usuario(p);
+
     final n = _ts2(
-      _val(p, ['nombre', 'Nombre', 'paseadorNombre', 'PaseadorNombre']) ??
+      _val(p, [
+            'nombre',
+            'Nombre',
+            'paseadorNombre',
+            'PaseadorNombre',
+          ]) ??
           _val(u, ['nombre', 'Nombre']),
       '',
     );
+
     final a = _ts2(
       _val(p, [
             'apellido',
@@ -149,20 +164,25 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
           _val(u, ['apellido', 'Apellido']),
       '',
     );
+
     final c = '$n $a'.trim();
+
     return c.isEmpty ? 'Sin dato' : c;
   }
 
   String _descripcion(Map<String, dynamic> p) => _ts2(
-    _val(p, ['descripcion', 'Descripcion', 'bio', 'Bio']),
-    'Sin descripción',
-  );
+        _val(p, ['descripcion', 'Descripcion', 'bio', 'Bio']),
+        'Sin descripción',
+      );
+
   String _zona(Map<String, dynamic> p) => _ts2(
-    _val(p, ['zonaServicio', 'ZonaServicio', 'zona', 'Zona']),
-    'Sin zona',
-  );
+        _val(p, ['zonaServicio', 'ZonaServicio', 'zona', 'Zona']),
+        'Sin zona',
+      );
+
   String _foto(Map<String, dynamic> p) {
     final u = _usuario(p);
+
     return _ts2(
       _val(p, ['fotoUrl', 'FotoUrl', 'imagenUrl', 'ImagenUrl']) ??
           _val(u, ['fotoUrl', 'FotoUrl', 'imagenUrl', 'ImagenUrl']),
@@ -171,9 +191,17 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
   }
 
   String _tarifa(Map<String, dynamic> p) {
-    final t = _val(p, ['tarifaPorHora', 'TarifaPorHora', 'tarifa', 'Tarifa']);
+    final t = _val(p, [
+      'tarifaPorHora',
+      'TarifaPorHora',
+      'tarifa',
+      'Tarifa',
+    ]);
+
     if (t == null) return 'Tarifa n/d';
+
     final n = double.tryParse(t.toString());
+
     return n == null ? '\$$t/h' : '\$${n.toStringAsFixed(2)}/h';
   }
 
@@ -184,8 +212,11 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       'rating',
       'Rating',
     ]);
+
     if (c == null) return 'Sin cal.';
+
     final n = double.tryParse(c.toString());
+
     return n == null ? '⭐ $c' : '⭐ ${n.toStringAsFixed(1)}';
   }
 
@@ -196,30 +227,39 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       'experiencia',
       'Experiencia',
     ]);
+
     return e == null ? 'Sin exp.' : '$e año(s)';
   }
 
   bool _disponible(Map<String, dynamic> p) {
     final v = _val(p, ['disponible', 'Disponible', 'activo', 'Activo']);
+
     if (v is bool) return v;
+
     final t = v?.toString().trim().toLowerCase();
+
     if (t == null || t.isEmpty || t == 'null') return true;
+
     return t == 'true' || t == '1' || t == 'si' || t == 'sí';
   }
 
   List<String> _zonas(Map<String, dynamic> p) {
     final z = _zona(p);
+
     if (z == 'Sin zona') return [z];
+
     final s = z
         .split(',')
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
+
     return s.isEmpty ? [z] : s;
   }
 
   Map<String, dynamic> _normalizar(Map<String, dynamic> p) {
     final n = Map<String, dynamic>.from(p);
+
     n['nombre'] = _nombre(p);
     n['descripcion'] = _descripcion(p);
     n['zonaServicio'] = _zona(p);
@@ -243,14 +283,18 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       'experiencia',
       'Experiencia',
     ]);
+
     return n;
   }
 
   List<dynamic> get _filtrados {
     final q = _busquedaController.text.trim().toLowerCase();
+
     if (q.isEmpty) return _paseadores;
+
     return _paseadores.where((item) {
       final p = _map(item);
+
       return [
         _nombre(p),
         _descripcion(p),
@@ -262,6 +306,7 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
   @override
   Widget build(BuildContext context) {
     final lista = _filtrados;
+
     return Scaffold(
       backgroundColor: G.ink0,
       body: NestedScrollView(
@@ -283,146 +328,170 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
             ),
             title: Text('Paseadores', style: G.h2(G.ink6)),
             centerTitle: true,
+            actions: [
+              IconButton(
+                onPressed: _cargarPaseadores,
+                icon: const Icon(Icons.refresh_rounded, color: G.ink6),
+              ),
+            ],
           ),
         ],
         body: _cargando
             ? const Center(child: CircularProgressIndicator(color: G.brand))
             : _error != null
-            ? _buildError()
-            : Column(
-                children: [
-                  _buildHeader(lista.length),
-                  Expanded(
-                    child: lista.isEmpty ? _buildVacio() : _buildLista(lista),
+                ? _buildError()
+                : Column(
+                    children: [
+                      _buildHeader(lista.length),
+                      Expanded(
+                        child: lista.isEmpty
+                            ? _buildVacio()
+                            : _buildLista(lista),
+                      ),
+                    ],
                   ),
-                ],
-              ),
       ),
     );
   }
 
-  Widget _buildHeader(int count) => Container(
-    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-    color: G.ink0,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$count paseadores encontrados', style: G.label(G.ink4)),
-        const SizedBox(height: 10),
-        Container(
-          height: 48,
-          decoration: const BoxDecoration(
-            color: G.white,
-            borderRadius: G.r16,
-            boxShadow: G.shadow1,
-          ),
-          child: TextField(
-            controller: _busquedaController,
-            onChanged: (_) => setState(() {}),
-            style: G.body(G.ink6),
-            decoration: InputDecoration(
-              hintText: 'Buscar paseador o zona...',
-              hintStyle: G.body(G.ink3),
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                color: G.ink4,
-                size: 20,
-              ),
-              suffixIcon: _busquedaController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        size: 18,
-                        color: G.ink4,
-                      ),
-                      onPressed: () {
-                        _busquedaController.clear();
-                        setState(() {});
-                      },
-                    )
-                  : null,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _buildLista(List<dynamic> lista) => RefreshIndicator(
-    color: G.brand,
-    onRefresh: _cargarPaseadores,
-    child: ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-      itemCount: lista.length,
-      itemBuilder: (_, i) {
-        final p = _map(lista[i]);
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _PaseadorCard(
-            nombre: _nombre(p),
-            precio: _tarifa(p),
-            descripcion: _descripcion(p),
-            zonas: _zonas(p),
-            experiencia: _exp(p),
-            disponible: _disponible(p),
-            rating: _rating(p),
-            fotoUrl: _foto(p),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => DetallePaseadorScreen(paseador: _normalizar(p)),
-              ),
-            ),
-          ),
-        );
-      },
-    ),
-  );
-
-  Widget _buildError() => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
+  Widget _buildHeader(int count) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+      color: G.ink0,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded, size: 64, color: G.clay),
-          const SizedBox(height: 14),
-          Text(_error!, textAlign: TextAlign.center, style: G.h3(G.ink6)),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _cargarPaseadores,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Reintentar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: G.brand,
-              foregroundColor: G.white,
-              shape: const RoundedRectangleBorder(borderRadius: G.r12),
+          Text('$count paseadores encontrados', style: G.label(G.ink4)),
+          const SizedBox(height: 10),
+          Container(
+            height: 48,
+            decoration: const BoxDecoration(
+              color: G.white,
+              borderRadius: G.r16,
+              boxShadow: G.shadow1,
+            ),
+            child: TextField(
+              controller: _busquedaController,
+              onChanged: (_) => setState(() {}),
+              style: G.body(G.ink6),
+              decoration: InputDecoration(
+                hintText: 'Buscar paseador o zona...',
+                hintStyle: G.body(G.ink3),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: G.ink4,
+                  size: 20,
+                ),
+                suffixIcon: _busquedaController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: G.ink4,
+                        ),
+                        onPressed: () {
+                          _busquedaController.clear();
+                          setState(() {});
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
             ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _buildVacio() => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.person_search_rounded, size: 72, color: G.ink3),
-        const SizedBox(height: 14),
-        Text('No se encontraron paseadores', style: G.h3(G.ink6)),
-        const SizedBox(height: 6),
-        Text('Prueba con otra búsqueda', style: G.body(G.ink4)),
-      ],
-    ),
-  );
+  Widget _buildLista(List<dynamic> lista) {
+    return RefreshIndicator(
+      color: G.brand,
+      onRefresh: _cargarPaseadores,
+      child: ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        itemCount: lista.length,
+        itemBuilder: (_, i) {
+          final p = _map(lista[i]);
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _PaseadorCard(
+              nombre: _nombre(p),
+              precio: _tarifa(p),
+              descripcion: _descripcion(p),
+              zonas: _zonas(p),
+              experiencia: _exp(p),
+              disponible: _disponible(p),
+              rating: _rating(p),
+              fotoUrl: _foto(p),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DetallePaseadorScreen(
+                    paseador: _normalizar(p),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 64, color: G.clay),
+            const SizedBox(height: 14),
+            Text(_error!, textAlign: TextAlign.center, style: G.h3(G.ink6)),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _cargarPaseadores,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reintentar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: G.brand,
+                foregroundColor: G.white,
+                shape: const RoundedRectangleBorder(borderRadius: G.r12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVacio() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.person_search_rounded, size: 72, color: G.ink3),
+          const SizedBox(height: 14),
+          Text('No se encontraron paseadores', style: G.h3(G.ink6)),
+          const SizedBox(height: 6),
+          Text('Prueba con otra búsqueda', style: G.body(G.ink4)),
+        ],
+      ),
+    );
+  }
 }
 
 class _PaseadorCard extends StatelessWidget {
-  final String nombre, precio, descripcion, experiencia, rating, fotoUrl;
+  final String nombre;
+  final String precio;
+  final String descripcion;
+  final String experiencia;
+  final String rating;
+  final String fotoUrl;
   final List<String> zonas;
   final bool disponible;
   final VoidCallback onTap;
@@ -483,10 +552,7 @@ class _PaseadorCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          nombre,
-                          style: G.h3(G.ink6).copyWith(fontSize: 15),
-                        ),
+                        Text(nombre, style: G.h3(G.ink6).copyWith(fontSize: 15)),
                         const SizedBox(height: 3),
                         Text(precio, style: G.label(G.ink4)),
                       ],
@@ -549,47 +615,60 @@ class _PaseadorCard extends StatelessWidget {
 
 class _Chip extends StatelessWidget {
   final String label;
-  final Color fg, bg;
+  final Color fg;
+  final Color bg;
+
   const _Chip(this.label, this.fg, this.bg);
+
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(color: bg, borderRadius: G.r8),
-    child: Text(label, style: G.label(fg).copyWith(fontSize: 10.5)),
-  );
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: G.r8),
+      child: Text(label, style: G.label(fg).copyWith(fontSize: 10.5)),
+    );
+  }
 }
 
 class _OutBtn extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
+
   const _OutBtn(this.label, this.onTap);
+
   @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onTap,
-    style: OutlinedButton.styleFrom(
-      foregroundColor: G.brand,
-      side: const BorderSide(color: G.brand, width: 1.5),
-      shape: const RoundedRectangleBorder(borderRadius: G.r12),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-    ),
-    child: Text(label, style: G.label(G.brand).copyWith(fontSize: 13)),
-  );
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: G.brand,
+        side: const BorderSide(color: G.brand, width: 1.5),
+        shape: const RoundedRectangleBorder(borderRadius: G.r12),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+      child: Text(label, style: G.label(G.brand).copyWith(fontSize: 13)),
+    );
+  }
 }
 
 class _FillBtn extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
+
   const _FillBtn(this.label, this.onTap);
+
   @override
-  Widget build(BuildContext context) => ElevatedButton(
-    onPressed: onTap,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: G.brand,
-      foregroundColor: G.white,
-      shape: const RoundedRectangleBorder(borderRadius: G.r12),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      elevation: 0,
-    ),
-    child: Text(label, style: G.label(G.white).copyWith(fontSize: 13)),
-  );
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: G.brand,
+        foregroundColor: G.white,
+        shape: const RoundedRectangleBorder(borderRadius: G.r12),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        elevation: 0,
+      ),
+      child: Text(label, style: G.label(G.white).copyWith(fontSize: 13)),
+    );
+  }
 }
