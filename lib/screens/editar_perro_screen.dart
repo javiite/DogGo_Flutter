@@ -17,10 +17,12 @@ class _T {
   static const emerald = Color(0xFF22C55E);
   static const emeraldSurf = Color(0xFFE6FAF0);
   static const rose = Color(0xFFEF4444);
+  static const roseSurf = Color(0xFFFEEEEE);
   static const bg = Color(0xFFF4F0E8);
   static const surface = Colors.white;
   static const ink = Color(0xFF111827);
   static const inkSub = Color(0xFF6B7280);
+  static const stroke = Color(0xFFE5E7EB);
 
   static List<BoxShadow> shadow({
     double opacity = .055,
@@ -271,11 +273,102 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
     );
   }
 
-  Future<void> _seleccionarImagen() async {
+  Future<void> _mostrarOpcionesFoto() async {
+    if (_guardando) return;
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SafeArea(
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            decoration: BoxDecoration(
+              color: _T.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: _T.shadow(
+                opacity: .12,
+                blur: 24,
+                offset: const Offset(0, 8),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: _T.stroke,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Foto del perro',
+                  style: _ts(18, FontWeight.w900, _T.ink),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Elige una foto existente o toma una nueva con la cámara.',
+                  textAlign: TextAlign.center,
+                  style: _ts(12.5, FontWeight.w600, _T.inkSub, height: 1.35),
+                ),
+                const SizedBox(height: 16),
+                _BottomOption(
+                  icon: Icons.photo_library_rounded,
+                  title: 'Elegir desde galería',
+                  subtitle: 'Seleccionar una imagen del celular',
+                  color: _T.teal,
+                  surface: _T.tealSurface,
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+                const SizedBox(height: 10),
+                _BottomOption(
+                  icon: Icons.camera_alt_rounded,
+                  title: 'Tomar foto con cámara',
+                  subtitle: 'Abrir cámara y tomar foto ahora',
+                  color: _T.violet,
+                  surface: _T.violetSurf,
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                if (_imagenLocal != null) ...[
+                  const SizedBox(height: 10),
+                  _BottomOption(
+                    icon: Icons.delete_outline_rounded,
+                    title: 'Quitar foto seleccionada',
+                    subtitle: 'Mantener la foto actual del servidor',
+                    color: _T.rose,
+                    surface: _T.roseSurf,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _imagenLocal = null;
+                      });
+                    },
+                  ),
+                ],
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+
+    await _seleccionarImagen(source);
+  }
+
+  Future<void> _seleccionarImagen(ImageSource source) async {
     try {
       final imagen = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 75,
+        maxWidth: 1600,
+        maxHeight: 1600,
       );
 
       if (imagen == null) return;
@@ -285,10 +378,12 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
       });
 
       _mostrarMensaje(
-        'Foto seleccionada como preview. Para guardarla real se ocupa endpoint de upload.',
+        source == ImageSource.camera
+            ? 'Foto tomada. Se subirá al guardar cambios.'
+            : 'Foto seleccionada. Se subirá al guardar cambios.',
       );
     } catch (e) {
-      _mostrarMensaje('No se pudo seleccionar la imagen: $e');
+      _mostrarMensaje('No se pudo obtener la imagen: $e');
     }
   }
 
@@ -315,7 +410,8 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
       return false;
     }
 
-    if (fotoUrl.isNotEmpty &&
+    if (_imagenLocal == null &&
+        fotoUrl.isNotEmpty &&
         !fotoUrl.startsWith('http://') &&
         !fotoUrl.startsWith('https://') &&
         !fotoUrl.startsWith('/')) {
@@ -340,7 +436,8 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
     }
 
     final edad = int.parse(_edadController.text.trim());
-    final fotoUrl = _fotoUrlController.text.trim();
+    final fotoUrlManual = _fotoUrlController.text.trim();
+    final tieneImagenLocal = _imagenLocal != null;
 
     setState(() {
       _guardando = true;
@@ -354,17 +451,43 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
         edad: edad,
         tamano: _tamanoSeleccionado,
         notas: _notasController.text.trim(),
-        fotoUrl: fotoUrl.isEmpty ? null : fotoUrl,
+        fotoUrl: tieneImagenLocal
+            ? null
+            : fotoUrlManual.isEmpty
+                ? null
+                : fotoUrlManual,
       );
 
       if (!mounted) return;
 
       if (result['success'] == true) {
-        _mostrarMensaje(
-          result['message']?.toString() ?? 'Perro actualizado correctamente.',
-        );
+        String mensajeFinal =
+            result['message']?.toString() ?? 'Perro actualizado correctamente.';
 
-        await Future.delayed(const Duration(milliseconds: 650));
+        if (tieneImagenLocal) {
+          final fotoResult = await PerrosService.subirFotoPerro(
+            id: id,
+            filePath: _imagenLocal!.path,
+          );
+
+          if (!mounted) return;
+
+          if (fotoResult['success'] == true) {
+            mensajeFinal = 'Perro actualizado con foto correctamente.';
+          } else {
+            final statusCode = fotoResult['statusCode'];
+            final errorFoto = fotoResult['message']?.toString() ??
+                'No se pudo subir la foto.';
+
+            mensajeFinal = statusCode == null
+                ? 'Datos actualizados, pero la foto no se subió: $errorFoto'
+                : 'Datos actualizados, pero la foto no se subió: $errorFoto Código: $statusCode';
+          }
+        }
+
+        _mostrarMensaje(mensajeFinal);
+
+        await Future.delayed(const Duration(milliseconds: 800));
 
         if (!mounted) return;
 
@@ -438,11 +561,13 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
         ? 'Perro'
         : _nombreController.text.trim();
 
-    final razaPreview =
-        _razaController.text.trim().isEmpty ? 'Raza' : _razaController.text.trim();
+    final razaPreview = _razaController.text.trim().isEmpty
+        ? 'Raza'
+        : _razaController.text.trim();
 
-    final edadPreview =
-        _edadController.text.trim().isEmpty ? 'Edad' : '${_edadController.text.trim()} años';
+    final edadPreview = _edadController.text.trim().isEmpty
+        ? 'Edad'
+        : '${_edadController.text.trim()} años';
 
     return Scaffold(
       backgroundColor: _T.bg,
@@ -483,7 +608,7 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
             tamano: _tamanoSeleccionado,
             imagenLocal: _imagenLocal,
             fotoUrl: _fotoPreviewUrl(),
-            onPickImage: _seleccionarImagen,
+            onPickImage: _mostrarOpcionesFoto,
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -557,37 +682,98 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        _imagenLocal == null
+                            ? 'Puedes mantener la foto actual, elegir una imagen de galería o tomar una foto con cámara.'
+                            : 'Foto lista. Se subirá al servidor cuando guardes los cambios.',
+                        style: _ts(
+                          12.5,
+                          FontWeight.w700,
+                          _imagenLocal == null ? _T.inkSub : _T.tealDeep,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _guardando
+                                  ? null
+                                  : () => _seleccionarImagen(
+                                        ImageSource.gallery,
+                                      ),
+                              icon: const Icon(Icons.photo_library_rounded),
+                              label: const Text('Galería'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _T.tealDeep,
+                                side: const BorderSide(color: _T.tealDeep),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _guardando
+                                  ? null
+                                  : () => _seleccionarImagen(
+                                        ImageSource.camera,
+                                      ),
+                              icon: const Icon(Icons.camera_alt_rounded),
+                              label: const Text('Cámara'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _T.violet,
+                                side: const BorderSide(color: _T.violet),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _fotoUrlController,
-                        enabled: !_guardando,
+                        enabled: !_guardando && _imagenLocal == null,
                         keyboardType: TextInputType.url,
                         onChanged: (_) => setState(() {}),
                         decoration: _decoracionCampo(
-                          label: 'URL o ruta de foto',
-                          icon: Icons.image_rounded,
+                          label: 'URL o ruta manual opcional',
+                          icon: Icons.link_rounded,
                           hint: 'Ej. /uploads/perros/max.jpg',
                           color: _T.emerald,
                           surface: _T.emeraldSurf,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text(
-                        'Puedes pegar una URL pública o una ruta del servidor. Elegir desde galería solo sirve como preview hasta tener endpoint de subida.',
-                        style: _ts(12, FontWeight.w600, _T.inkSub, height: 1.35),
+                        'Si eliges cámara o galería, se usará esa imagen y se ignorará la ruta manual.',
+                        style: _ts(11.5, FontWeight.w600, _T.inkSub, height: 1.35),
                       ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: _guardando ? null : _seleccionarImagen,
-                        icon: const Icon(Icons.photo_library_rounded),
-                        label: const Text('Elegir foto del celular'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _T.tealDeep,
-                          side: const BorderSide(color: _T.tealDeep),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                      if (_imagenLocal != null) ...[
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _guardando
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _imagenLocal = null;
+                                    });
+                                  },
+                            icon: const Icon(Icons.close_rounded),
+                            label: const Text('Quitar foto seleccionada'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: _T.rose,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -742,7 +928,7 @@ class _HeaderEditarPerro extends StatelessWidget {
                           child: const Padding(
                             padding: EdgeInsets.all(10),
                             child: Icon(
-                              Icons.camera_alt_rounded,
+                              Icons.add_a_photo_rounded,
                               color: _T.tealDeep,
                               size: 20,
                             ),
@@ -974,6 +1160,77 @@ class _FormCard extends StatelessWidget {
           const SizedBox(height: 14),
           child,
         ],
+      ),
+    );
+  }
+}
+
+class _BottomOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final Color surface;
+  final VoidCallback onTap;
+
+  const _BottomOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.surface,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: surface,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(13),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(.8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: _ts(13.5, FontWeight.w900, _T.ink),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: _ts(11.5, FontWeight.w600, _T.inkSub),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: color,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

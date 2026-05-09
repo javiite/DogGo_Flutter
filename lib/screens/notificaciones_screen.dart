@@ -15,7 +15,6 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   List<Map<String, dynamic>> _notificaciones = [];
   bool _cargando = true;
   bool _accionando = false;
-  String? _error;
 
   @override
   void initState() {
@@ -26,7 +25,6 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   Future<void> _cargarNotificaciones() async {
     setState(() {
       _cargando = true;
-      _error = null;
     });
 
     try {
@@ -47,11 +45,11 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         _notificaciones = lista;
         _cargando = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
-        _error = e.toString();
+        _notificaciones = [];
         _cargando = false;
       });
     }
@@ -72,10 +70,6 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       if (!mounted) return;
 
       await _cargarNotificaciones();
-    } catch (e) {
-      if (!mounted) return;
-
-      _mostrarMensaje('No se pudo actualizar la notificación: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -85,14 +79,6 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     }
   }
 
-  void _mostrarMensaje(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-      ),
-    );
-  }
-
   int? _idNotificacion(Map<String, dynamic> item) {
     final valor = item['id'] ??
         item['Id'] ??
@@ -100,6 +86,8 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         item['NotificacionId'];
 
     if (valor is int) return valor;
+    if (valor is num) return valor.toInt();
+
     return int.tryParse(valor?.toString() ?? '');
   }
 
@@ -114,8 +102,11 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
 
   String _texto(dynamic valor, {String fallback = ''}) {
     if (valor == null) return fallback;
+
     final texto = valor.toString().trim();
+
     if (texto.isEmpty || texto.toLowerCase() == 'null') return fallback;
+
     return texto;
   }
 
@@ -161,6 +152,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     if (valor is bool) return valor;
 
     final texto = valor?.toString().toLowerCase();
+
     return texto == 'true' || texto == '1';
   }
 
@@ -168,6 +160,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     if (valor == null) return '';
 
     final fecha = DateTime.tryParse(valor.toString());
+
     if (fecha == null) return '';
 
     final local = fecha.toLocal();
@@ -184,7 +177,9 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     if (t.contains('chat') || t.contains('mensaje')) return Icons.chat_rounded;
     if (t.contains('cancel')) return Icons.cancel_rounded;
     if (t.contains('perfil')) return Icons.person_rounded;
-    if (t.contains('calificacion') || t.contains('rese')) return Icons.star_rounded;
+    if (t.contains('calificacion') || t.contains('rese')) {
+      return Icons.star_rounded;
+    }
 
     return Icons.notifications_rounded;
   }
@@ -196,7 +191,9 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     if (t.contains('chat') || t.contains('mensaje')) return Colors.blue;
     if (t.contains('cancel')) return Colors.red;
     if (t.contains('perfil')) return Colors.purple;
-    if (t.contains('calificacion') || t.contains('rese')) return Colors.amber.shade700;
+    if (t.contains('calificacion') || t.contains('rese')) {
+      return Colors.amber.shade700;
+    }
 
     return Colors.grey;
   }
@@ -208,12 +205,13 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
+      backgroundColor: const Color(0xFFF4F0E8),
       appBar: AppBar(
         title: const Text('Notificaciones'),
-        backgroundColor: const Color(0xFF1F8A70),
+        backgroundColor: const Color(0xFF089B7A),
         foregroundColor: Colors.white,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
           IconButton(
             tooltip: 'Actualizar',
@@ -227,7 +225,9 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
           : RefreshIndicator(
               onRefresh: _cargarNotificaciones,
               child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: const EdgeInsets.all(16),
                 children: [
                   _buildHeader(),
@@ -236,9 +236,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
                     const LinearProgressIndicator(),
                     const SizedBox(height: 16),
                   ],
-                  if (_error != null)
-                    _buildError()
-                  else if (_notificaciones.isEmpty)
+                  if (_notificaciones.isEmpty)
                     _buildVacio()
                   else
                     ..._notificaciones.map(_buildNotificacionCard),
@@ -255,8 +253,8 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF1F8A70),
-            Color(0xFF35A98A),
+            Color(0xFF0EC9A0),
+            Color(0xFF057A5F),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -264,10 +262,10 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
-          )
+            color: const Color(0xFF0EC9A0).withOpacity(0.22),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Row(
@@ -316,59 +314,19 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     );
   }
 
-  Widget _buildError() {
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.error_outline_rounded,
-            color: Colors.red.shade400,
-            size: 58,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'No se pudieron cargar las notificaciones.',
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 17,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _error ?? '',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 12.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _cargarNotificaciones,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Reintentar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1F8A70),
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildVacio() {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.04),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -387,11 +345,12 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Aquí aparecerán avisos sobre paseos, mensajes y cambios importantes.',
+            'Aquí aparecerán avisos sobre paseos, mensajes, evidencias y cambios importantes.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.grey.shade700,
               fontSize: 13,
+              height: 1.35,
             ),
           ),
         ],
@@ -418,7 +377,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
             color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 5),
-          )
+          ),
         ],
       ),
       child: InkWell(

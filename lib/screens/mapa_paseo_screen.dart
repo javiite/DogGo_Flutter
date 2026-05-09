@@ -29,8 +29,15 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarRol();
-    _cargarUltimaUbicacion();
+    _inicializar();
+  }
+
+  Future<void> _inicializar() async {
+    await _cargarRol();
+
+    if (_debeConsultarTracking) {
+      await _cargarUltimaUbicacion();
+    }
   }
 
   Future<void> _cargarRol() async {
@@ -54,7 +61,25 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
   Future<void> _cargarUltimaUbicacion() async {
     final id = _idPaseo();
 
-    if (id == null) return;
+    if (id == null) {
+      if (!mounted) return;
+
+      setState(() {
+        _cargandoUbicacion = false;
+        _errorUbicacion = 'No se encontró el ID del paseo.';
+      });
+      return;
+    }
+
+    if (!_debeConsultarTracking) {
+      if (!mounted) return;
+
+      setState(() {
+        _cargandoUbicacion = false;
+        _errorUbicacion = null;
+      });
+      return;
+    }
 
     setState(() {
       _cargandoUbicacion = true;
@@ -87,6 +112,8 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
         widget.paseo['PaseoId'];
 
     if (valor is int) return valor;
+    if (valor is num) return valor.toInt();
+
     return int.tryParse(valor?.toString() ?? '');
   }
 
@@ -129,12 +156,32 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
     return _estado().replaceAll(' ', '').toLowerCase();
   }
 
-  bool get _esPaseador {
-    return SessionService.esPaseadorRol(_rolReal);
+  bool get _esPendiente {
+    return _estadoNormalizado() == 'pendiente';
+  }
+
+  bool get _esAceptado {
+    return _estadoNormalizado() == 'aceptado';
   }
 
   bool get _esEnCurso {
     return _estadoNormalizado() == 'encurso';
+  }
+
+  bool get _esFinalizado {
+    return _estadoNormalizado() == 'finalizado';
+  }
+
+  bool get _esCancelado {
+    return _estadoNormalizado() == 'cancelado';
+  }
+
+  bool get _debeConsultarTracking {
+    return _esEnCurso || _esFinalizado;
+  }
+
+  bool get _esPaseador {
+    return SessionService.esPaseadorRol(_rolReal);
   }
 
   bool get _puedeAbrirTracking {
@@ -198,9 +245,11 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
       widget.paseo['latitudRecogida'] ??
           widget.paseo['latRecogida'] ??
           widget.paseo['ubicacionLatitud'] ??
+          widget.paseo['latitud'] ??
           widget.paseo['LatitudRecogida'] ??
           widget.paseo['LatRecogida'] ??
-          widget.paseo['UbicacionLatitud'],
+          widget.paseo['UbicacionLatitud'] ??
+          widget.paseo['Latitud'],
     );
   }
 
@@ -210,10 +259,12 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
           widget.paseo['lngRecogida'] ??
           widget.paseo['lonRecogida'] ??
           widget.paseo['ubicacionLongitud'] ??
+          widget.paseo['longitud'] ??
           widget.paseo['LongitudRecogida'] ??
           widget.paseo['LngRecogida'] ??
           widget.paseo['LonRecogida'] ??
-          widget.paseo['UbicacionLongitud'],
+          widget.paseo['UbicacionLongitud'] ??
+          widget.paseo['Longitud'],
     );
   }
 
@@ -235,6 +286,7 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
     if (valor == null) return 'No disponible';
 
     final fecha = DateTime.tryParse(valor.toString());
+
     if (fecha == null) return valor.toString();
 
     final local = fecha.toLocal();
@@ -291,6 +343,23 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
     }
   }
 
+  IconData _iconoEstado() {
+    switch (_estadoNormalizado()) {
+      case 'pendiente':
+        return Icons.schedule_rounded;
+      case 'aceptado':
+        return Icons.verified_rounded;
+      case 'encurso':
+        return Icons.directions_walk_rounded;
+      case 'finalizado':
+        return Icons.flag_rounded;
+      case 'cancelado':
+        return Icons.cancel_rounded;
+      default:
+        return Icons.info_outline_rounded;
+    }
+  }
+
   LatLng? _puntoActual() {
     final lat = _latitudActual();
     final lng = _longitudActual();
@@ -326,6 +395,45 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
     return const LatLng(25.6866, -100.3161);
   }
 
+  Future<void> _refrescar() async {
+    if (_debeConsultarTracking) {
+      await _cargarUltimaUbicacion();
+      return;
+    }
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_mensajeTracking()),
+      ),
+    );
+  }
+
+  String _mensajeTracking() {
+    if (_esPendiente) {
+      return 'El GPS se activará cuando el paseo sea aceptado e iniciado.';
+    }
+
+    if (_esAceptado) {
+      return 'El GPS todavía no inicia. El paseador debe iniciar el paseo.';
+    }
+
+    if (_esCancelado) {
+      return 'Este paseo fue cancelado. El tracking no está activo.';
+    }
+
+    if (_esFinalizado) {
+      return 'El paseo ya finalizó. Se muestra la última ubicación disponible.';
+    }
+
+    if (_esEnCurso) {
+      return 'El paseo está en curso. El tracking GPS está disponible.';
+    }
+
+    return 'Tracking no disponible para este estado.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final puntoActual = _puntoActual();
@@ -340,17 +448,22 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: _cargarUltimaUbicacion,
+            onPressed: _refrescar,
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _cargarUltimaUbicacion,
+        onRefresh: _refrescar,
         child: ListView(
           padding: const EdgeInsets.all(16),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           children: [
             _buildHeader(),
+            const SizedBox(height: 16),
+            _buildAvisoEstado(),
             const SizedBox(height: 16),
             _buildMapaReal(
               puntoActual: puntoActual,
@@ -443,22 +556,69 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
                     color: Colors.white.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Text(
-                    _estado(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      shadows: [
-                        Shadow(
-                          color: color.withOpacity(0.35),
-                          blurRadius: 4,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _iconoEstado(),
+                        color: Colors.white,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _estado(),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          shadows: [
+                            Shadow(
+                              color: color.withOpacity(0.35),
+                              blurRadius: 4,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvisoEstado() {
+    final color = _colorEstado();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: color.withOpacity(0.18),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _iconoEstado(),
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _mensajeTracking(),
+              style: TextStyle(
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.w800,
+                fontSize: 12.5,
+                height: 1.3,
+              ),
             ),
           ),
         ],
@@ -476,8 +636,8 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
       markers.add(
         Marker(
           point: puntoRecogida,
-          width: 62,
-          height: 62,
+          width: 70,
+          height: 70,
           child: const _MarkerIcon(
             icono: Icons.home_rounded,
             color: Colors.blue,
@@ -491,8 +651,8 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
       markers.add(
         Marker(
           point: puntoActual,
-          width: 62,
-          height: 62,
+          width: 70,
+          height: 70,
           child: _MarkerIcon(
             icono: Icons.pets_rounded,
             color: _colorEstado(),
@@ -521,48 +681,63 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: FlutterMap(
-        options: MapOptions(
-          initialCenter: _centroMapa(),
-          initialZoom: puntosRuta.length >= 2 ? 14 : 16,
-          minZoom: 3,
-          maxZoom: 19,
-        ),
+      child: Stack(
         children: [
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.example.doggo_flutter',
-          ),
-          if (puntosRuta.length >= 2)
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: puntosRuta,
-                  strokeWidth: 5,
-                  color: const Color(0xFF1F8A70),
-                ),
-              ],
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: _centroMapa(),
+              initialZoom: puntosRuta.length >= 2 ? 14 : 16,
+              minZoom: 3,
+              maxZoom: 19,
             ),
-          MarkerLayer(
-            markers: markers,
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.doggo_flutter',
+              ),
+              if (puntosRuta.length >= 2)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: puntosRuta,
+                      strokeWidth: 5,
+                      color: const Color(0xFF1F8A70),
+                    ),
+                  ],
+                ),
+              MarkerLayer(
+                markers: markers,
+              ),
+            ],
           ),
           if (markers.isEmpty)
-            Container(
-              color: Colors.black.withOpacity(0.03),
-              child: Center(
-                child: Container(
-                  margin: const EdgeInsets.all(24),
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: const Text(
-                    'Todavía no hay coordenadas para mostrar en el mapa.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.03),
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      _esPendiente || _esAceptado
+                          ? 'Todavía no hay coordenadas GPS del paseo. Se mostrarán cuando el paseo esté en curso.'
+                          : 'Todavía no hay coordenadas para mostrar en el mapa.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -641,12 +816,16 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
             titulo: 'Última ubicación GPS',
             valor: puntoActual != null
                 ? '${puntoActual.latitude.toStringAsFixed(6)}, ${puntoActual.longitude.toStringAsFixed(6)}'
-                : 'Todavía no hay ubicación GPS',
+                : _debeConsultarTracking
+                    ? 'Todavía no hay ubicación GPS registrada'
+                    : 'El GPS todavía no está activo',
           ),
           _InfoMapaRow(
             icono: Icons.access_time_rounded,
             titulo: 'Última actualización',
-            valor: _fechaBonita(_fechaUbicacion()),
+            valor: _debeConsultarTracking
+                ? _fechaBonita(_fechaUbicacion())
+                : 'No aplica todavía',
           ),
         ],
       ),
@@ -673,8 +852,64 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
   }
 
   Widget _buildEstadoTracking() {
+    if (!_debeConsultarTracking) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              color: Colors.orange,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _mensajeTracking(),
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_cargandoUbicacion) {
-      return const LinearProgressIndicator();
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Cargando última ubicación GPS...',
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     if (_errorUbicacion != null) {
@@ -693,11 +928,12 @@ class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'No se pudo cargar ubicación real. Puede que todavía no exista tracking.',
+                'No se pudo cargar ubicación GPS. Puede que todavía no exista tracking registrado.',
                 style: TextStyle(
                   color: Colors.grey.shade800,
                   fontWeight: FontWeight.w700,
                   fontSize: 12.5,
+                  height: 1.3,
                 ),
               ),
             ),

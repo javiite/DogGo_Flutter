@@ -53,7 +53,7 @@ class PerrosService {
     required String notas,
     String? fotoUrl,
   }) async {
-    final data = {
+    final Map<String, dynamic> data = {
       'nombre': nombre.trim(),
       'Nombre': nombre.trim(),
       'raza': raza.trim(),
@@ -122,7 +122,7 @@ class PerrosService {
     required String notas,
     String? fotoUrl,
   }) async {
-    final data = {
+    final Map<String, dynamic> data = {
       'nombre': nombre.trim(),
       'Nombre': nombre.trim(),
       'raza': raza.trim(),
@@ -177,6 +177,60 @@ class PerrosService {
           : 'No se pudo actualizar el perro.',
       'statusCode': statusCode,
     };
+  }
+
+  static Future<Map<String, dynamic>> subirFotoPerro({
+    required int id,
+    required String filePath,
+  }) async {
+    final nombresCampo = [
+      'foto',
+      'archivo',
+      'file',
+      'imagen',
+    ];
+
+    Map<String, dynamic>? ultimaRespuesta;
+
+    for (final nombreCampo in nombresCampo) {
+      final response = await ApiService.postMultipartAuth(
+        '/api/perros/$id/foto',
+        filePath: filePath,
+        fileFieldName: nombreCampo,
+      );
+
+      final statusCode = response['statusCode'];
+      final body = response['body'];
+
+      if ((statusCode == 200 || statusCode == 201) &&
+          body is Map &&
+          body['success'] == true) {
+        return {
+          'success': true,
+          'message': body['message'] ?? 'Foto del perro actualizada.',
+          'data': body['data'],
+          'statusCode': statusCode,
+        };
+      }
+
+      ultimaRespuesta = {
+        'success': false,
+        'message': body is Map
+            ? body['message'] ?? 'No se pudo subir la foto del perro.'
+            : 'No se pudo subir la foto del perro.',
+        'statusCode': statusCode,
+      };
+
+      if (statusCode == 401 || statusCode == 403 || statusCode == 404) {
+        break;
+      }
+    }
+
+    return ultimaRespuesta ??
+        {
+          'success': false,
+          'message': 'No se pudo subir la foto del perro.',
+        };
   }
 
   static Future<Map<String, dynamic>> eliminarPerro(int id) async {

@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
 import 'storage_service.dart';
 
 class ApiService {
@@ -56,6 +58,45 @@ class ApiService {
       },
       body: jsonEncode(body),
     );
+
+    return _armarRespuesta(response);
+  }
+
+  static Future<Map<String, dynamic>> postMultipartAuth(
+    String endpoint, {
+    required String filePath,
+    String fileFieldName = 'foto',
+    Map<String, String>? fields,
+  }) async {
+    final baseUrl = await obtenerBaseUrl();
+    final token = await obtenerToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception('No hay token guardado. Inicia sesión otra vez.');
+    }
+
+    final url = Uri.parse('$baseUrl$endpoint');
+
+    final request = http.MultipartRequest('POST', url);
+
+    request.headers.addAll({
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (fields != null && fields.isNotEmpty) {
+      request.fields.addAll(fields);
+    }
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        fileFieldName,
+        filePath,
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
 
     return _armarRespuesta(response);
   }

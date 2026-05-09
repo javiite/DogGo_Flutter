@@ -95,11 +95,102 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
     );
   }
 
-  Future<void> _seleccionarImagen() async {
+  Future<void> _mostrarOpcionesFoto() async {
+    if (_guardando) return;
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SafeArea(
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            decoration: BoxDecoration(
+              color: _T.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: _T.shadow(
+                opacity: .12,
+                blur: 24,
+                offset: const Offset(0, 8),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: _T.stroke,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Foto del perro',
+                  style: _ts(18, FontWeight.w900, _T.ink),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Elige una foto existente o toma una nueva con la cámara.',
+                  textAlign: TextAlign.center,
+                  style: _ts(12.5, FontWeight.w600, _T.inkSub, height: 1.35),
+                ),
+                const SizedBox(height: 16),
+                _BottomOption(
+                  icon: Icons.photo_library_rounded,
+                  title: 'Elegir desde galería',
+                  subtitle: 'Seleccionar una imagen del celular',
+                  color: _T.teal,
+                  surface: _T.tealSurface,
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+                const SizedBox(height: 10),
+                _BottomOption(
+                  icon: Icons.camera_alt_rounded,
+                  title: 'Tomar foto con cámara',
+                  subtitle: 'Abrir cámara y tomar foto ahora',
+                  color: _T.violet,
+                  surface: _T.violetSurf,
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                if (_imagenLocal != null) ...[
+                  const SizedBox(height: 10),
+                  _BottomOption(
+                    icon: Icons.delete_outline_rounded,
+                    title: 'Quitar foto seleccionada',
+                    subtitle: 'Guardar el perro sin esta imagen',
+                    color: _T.rose,
+                    surface: const Color(0xFFFEEEEE),
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _imagenLocal = null;
+                      });
+                    },
+                  ),
+                ],
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+
+    await _seleccionarImagen(source);
+  }
+
+  Future<void> _seleccionarImagen(ImageSource source) async {
     try {
       final imagen = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 75,
+        maxWidth: 1600,
+        maxHeight: 1600,
       );
 
       if (imagen == null) return;
@@ -109,10 +200,12 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
       });
 
       _mostrarMensaje(
-        'Foto seleccionada como preview. Para guardarla real se ocupa endpoint de upload.',
+        source == ImageSource.camera
+            ? 'Foto tomada. Se subirá al guardar el perro.'
+            : 'Foto seleccionada. Se subirá al guardar el perro.',
       );
     } catch (e) {
-      _mostrarMensaje('No se pudo seleccionar la imagen: $e');
+      _mostrarMensaje('No se pudo obtener la imagen: $e');
     }
   }
 
@@ -163,13 +256,54 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
     return true;
   }
 
+  int? _extraerIdPerro(dynamic data) {
+    if (data == null) return null;
+
+    if (data is int) return data;
+
+    if (data is String) {
+      return int.tryParse(data);
+    }
+
+    if (data is Map) {
+      final keys = [
+        'id',
+        'Id',
+        'perroId',
+        'PerroId',
+        'idPerro',
+        'IdPerro',
+      ];
+
+      for (final key in keys) {
+        final value = data[key];
+
+        if (value is int) return value;
+        if (value is num) return value.toInt();
+
+        final parsed = int.tryParse(value?.toString() ?? '');
+
+        if (parsed != null) return parsed;
+      }
+
+      final perro = data['perro'] ?? data['Perro'] ?? data['data'] ?? data['Data'];
+
+      if (perro != null && perro != data) {
+        return _extraerIdPerro(perro);
+      }
+    }
+
+    return null;
+  }
+
   Future<void> _guardarPerro() async {
     if (_guardando) return;
 
     if (!_validar()) return;
 
     final edad = int.parse(_edadController.text.trim());
-    final fotoUrl = _fotoUrlController.text.trim();
+    final fotoUrlManual = _fotoUrlController.text.trim();
+    final tieneImagenLocal = _imagenLocal != null;
 
     setState(() {
       _guardando = true;
@@ -182,17 +316,50 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
         edad: edad,
         tamano: _tamanoSeleccionado,
         notas: _notasController.text.trim(),
-        fotoUrl: fotoUrl.isEmpty ? null : fotoUrl,
+        fotoUrl: tieneImagenLocal
+            ? null
+            : fotoUrlManual.isEmpty
+                ? null
+                : fotoUrlManual,
       );
 
       if (!mounted) return;
 
       if (result['success'] == true) {
-        _mostrarMensaje(
-          result['message']?.toString() ?? 'Perro registrado correctamente.',
-        );
+        String mensajeFinal =
+            result['message']?.toString() ?? 'Perro registrado correctamente.';
 
-        await Future.delayed(const Duration(milliseconds: 650));
+        if (tieneImagenLocal) {
+          final idPerro = _extraerIdPerro(result['data']);
+
+          if (idPerro == null) {
+            mensajeFinal =
+                'Perro registrado, pero no se encontró el ID para subir la foto.';
+          } else {
+            final fotoResult = await PerrosService.subirFotoPerro(
+              id: idPerro,
+              filePath: _imagenLocal!.path,
+            );
+
+            if (!mounted) return;
+
+            if (fotoResult['success'] == true) {
+              mensajeFinal = 'Perro registrado con foto correctamente.';
+            } else {
+              final statusCode = fotoResult['statusCode'];
+              final errorFoto = fotoResult['message']?.toString() ??
+                  'No se pudo subir la foto.';
+
+              mensajeFinal = statusCode == null
+                  ? 'Perro registrado, pero la foto no se subió: $errorFoto'
+                  : 'Perro registrado, pero la foto no se subió: $errorFoto Código: $statusCode';
+            }
+          }
+        }
+
+        _mostrarMensaje(mensajeFinal);
+
+        await Future.delayed(const Duration(milliseconds: 800));
 
         if (!mounted) return;
 
@@ -267,11 +434,13 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
         ? 'Nuevo perro'
         : _nombreController.text.trim();
 
-    final razaPreview =
-        _razaController.text.trim().isEmpty ? 'Raza' : _razaController.text.trim();
+    final razaPreview = _razaController.text.trim().isEmpty
+        ? 'Raza'
+        : _razaController.text.trim();
 
-    final edadPreview =
-        _edadController.text.trim().isEmpty ? 'Edad' : '${_edadController.text.trim()} años';
+    final edadPreview = _edadController.text.trim().isEmpty
+        ? 'Edad'
+        : '${_edadController.text.trim()} años';
 
     return Scaffold(
       backgroundColor: _T.bg,
@@ -312,7 +481,9 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
             tamano: _tamanoSeleccionado,
             imagenLocal: _imagenLocal,
             fotoUrl: _fotoUrlController.text.trim(),
-            onPickImage: _seleccionarImagen,
+            onPickImage: () {
+              _mostrarOpcionesFoto();
+            },
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -386,36 +557,77 @@ class _RegistrarPerroScreenState extends State<RegistrarPerroScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        _imagenLocal == null
+                            ? 'Puedes guardar el perro sin foto, elegir una imagen de galería o tomar una foto con cámara.'
+                            : 'Foto lista. Se subirá al servidor cuando guardes el perro.',
+                        style: _ts(
+                          12.5,
+                          FontWeight.w700,
+                          _imagenLocal == null ? _T.inkSub : _T.tealDeep,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _guardando
+                                  ? null
+                                  : () => _seleccionarImagen(
+                                        ImageSource.gallery,
+                                      ),
+                              icon: const Icon(Icons.photo_library_rounded),
+                              label: const Text('Galería'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _T.tealDeep,
+                                side: const BorderSide(color: _T.tealDeep),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _guardando
+                                  ? null
+                                  : () => _seleccionarImagen(
+                                        ImageSource.camera,
+                                      ),
+                              icon: const Icon(Icons.camera_alt_rounded),
+                              label: const Text('Cámara'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _T.violet,
+                                side: const BorderSide(color: _T.violet),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _fotoUrlController,
-                        enabled: !_guardando,
+                        enabled: !_guardando && _imagenLocal == null,
                         keyboardType: TextInputType.url,
                         onChanged: (_) => setState(() {}),
                         decoration: _decoracionCampo(
-                          label: 'URL o ruta de foto',
-                          icon: Icons.image_rounded,
+                          label: 'URL o ruta manual opcional',
+                          icon: Icons.link_rounded,
                           hint: 'Ej. /uploads/perros/max.jpg',
                           color: _T.emerald,
                           surface: _T.emeraldSurf,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text(
-                        'Puedes pegar una URL pública o una ruta del servidor. Elegir desde galería solo sirve como preview hasta tener endpoint de subida.',
-                        style: _ts(12, FontWeight.w600, _T.inkSub, height: 1.35),
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: _guardando ? null : _seleccionarImagen,
-                        icon: const Icon(Icons.photo_library_rounded),
-                        label: const Text('Elegir foto del celular'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _T.tealDeep,
-                          side: const BorderSide(color: _T.tealDeep),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
+                        'Este campo es opcional. Si eliges cámara o galería, se usará esa imagen y se ignorará la ruta manual.',
+                        style: _ts(11.5, FontWeight.w600, _T.inkSub, height: 1.35),
                       ),
                     ],
                   ),
@@ -571,7 +783,7 @@ class _HeaderNuevoPerro extends StatelessWidget {
                           child: const Padding(
                             padding: EdgeInsets.all(10),
                             child: Icon(
-                              Icons.camera_alt_rounded,
+                              Icons.add_a_photo_rounded,
                               color: _T.tealDeep,
                               size: 20,
                             ),
@@ -803,6 +1015,77 @@ class _FormCard extends StatelessWidget {
           const SizedBox(height: 14),
           child,
         ],
+      ),
+    );
+  }
+}
+
+class _BottomOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final Color surface;
+  final VoidCallback onTap;
+
+  const _BottomOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.surface,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: surface,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(13),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(.8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: _ts(13.5, FontWeight.w900, _T.ink),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: _ts(11.5, FontWeight.w600, _T.inkSub),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: color,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
