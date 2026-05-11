@@ -6,18 +6,26 @@ class _T {
   static const teal = Color(0xFF0EC9A0);
   static const tealDeep = Color(0xFF089B7A);
   static const tealSurface = Color(0xFFE4FAF4);
+
+  static const emerald = Color(0xFF22C55E);
+  static const emeraldSurf = Color(0xFFE6FAF0);
+
   static const amber = Color(0xFFFFAB2E);
   static const amberSurf = Color(0xFFFFF4E0);
+
   static const rose = Color(0xFFEF4444);
+  static const roseSurf = Color(0xFFFEEEEE);
+
   static const bg = Color(0xFFF4F0E8);
   static const surface = Colors.white;
   static const ink = Color(0xFF111827);
   static const inkSub = Color(0xFF6B7280);
+  static const stroke = Color(0xFFE5E7EB);
 
   static List<BoxShadow> shadow() {
     return [
       BoxShadow(
-        color: Colors.black.withOpacity(.05),
+        color: Colors.black.withOpacity(.055),
         blurRadius: 16,
         offset: const Offset(0, 5),
       ),
@@ -60,11 +68,65 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   bool _verConfirmar = false;
 
   @override
+  void initState() {
+    super.initState();
+    _nuevaController.addListener(_actualizar);
+    _confirmarController.addListener(_actualizar);
+  }
+
+  @override
   void dispose() {
     _actualController.dispose();
     _nuevaController.dispose();
     _confirmarController.dispose();
     super.dispose();
+  }
+
+  void _actualizar() {
+    if (mounted) setState(() {});
+  }
+
+  String get _actual => _actualController.text.trim();
+  String get _nueva => _nuevaController.text.trim();
+  String get _confirmar => _confirmarController.text.trim();
+
+  bool get _largoOk => _nueva.length >= 6;
+  bool get _diferenteOk => _nueva.isNotEmpty && _nueva != _actual;
+  bool get _coincidenOk => _nueva.isNotEmpty && _nueva == _confirmar;
+  bool get _tieneNumero => RegExp(r'\d').hasMatch(_nueva);
+  bool get _tieneLetra => RegExp(r'[A-Za-zÁÉÍÓÚáéíóúÑñ]').hasMatch(_nueva);
+
+  int get _puntaje {
+    var puntos = 0;
+
+    if (_largoOk) puntos++;
+    if (_diferenteOk) puntos++;
+    if (_coincidenOk) puntos++;
+    if (_tieneNumero) puntos++;
+    if (_tieneLetra) puntos++;
+
+    return puntos;
+  }
+
+  String get _nivelTexto {
+    if (_nueva.isEmpty) return 'Sin evaluar';
+    if (_puntaje <= 2) return 'Débil';
+    if (_puntaje <= 4) return 'Aceptable';
+    return 'Segura';
+  }
+
+  Color get _nivelColor {
+    if (_nueva.isEmpty) return _T.inkSub;
+    if (_puntaje <= 2) return _T.rose;
+    if (_puntaje <= 4) return _T.amber;
+    return _T.emerald;
+  }
+
+  Color get _nivelSurface {
+    if (_nueva.isEmpty) return const Color(0xFFF3F4F6);
+    if (_puntaje <= 2) return _T.roseSurf;
+    if (_puntaje <= 4) return _T.amberSurf;
+    return _T.emeraldSurf;
   }
 
   String? _validarActual(String? valor) {
@@ -110,6 +172,8 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   }
 
   Future<void> _guardar() async {
+    FocusScope.of(context).unfocus();
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -130,13 +194,15 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
 
+      final mensaje = e.toString().replaceFirst('Exception: ', '');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No se pudo cambiar la contraseña: $e'),
+          content: Text('No se pudo cambiar la contraseña: $mensaje'),
         ),
       );
     } finally {
@@ -181,11 +247,13 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
       body: SafeArea(
         child: ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
           children: [
             _buildHeader(),
             const SizedBox(height: 16),
             _buildFormulario(),
+            const SizedBox(height: 14),
+            _buildSeguridadCard(),
             const SizedBox(height: 18),
             _buildBoton(),
             const SizedBox(height: 14),
@@ -208,12 +276,12 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         boxShadow: [
           BoxShadow(
             color: _T.teal.withOpacity(.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -240,16 +308,16 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
               children: [
                 Text(
                   'Seguridad de la cuenta',
-                  style: _ts(19, FontWeight.w900, Colors.white),
+                  style: _ts(20, FontWeight.w900, Colors.white),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
-                  'Actualiza tu contraseña para mantener tu cuenta protegida.',
+                  'Cambia tu contraseña usando tu clave actual.',
                   style: _ts(
                     13,
-                    FontWeight.w500,
+                    FontWeight.w600,
                     Colors.white.withOpacity(.88),
-                    height: 1.28,
+                    height: 1.3,
                   ),
                 ),
               ],
@@ -319,10 +387,92 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
     );
   }
 
+  Widget _buildSeguridadCard() {
+    final progress = (_puntaje / 5).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: _T.surface,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: _T.shadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _nivelSurface,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(
+                  Icons.shield_rounded,
+                  color: _nivelColor,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nivel de seguridad',
+                      style: _ts(15, FontWeight.w900, _T.ink),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _nivelTexto,
+                      style: _ts(12.5, FontWeight.w800, _nivelColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 9,
+              backgroundColor: const Color(0xFFF3F4F6),
+              color: _nivelColor,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _ReglaPassword(
+            texto: 'Mínimo 6 caracteres',
+            completa: _largoOk,
+          ),
+          _ReglaPassword(
+            texto: 'Diferente a la contraseña actual',
+            completa: _diferenteOk,
+          ),
+          _ReglaPassword(
+            texto: 'Confirmación coincide',
+            completa: _coincidenOk,
+          ),
+          _ReglaPassword(
+            texto: 'Incluye letras',
+            completa: _tieneLetra,
+          ),
+          _ReglaPassword(
+            texto: 'Incluye números',
+            completa: _tieneNumero,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBoton() {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 54,
       child: ElevatedButton.icon(
         onPressed: _guardando ? null : _guardar,
         icon: _guardando
@@ -335,7 +485,7 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                 ),
               )
             : const Icon(Icons.save_rounded),
-        label: Text(_guardando ? 'Guardando...' : 'Actualizar contraseña'),
+        label: Text(_guardando ? 'Actualizando...' : 'Actualizar contraseña'),
         style: ElevatedButton.styleFrom(
           backgroundColor: _T.teal,
           foregroundColor: Colors.white,
@@ -371,7 +521,7 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Usa una contraseña que no compartas con otras cuentas. Mínimo 6 caracteres.',
+              'Después de cambiar tu contraseña, úsala en tu siguiente inicio de sesión.',
               style: _ts(
                 12.5,
                 FontWeight.w700,
@@ -448,6 +598,43 @@ class _CampoPassword extends StatelessWidget {
             width: 1.4,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ReglaPassword extends StatelessWidget {
+  final String texto;
+  final bool completa;
+
+  const _ReglaPassword({
+    required this.texto,
+    required this.completa,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        children: [
+          Icon(
+            completa ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            color: completa ? _T.emerald : _T.inkSub,
+            size: 19,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              texto,
+              style: _ts(
+                12.5,
+                FontWeight.w700,
+                completa ? _T.ink : _T.inkSub,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

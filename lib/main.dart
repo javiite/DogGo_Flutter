@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/background_tracking_service.dart';
 import 'services/session_service.dart';
 import 'services/storage_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await BackgroundTrackingService.inicializarServicio();
+
   runApp(const DogGoApp());
 }
 

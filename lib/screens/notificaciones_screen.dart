@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../services/notificaciones_service.dart';
+import 'chat_paseo_screen.dart';
+import 'mis_paseos_screen.dart';
 
 class NotificacionesScreen extends StatefulWidget {
   const NotificacionesScreen({super.key});
@@ -55,6 +57,66 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     }
   }
 
+  Future<void> _abrirNotificacion(Map<String, dynamic> notificacion) async {
+    if (_accionando) return;
+
+    setState(() {
+      _accionando = true;
+    });
+
+    final id = _idNotificacion(notificacion);
+    final tipo = _tipo(notificacion).toLowerCase();
+    final referenciaId = _referenciaId(notificacion);
+
+    try {
+      if (id != null && !_leida(notificacion)) {
+        await _notificacionesService.marcarComoLeida(id);
+      }
+
+      if (!mounted) return;
+
+      if ((tipo.contains('chat') || tipo.contains('mensaje')) &&
+          referenciaId != null &&
+          referenciaId > 0) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatPaseoScreen(
+              paseoId: referenciaId,
+              nombrePerro: _nombrePerro(notificacion),
+              nombreOtroUsuario: _nombreOtroUsuario(notificacion),
+            ),
+          ),
+        );
+      } else if (tipo.contains('paseo') ||
+          tipo.contains('solicitud') ||
+          tipo.contains('aceptado') ||
+          tipo.contains('rechazado') ||
+          tipo.contains('cancelado') ||
+          tipo.contains('finalizado') ||
+          tipo.contains('iniciado')) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const MisPaseosScreen(),
+          ),
+        );
+      } else {
+        await _cargarNotificaciones();
+      }
+
+      if (mounted) {
+        await _cargarNotificaciones();
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _accionando = false;
+        });
+      }
+    }
+  }
+
   Future<void> _marcarLeida(Map<String, dynamic> notificacion) async {
     final id = _idNotificacion(notificacion);
 
@@ -84,6 +146,22 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         item['Id'] ??
         item['notificacionId'] ??
         item['NotificacionId'];
+
+    if (valor is int) return valor;
+    if (valor is num) return valor.toInt();
+
+    return int.tryParse(valor?.toString() ?? '');
+  }
+
+  int? _referenciaId(Map<String, dynamic> item) {
+    final valor = item['referenciaId'] ??
+        item['ReferenciaId'] ??
+        item['paseoId'] ??
+        item['PaseoId'] ??
+        item['chatId'] ??
+        item['ChatId'] ??
+        item['idReferencia'] ??
+        item['IdReferencia'];
 
     if (valor is int) return valor;
     if (valor is num) return valor.toInt();
@@ -141,6 +219,30 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     );
   }
 
+  String _nombrePerro(Map<String, dynamic> item) {
+    return _texto(
+      item['nombrePerro'] ??
+          item['NombrePerro'] ??
+          item['perroNombre'] ??
+          item['PerroNombre'],
+      fallback: 'Paseo DogGo',
+    );
+  }
+
+  String _nombreOtroUsuario(Map<String, dynamic> item) {
+    return _texto(
+      item['nombreUsuario'] ??
+          item['NombreUsuario'] ??
+          item['otroUsuario'] ??
+          item['OtroUsuario'] ??
+          item['emisorNombre'] ??
+          item['EmisorNombre'] ??
+          item['remitente'] ??
+          item['Remitente'],
+      fallback: 'Usuario',
+    );
+  }
+
   bool _leida(Map<String, dynamic> item) {
     final valor = item['leida'] ??
         item['Leida'] ??
@@ -174,6 +276,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final t = tipo.toLowerCase();
 
     if (t.contains('paseo')) return Icons.route_rounded;
+    if (t.contains('solicitud')) return Icons.assignment_rounded;
     if (t.contains('chat') || t.contains('mensaje')) return Icons.chat_rounded;
     if (t.contains('cancel')) return Icons.cancel_rounded;
     if (t.contains('perfil')) return Icons.person_rounded;
@@ -188,6 +291,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final t = tipo.toLowerCase();
 
     if (t.contains('paseo')) return const Color(0xFF1F8A70);
+    if (t.contains('solicitud')) return const Color(0xFFE08A1E);
     if (t.contains('chat') || t.contains('mensaje')) return Colors.blue;
     if (t.contains('cancel')) return Colors.red;
     if (t.contains('perfil')) return Colors.purple;
@@ -382,7 +486,8 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
-        onTap: leida ? null : () => _marcarLeida(item),
+        onTap: () => _abrirNotificacion(item),
+        onLongPress: leida ? null : () => _marcarLeida(item),
         child: Padding(
           padding: const EdgeInsets.all(15),
           child: Row(
@@ -472,6 +577,15 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
                             ),
                           ),
                       ],
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      'Toca para abrir',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ],
                 ),

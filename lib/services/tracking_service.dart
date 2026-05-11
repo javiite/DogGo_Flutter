@@ -42,6 +42,48 @@ class TrackingService {
     throw Exception('$mensaje Código: $statusCode');
   }
 
+  List<Map<String, dynamic>> _normalizarLista(Map<String, dynamic> respuesta) {
+    final statusCode = respuesta['statusCode'];
+    final body = respuesta['body'];
+
+    if (statusCode is int && statusCode >= 200 && statusCode < 300) {
+      dynamic data = body;
+
+      if (body is Map) {
+        data = body['data'] ??
+            body['ubicaciones'] ??
+            body['historial'] ??
+            body['ruta'] ??
+            body['items'] ??
+            body['resultado'] ??
+            body['result'] ??
+            body['value'];
+      }
+
+      if (data is List) {
+        return data
+            .where((item) => item is Map)
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
+      }
+
+      return [];
+    }
+
+    String mensaje = 'Error al obtener historial de ubicaciones.';
+
+    if (body is Map) {
+      mensaje = body['message']?.toString() ??
+          body['mensaje']?.toString() ??
+          body['error']?.toString() ??
+          mensaje;
+    } else if (body != null) {
+      mensaje = body.toString();
+    }
+
+    throw Exception('$mensaje Código: $statusCode');
+  }
+
   Future<Map<String, dynamic>> enviarUbicacion({
     required int paseoId,
     required double latitud,
@@ -109,5 +151,36 @@ class TrackingService {
     }
 
     throw ultimoError ?? Exception('No se pudo obtener la última ubicación.');
+  }
+
+  Future<List<Map<String, dynamic>>> obtenerHistorialUbicaciones(
+    int paseoId,
+  ) async {
+    final endpoints = [
+      '/api/paseos/$paseoId/ubicaciones',
+      '/api/Paseos/$paseoId/ubicaciones',
+      '/api/paseos/$paseoId/historial-ubicaciones',
+      '/api/Paseos/$paseoId/historial-ubicaciones',
+      '/api/paseos/$paseoId/ruta',
+      '/api/Paseos/$paseoId/ruta',
+      '/api/ubicaciones/paseo/$paseoId',
+      '/api/Ubicaciones/paseo/$paseoId',
+      '/api/tracking/paseo/$paseoId/ruta',
+      '/api/Tracking/paseo/$paseoId/ruta',
+    ];
+
+    Exception? ultimoError;
+
+    for (final endpoint in endpoints) {
+      try {
+        final respuesta = await ApiService.getAuth(endpoint);
+        return _normalizarLista(respuesta);
+      } catch (e) {
+        ultimoError = Exception(e.toString());
+      }
+    }
+
+    throw ultimoError ??
+        Exception('No se pudo obtener el historial de ubicaciones.');
   }
 }

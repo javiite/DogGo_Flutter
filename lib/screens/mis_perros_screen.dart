@@ -2,63 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../services/perros_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/doggo_logo.dart';
+import '../widgets/doggo_pattern_background.dart';
 import 'detalle_perro_screen.dart';
 import 'editar_perro_screen.dart';
 import 'registrar_perro_screen.dart';
-
-class _T {
-  static const teal = Color(0xFF0EC9A0);
-  static const tealDeep = Color(0xFF089B7A);
-  static const tealSurface = Color(0xFFE4FAF4);
-
-  static const violet = Color(0xFF7C5CBF);
-  static const violetSurf = Color(0xFFF0EBFA);
-
-  static const amber = Color(0xFFFFAB2E);
-  static const amberSurf = Color(0xFFFFF4E0);
-
-  static const emerald = Color(0xFF22C55E);
-  static const emeraldSurf = Color(0xFFE6FAF0);
-
-  static const rose = Color(0xFFEF4444);
-  static const roseSurf = Color(0xFFFEEEEE);
-
-  static const bg = Color(0xFFF4F0E8);
-  static const surface = Colors.white;
-  static const ink = Color(0xFF111827);
-  static const inkSub = Color(0xFF6B7280);
-  static const stroke = Color(0xFFE5E7EB);
-
-  static List<BoxShadow> shadow({
-    double opacity = .055,
-    double blur = 16,
-    Offset offset = const Offset(0, 5),
-  }) {
-    return [
-      BoxShadow(
-        color: Colors.black.withOpacity(opacity),
-        blurRadius: blur,
-        offset: offset,
-      ),
-    ];
-  }
-}
-
-TextStyle _ts(
-  double size,
-  FontWeight weight,
-  Color color, {
-  double spacing = 0,
-  double height = 1.2,
-}) {
-  return TextStyle(
-    fontSize: size,
-    fontWeight: weight,
-    color: color,
-    letterSpacing: spacing,
-    height: height,
-  );
-}
 
 class MisPerrosScreen extends StatefulWidget {
   const MisPerrosScreen({super.key});
@@ -92,6 +40,8 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
   }
 
   Future<void> _cargarPerros() async {
+    if (!mounted) return;
+
     setState(() {
       _cargando = true;
       _error = null;
@@ -129,6 +79,7 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
   Map<String, dynamic> _mapaSeguro(dynamic valor) {
     if (valor is Map<String, dynamic>) return valor;
     if (valor is Map) return Map<String, dynamic>.from(valor);
+
     return {};
   }
 
@@ -140,6 +91,18 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
     }
 
     return null;
+  }
+
+  String _textoSeguro(dynamic valor, [String fallback = 'Sin dato']) {
+    if (valor == null) return fallback;
+
+    final texto = valor.toString().trim();
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return fallback;
+    }
+
+    return texto;
   }
 
   int? _idPerro(Map<String, dynamic> perro) {
@@ -156,33 +119,8 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
     );
 
     if (valor is int) return valor;
+
     return int.tryParse(valor?.toString() ?? '');
-  }
-
-  String _textoSeguro(dynamic valor, [String fallback = 'Sin dato']) {
-    if (valor == null) return fallback;
-
-    final texto = valor.toString().trim();
-
-    if (texto.isEmpty || texto.toLowerCase() == 'null') {
-      return fallback;
-    }
-
-    return texto;
-  }
-
-  String _edadTexto(dynamic edad) {
-    if (edad == null) return 'Sin edad';
-
-    final texto = edad.toString().trim();
-
-    if (texto.isEmpty || texto.toLowerCase() == 'null') {
-      return 'Sin edad';
-    }
-
-    if (texto == '1') return '1 año';
-
-    return '$texto años';
   }
 
   String _nombrePerro(Map<String, dynamic> perro) {
@@ -228,6 +166,28 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
       ),
       'Sin tamaño',
     );
+  }
+
+  String _edadTexto(Map<String, dynamic> perro) {
+    final edad = _valor(
+      perro,
+      [
+        'edad',
+        'Edad',
+      ],
+    );
+
+    if (edad == null) return 'Sin edad';
+
+    final texto = edad.toString().trim();
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') return 'Sin edad';
+
+    if (texto == '1') return '1 año';
+
+    if (texto.toLowerCase().contains('año')) return texto;
+
+    return '$texto años';
   }
 
   String _notasPerro(Map<String, dynamic> perro) {
@@ -308,12 +268,20 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: _DogGoWeb.card,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(24),
           ),
-          title: const Text('Eliminar perro'),
+          title: const Text(
+            'Eliminar perro',
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: _DogGoWeb.ink,
+            ),
+          ),
           content: Text(
             '¿Seguro que quieres eliminar a $nombre? Esta acción no se puede deshacer.',
+            style: _DogGoWeb.subtitle(14),
           ),
           actions: [
             TextButton(
@@ -322,10 +290,10 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
             ),
             ElevatedButton.icon(
               onPressed: () => Navigator.pop(context, true),
-              icon: const Icon(Icons.delete_outline),
+              icon: const Icon(Icons.delete_outline_rounded),
               label: const Text('Eliminar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _T.rose,
+                backgroundColor: _DogGoWeb.rose,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -350,6 +318,7 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+
       _mostrarMensaje('Error de conexión: $e');
     }
   }
@@ -405,129 +374,189 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tienePerros = _perros.isNotEmpty;
+
     return Scaffold(
-      backgroundColor: _T.bg,
-      appBar: AppBar(
-        backgroundColor: _T.tealDeep,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text(
-                  '🐾',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Mis perros',
-              style: _ts(20, FontWeight.w900, Colors.white, spacing: -.4),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Actualizar',
-            onPressed: _cargarPerros,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _abrirRegistrar,
-        backgroundColor: _T.teal,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Añadir perro',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-      ),
-      body: _cargando
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _ErrorState(
-                  mensaje: _error!,
-                  onRetry: _cargarPerros,
-                )
-              : RefreshIndicator(
-                  onRefresh: _cargarPerros,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
-                    ),
-                    padding: EdgeInsets.zero,
-                    children: [
-                      _HeaderPerros(
-                        cantidad: _perros.length,
-                        onAdd: _abrirRegistrar,
-                      ),
-                      if (_perros.isEmpty)
-                        _EmptyState(
-                          onAdd: _abrirRegistrar,
-                        )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-                          child: Column(
-                            children: List.generate(_perros.length, (index) {
-                              final perro = _mapaSeguro(_perros[index]);
-
-                              final nombre = _nombrePerro(perro);
-                              final raza = _razaPerro(perro);
-                              final tamano = _tamanoPerro(perro);
-                              final notas = _notasPerro(perro);
-                              final edad = _edadTexto(
-                                _valor(
-                                  perro,
-                                  [
-                                    'edad',
-                                    'Edad',
-                                  ],
-                                ),
-                              );
-                              final fotoUrl = _fotoPerro(perro);
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 14),
-                                child: _PerroCard(
-                                  nombre: nombre,
-                                  edad: edad,
-                                  raza: raza,
-                                  tamano: tamano,
-                                  nota: notas,
-                                  fotoUrl: fotoUrl,
-                                  index: index,
-                                  onVerPerro: () => _abrirDetalle(perro),
-                                  onEditar: () => _abrirEditar(perro),
-                                  onEliminar: () => _confirmarEliminar(perro),
-                                ),
-                              );
-                            }),
-                          ),
+      backgroundColor: _DogGoWeb.cream,
+      body: SafeArea(
+        child: DogGoPatternBackground(
+          opacity: 1.15,
+          child: _cargando
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? _ErrorState(
+                      mensaje: _error!,
+                      onRetry: _cargarPerros,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _cargarPerros,
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
                         ),
-                    ],
-                  ),
-                ),
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: _TopWebBar(
+                              onBack: () => Navigator.pop(context, true),
+                              onRefresh: _cargarPerros,
+                            ),
+                          ),
+                          SliverToBoxAdapter(
+                            child: _HeroMisPerros(
+                              cantidad: _perros.length,
+                              onAdd: _abrirRegistrar,
+                            ),
+                          ),
+                          if (_perros.isEmpty)
+                            SliverToBoxAdapter(
+                              child: _EmptyState(
+                                onAdd: _abrirRegistrar,
+                              ),
+                            )
+                          else ...[
+                            SliverToBoxAdapter(
+                              child: _SectionHeader(
+                                title: 'Tus mascotas registradas',
+                                subtitle:
+                                    'Toca una tarjeta para ver el perfil completo, editar datos o eliminar.',
+                                onAdd: _abrirRegistrar,
+                              ),
+                            ),
+                            SliverPadding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(18, 14, 18, 120),
+                              sliver: SliverList.separated(
+                                itemCount: _perros.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 16),
+                                itemBuilder: (context, index) {
+                                  final perro = _mapaSeguro(_perros[index]);
+
+                                  return _PerroWebCard(
+                                    nombre: _nombrePerro(perro),
+                                    raza: _razaPerro(perro),
+                                    edad: _edadTexto(perro),
+                                    tamano: _tamanoPerro(perro),
+                                    nota: _notasPerro(perro),
+                                    fotoUrl: _fotoPerro(perro),
+                                    index: index,
+                                    onVer: () => _abrirDetalle(perro),
+                                    onEditar: () => _abrirEditar(perro),
+                                    onEliminar: () => _confirmarEliminar(perro),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+        ),
+      ),
+      floatingActionButton: tienePerros
+          ? FloatingActionButton.extended(
+              onPressed: _abrirRegistrar,
+              backgroundColor: _DogGoWeb.teal,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text(
+                'Añadir perro',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            )
+          : null,
     );
   }
 }
 
-class _HeaderPerros extends StatelessWidget {
+class _TopWebBar extends StatelessWidget {
+  final VoidCallback onBack;
+  final VoidCallback onRefresh;
+
+  const _TopWebBar({
+    required this.onBack,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 76,
+      padding: const EdgeInsets.fromLTRB(12, 8, 14, 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.94),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.black.withOpacity(.07),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          _TopIconButton(
+            icon: Icons.arrow_back_rounded,
+            onTap: onBack,
+          ),
+          const SizedBox(width: 8),
+          const DogGoLogo(size: 54),
+          const Spacer(),
+          _TopIconButton(
+            icon: Icons.refresh_rounded,
+            onTap: onRefresh,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _TopIconButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _DogGoWeb.card,
+      borderRadius: BorderRadius.circular(17),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(17),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(color: _DogGoWeb.stroke),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.035),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            color: _DogGoWeb.ink,
+            size: 23,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroMisPerros extends StatelessWidget {
   final int cantidad;
   final VoidCallback onAdd;
 
-  const _HeaderPerros({
+  const _HeroMisPerros({
     required this.cantidad,
     required this.onAdd,
   });
@@ -538,135 +567,287 @@ class _HeaderPerros extends StatelessWidget {
         ? 'Tienes 1 perro registrado.'
         : 'Tienes $cantidad perros registrados.';
 
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF089B7A),
-            Color(0xFFF4F0E8),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+        decoration: BoxDecoration(
+          color: _DogGoWeb.card,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: _DogGoWeb.stroke),
+          boxShadow: _DogGoWeb.shadow(),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 22, 16, 14),
-        child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [
-                Color(0xFF0EC9A0),
-                Color(0xFF057A5F),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: _T.teal.withOpacity(.28),
-                blurRadius: 28,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -40,
-                right: -35,
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned(
+              right: -18,
+              top: -18,
+              child: Transform.rotate(
+                angle: -.18,
                 child: Container(
-                  width: 140,
-                  height: 140,
+                  width: 112,
+                  height: 112,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.06),
-                    shape: BoxShape.circle,
+                    color: _DogGoWeb.tealLight,
+                    borderRadius: BorderRadius.circular(36),
+                  ),
+                  child: const Icon(
+                    Icons.pets_rounded,
+                    color: _DogGoWeb.teal,
+                    size: 58,
                   ),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SmallPill(
-                    text: 'TU MANADA',
-                    color: Colors.white,
-                    background: Colors.white.withOpacity(.18),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Mis perros',
-                    style: _ts(
-                      31,
-                      FontWeight.w900,
-                      Colors.white,
-                      spacing: -.8,
-                      height: 1.05,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    textoCantidad,
-                    style: _ts(
-                      14,
-                      FontWeight.w500,
-                      Colors.white.withOpacity(.82),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  GestureDetector(
-                    onTap: onAdd,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 11,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Text(
-                        'Añadir perro',
-                        style: _ts(
-                          12.5,
-                          FontWeight.w900,
-                          _T.tealDeep,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+            ),
+            Positioned(
+              right: 20,
+              bottom: -28,
+              child: Container(
+                width: 86,
+                height: 86,
+                decoration: BoxDecoration(
+                  color: _DogGoWeb.orange.withOpacity(.09),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ],
-          ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _DogGoWeb.tealLight,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'TU MANADA',
+                    style: _DogGoWeb.label(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.only(right: 86),
+                  child: Text(
+                    'Mis perros',
+                    style: _DogGoWeb.title(36),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(right: 62),
+                  child: Text(
+                    textoCantidad,
+                    style: _DogGoWeb.subtitle(16),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _HeroStat(
+                        icon: Icons.pets_rounded,
+                        title: '$cantidad',
+                        subtitle: cantidad == 1 ? 'Mascota' : 'Mascotas',
+                        color: _DogGoWeb.teal,
+                        background: _DogGoWeb.tealLight,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _HeroStat(
+                        icon: Icons.favorite_rounded,
+                        title: 'DogGo',
+                        subtitle: 'Cuidado',
+                        color: _DogGoWeb.orange,
+                        background: _DogGoWeb.orangeLight,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: onAdd,
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(
+                      cantidad == 0
+                          ? 'Añadir mi primer perro'
+                          : 'Añadir otro perro',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _DogGoWeb.teal,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _PerroCard extends StatelessWidget {
+class _HeroStat extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final Color background;
+
+  const _HeroStat({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 78,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: color.withOpacity(.12),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 24,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _DogGoWeb.body(
+                    15,
+                    color: _DogGoWeb.ink,
+                    weight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _DogGoWeb.subtitle(11.5),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final VoidCallback onAdd;
+
+  const _SectionHeader({
+    required this.title,
+    required this.subtitle,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 28, 22, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: _DogGoWeb.title(24),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  subtitle,
+                  style: _DogGoWeb.subtitle(13.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Material(
+            color: _DogGoWeb.tealLight,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              onTap: onAdd,
+              borderRadius: BorderRadius.circular(18),
+              child: const SizedBox(
+                width: 46,
+                height: 46,
+                child: Icon(
+                  Icons.add_rounded,
+                  color: _DogGoWeb.teal,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PerroWebCard extends StatelessWidget {
   final String nombre;
-  final String edad;
   final String raza;
+  final String edad;
   final String tamano;
   final String nota;
   final String fotoUrl;
   final int index;
-  final VoidCallback onVerPerro;
+  final VoidCallback onVer;
   final VoidCallback onEditar;
   final VoidCallback onEliminar;
 
-  const _PerroCard({
+  const _PerroWebCard({
     required this.nombre,
-    required this.edad,
     required this.raza,
+    required this.edad,
     required this.tamano,
     required this.nota,
     required this.fotoUrl,
     required this.index,
-    required this.onVerPerro,
+    required this.onVer,
     required this.onEditar,
     required this.onEliminar,
   });
@@ -676,239 +857,219 @@ class _PerroCard extends StatelessWidget {
   }
 
   Color get _accent {
-    final colores = [
-      _T.teal,
-      _T.violet,
-      _T.amber,
-      _T.emerald,
-      _T.rose,
+    final colors = [
+      _DogGoWeb.tealDeep,
+      _DogGoWeb.purple,
+      _DogGoWeb.orange,
+      _DogGoWeb.green,
+      _DogGoWeb.rose,
     ];
 
-    return colores[index % colores.length];
+    return colors[index % colors.length];
   }
 
   Color get _surface {
-    final colores = [
-      _T.tealSurface,
-      _T.violetSurf,
-      _T.amberSurf,
-      _T.emeraldSurf,
-      _T.roseSurf,
+    final colors = [
+      _DogGoWeb.tealLight,
+      _DogGoWeb.purpleLight,
+      _DogGoWeb.orangeLight,
+      _DogGoWeb.greenLight,
+      _DogGoWeb.roseLight,
     ];
 
-    return colores[index % colores.length];
+    return colors[index % colors.length];
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onVerPerro,
-      child: Container(
-        decoration: BoxDecoration(
-          color: _T.surface,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: _T.shadow(
-            opacity: .055,
-            blur: 18,
-            offset: const Offset(0, 6),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onVer,
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _DogGoWeb.card,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: _DogGoWeb.stroke),
+            boxShadow: _DogGoWeb.shadow(),
           ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 175,
-              width: double.infinity,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: _tieneFoto
-                        ? Image.network(
-                            fotoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) {
-                              return _DogPlaceholder(
-                                accent: _accent,
-                                surface: _surface,
-                              );
-                            },
-                          )
-                        : _DogPlaceholder(
-                            accent: _accent,
-                            surface: _surface,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 210,
+                width: double.infinity,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: _tieneFoto
+                          ? Image.network(
+                              fotoUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) {
+                                return _DogPlaceholder(
+                                  surface: _surface,
+                                  accent: _accent,
+                                );
+                              },
+                            )
+                          : _DogPlaceholder(
+                              surface: _surface,
+                              accent: _accent,
+                            ),
+                    ),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withOpacity(.42),
+                              Colors.transparent,
+                            ],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
                           ),
-                  ),
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.black.withOpacity(.00),
-                            Colors.black.withOpacity(.28),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    left: 12,
-                    top: 12,
-                    child: _Tag(
-                      text: tamano,
-                      color: _accent,
-                      background: Colors.white.withOpacity(.92),
-                    ),
-                  ),
-                  Positioned(
-                    right: 12,
-                    top: 12,
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(.92),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: onEditar,
-                        icon: Icon(
-                          Icons.edit_rounded,
-                          color: _accent,
-                          size: 19,
-                        ),
+                    Positioned(
+                      left: 14,
+                      top: 14,
+                      child: _ChipLabel(
+                        text: tamano,
+                        color: _DogGoWeb.tealDeep,
+                        background: Colors.white.withOpacity(.92),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    left: 16,
-                    bottom: 14,
-                    right: 16,
-                    child: Text(
-                      nombre,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _ts(
-                        26,
-                        FontWeight.w900,
-                        Colors.white,
-                        spacing: -.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _Tag(
-                        text: raza,
-                        color: _accent,
-                        background: _surface,
-                      ),
-                      _Tag(
-                        text: edad,
-                        color: _T.inkSub,
-                        background: const Color(0xFFF3F4F6),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _MiniInfoBox(
-                          titulo: tamano,
-                          subtitulo: 'Tamaño',
-                          color: _accent,
-                          surface: _surface,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _MiniInfoBox(
-                          titulo: edad,
-                          subtitulo: 'Edad',
-                          color: _accent,
-                          surface: _surface,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (nota.trim().isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _T.amberSurf,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: _T.amber.withOpacity(.25),
-                        ),
-                      ),
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 16,
                       child: Text(
-                        'Nota: $nota',
-                        style: _ts(
-                          12.5,
-                          FontWeight.w700,
-                          const Color(0xFF8A6A1F),
-                          height: 1.3,
+                        nombre,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _DogGoWeb.title(
+                          28,
+                          color: Colors.white,
                         ),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: onVerPerro,
-                          icon: const Icon(Icons.visibility_rounded, size: 18),
-                          label: const Text('Ver perro'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _accent,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _ChipLabel(
+                          text: raza,
+                          color: _DogGoWeb.tealDeep,
+                          background: _DogGoWeb.tealLight,
+                        ),
+                        _ChipLabel(
+                          text: edad,
+                          color: _DogGoWeb.orange,
+                          background: _DogGoWeb.orangeLight,
+                        ),
+                      ],
+                    ),
+                    if (nota.trim().isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _DogGoWeb.orangeLight,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: _DogGoWeb.orange.withOpacity(.12),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.sticky_note_2_rounded,
+                              color: _DogGoWeb.orange,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                nota,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: _DogGoWeb.body(
+                                  12.5,
+                                  color: _DogGoWeb.ink,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 15),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 45,
+                            child: OutlinedButton.icon(
+                              onPressed: onVer,
+                              icon: const Icon(
+                                Icons.visibility_rounded,
+                                size: 18,
+                              ),
+                              label: const Text('Ver perfil'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _DogGoWeb.tealDeep,
+                                side: const BorderSide(
+                                  color: _DogGoWeb.tealDeep,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      _CircleActionButton(
-                        icon: Icons.edit_outlined,
-                        color: _accent,
-                        background: _surface,
-                        onTap: onEditar,
-                      ),
-                      const SizedBox(width: 8),
-                      _CircleActionButton(
-                        icon: Icons.delete_outline,
-                        color: _T.rose,
-                        background: _T.roseSurf,
-                        onTap: onEliminar,
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 8),
+                        _RoundButton(
+                          icon: Icons.edit_rounded,
+                          color: _DogGoWeb.orange,
+                          background: _DogGoWeb.orangeLight,
+                          onTap: onEditar,
+                        ),
+                        const SizedBox(width: 8),
+                        _RoundButton(
+                          icon: Icons.delete_outline_rounded,
+                          color: _DogGoWeb.rose,
+                          background: _DogGoWeb.roseLight,
+                          onTap: onEliminar,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -916,12 +1077,12 @@ class _PerroCard extends StatelessWidget {
 }
 
 class _DogPlaceholder extends StatelessWidget {
-  final Color accent;
   final Color surface;
+  final Color accent;
 
   const _DogPlaceholder({
-    required this.accent,
     required this.surface,
+    required this.accent,
   });
 
   @override
@@ -931,13 +1092,25 @@ class _DogPlaceholder extends StatelessWidget {
       child: Stack(
         children: [
           Positioned(
-            top: -35,
-            right: -35,
+            right: -30,
+            top: -30,
             child: Container(
-              width: 135,
-              height: 135,
+              width: 110,
+              height: 110,
               decoration: BoxDecoration(
-                color: accent.withOpacity(.12),
+                color: accent.withOpacity(.11),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            left: -24,
+            bottom: -26,
+            child: Container(
+              width: 92,
+              height: 92,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(.35),
                 shape: BoxShape.circle,
               ),
             ),
@@ -946,11 +1119,11 @@ class _DogPlaceholder extends StatelessWidget {
             child: Text(
               '🐶',
               style: TextStyle(
-                fontSize: 76,
+                fontSize: 72,
                 shadows: [
                   Shadow(
                     color: Colors.black.withOpacity(.08),
-                    blurRadius: 12,
+                    blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
@@ -963,52 +1136,49 @@ class _DogPlaceholder extends StatelessWidget {
   }
 }
 
-class _MiniInfoBox extends StatelessWidget {
-  final String titulo;
-  final String subtitulo;
+class _ChipLabel extends StatelessWidget {
+  final String text;
   final Color color;
-  final Color surface;
+  final Color background;
 
-  const _MiniInfoBox({
-    required this.titulo,
-    required this.subtitulo,
+  const _ChipLabel({
+    required this.text,
     required this.color,
-    required this.surface,
+    required this.background,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 11,
+        vertical: 6,
       ),
-      child: Column(
-        children: [
-          Text(
-            titulo,
-            textAlign: TextAlign.center,
-            style: _ts(13, FontWeight.w900, color),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitulo,
-            style: _ts(11.5, FontWeight.w500, _T.inkSub),
-          ),
-        ],
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: _DogGoWeb.body(
+          11,
+          color: color,
+          weight: FontWeight.w900,
+        ),
       ),
     );
   }
 }
 
-class _CircleActionButton extends StatelessWidget {
+class _RoundButton extends StatelessWidget {
   final IconData icon;
   final Color color;
   final Color background;
   final VoidCallback onTap;
 
-  const _CircleActionButton({
+  const _RoundButton({
     required this.icon,
     required this.color,
     required this.background,
@@ -1024,76 +1194,13 @@ class _CircleActionButton extends StatelessWidget {
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           child: Icon(
             icon,
-            size: 18,
+            size: 19,
             color: color,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  final String text;
-  final Color color;
-  final Color background;
-
-  const _Tag({
-    required this.text,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        text,
-        style: _ts(11, FontWeight.w900, color),
-      ),
-    );
-  }
-}
-
-class _SmallPill extends StatelessWidget {
-  final String text;
-  final Color color;
-  final Color background;
-
-  const _SmallPill({
-    required this.text,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withOpacity(.20),
-        ),
-      ),
-      child: Text(
-        text,
-        style: _ts(10, FontWeight.w900, color, spacing: 1.2),
       ),
     );
   }
@@ -1108,64 +1215,99 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 420,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: _T.surface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: _T.shadow(),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 28, 22, 110),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 26),
+        decoration: BoxDecoration(
+          color: _DogGoWeb.card,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: _DogGoWeb.stroke),
+          boxShadow: _DogGoWeb.shadow(),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 108,
+              height: 108,
+              decoration: const BoxDecoration(
+                color: _DogGoWeb.tealLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  '🐶',
+                  style: TextStyle(fontSize: 54),
+                ),
+              ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    color: _T.tealSurface,
-                    shape: BoxShape.circle,
+            const SizedBox(height: 18),
+            Text(
+              'Todavía no tienes perros registrados',
+              textAlign: TextAlign.center,
+              style: _DogGoWeb.title(25),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Agrega tu primera mascota para guardar su foto, raza, edad, tamaño y notas importantes antes de solicitar paseos.',
+              textAlign: TextAlign.center,
+              style: _DogGoWeb.subtitle(15),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Añadir mi primer perro'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _DogGoWeb.teal,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(26),
                   ),
-                  child: const Center(
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _DogGoWeb.warm,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _DogGoWeb.stroke),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    color: _DogGoWeb.orange,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Text(
-                      '🐶',
-                      style: TextStyle(fontSize: 44),
+                      'Cuando registres un perro, aparecerá aquí con su tarjeta completa y podrás editarlo cuando quieras.',
+                      style: _DogGoWeb.body(
+                        12.8,
+                        color: _DogGoWeb.ink,
+                        weight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Todavía no tienes perros registrados',
-                  textAlign: TextAlign.center,
-                  style: _ts(18, FontWeight.w900, _T.ink),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Cuando agregues uno, aparecerá aquí con su información.',
-                  textAlign: TextAlign.center,
-                  style: _ts(13, FontWeight.w500, _T.inkSub, height: 1.3),
-                ),
-                const SizedBox(height: 18),
-                ElevatedButton.icon(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Añadir perro'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _T.teal,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -1183,50 +1325,131 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: _T.surface,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: _T.shadow(),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.error_outline_rounded,
-                size: 72,
-                color: _T.rose.withOpacity(.85),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'No se pudieron cargar tus perros',
-                textAlign: TextAlign.center,
-                style: _ts(18, FontWeight.w900, _T.ink),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                mensaje,
-                textAlign: TextAlign.center,
-                style: _ts(13, FontWeight.w500, _T.inkSub, height: 1.3),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Reintentar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _T.teal,
-                  foregroundColor: Colors.white,
+    return DogGoPatternBackground(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: _DogGoWeb.card,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: _DogGoWeb.shadow(),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 70,
+                  color: _DogGoWeb.rose,
                 ),
-              ),
-            ],
+                const SizedBox(height: 14),
+                Text(
+                  'No se pudieron cargar tus perros',
+                  textAlign: TextAlign.center,
+                  style: _DogGoWeb.title(20),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  mensaje,
+                  textAlign: TextAlign.center,
+                  style: _DogGoWeb.subtitle(13),
+                ),
+                const SizedBox(height: 18),
+                ElevatedButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Reintentar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _DogGoWeb.teal,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+class _DogGoWeb {
+  static const teal = Color(0xFF0F9B8E);
+  static const tealDeep = Color(0xFF0D8A7E);
+  static const tealLight = Color(0xFFE0F5F3);
+
+  static const purple = Color(0xFF7156C8);
+  static const purpleLight = Color(0xFFEDE7FA);
+
+  static const orange = Color(0xFFF5A623);
+  static const orangeLight = Color(0xFFFFF3DC);
+
+  static const green = Color(0xFF22C55E);
+  static const greenLight = Color(0xFFE5F8ED);
+
+  static const rose = Color(0xFFEF4444);
+  static const roseLight = Color(0xFFFEEEEE);
+
+  static const cream = Color(0xFFFFFBF5);
+  static const warm = Color(0xFFFFF6ED);
+  static const card = Colors.white;
+  static const ink = Color(0xFF2D3142);
+  static const muted = Color(0xFF7B8194);
+  static const stroke = Color(0xFFEDE8E0);
+
+  static TextStyle title(
+    double size, {
+    Color color = ink,
+  }) {
+    return TextStyle(
+      fontSize: size,
+      fontWeight: FontWeight.w900,
+      color: color,
+      letterSpacing: -.6,
+      height: 1.08,
+    );
+  }
+
+  static TextStyle subtitle(double size) {
+    return TextStyle(
+      fontSize: size,
+      fontWeight: FontWeight.w500,
+      color: muted,
+      height: 1.35,
+    );
+  }
+
+  static TextStyle label() {
+    return const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w900,
+      color: tealDeep,
+      letterSpacing: 1.6,
+    );
+  }
+
+  static TextStyle body(
+    double size, {
+    Color color = ink,
+    FontWeight weight = FontWeight.w600,
+  }) {
+    return TextStyle(
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      height: 1.25,
+    );
+  }
+
+  static List<BoxShadow> shadow() {
+    return [
+      BoxShadow(
+        color: Colors.black.withOpacity(.06),
+        blurRadius: 18,
+        offset: const Offset(0, 7),
+      ),
+    ];
   }
 }

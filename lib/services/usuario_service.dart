@@ -1,15 +1,21 @@
+import 'dart:io';
+
 import 'api_service.dart';
 
 class UsuarioService {
   Map<String, dynamic> _bodySeguro(dynamic body) {
     if (body is Map<String, dynamic>) return body;
     if (body is Map) return Map<String, dynamic>.from(body);
+
     return {
       'data': body,
     };
   }
 
-  String _mensajeError(dynamic body, [String fallback = 'Error en la solicitud.']) {
+  String _mensajeError(
+    dynamic body, [
+    String fallback = 'Error en la solicitud.',
+  ]) {
     if (body is Map) {
       return body['message']?.toString() ??
           body['mensaje']?.toString() ??
@@ -79,6 +85,7 @@ class UsuarioService {
     for (final endpoint in endpoints) {
       try {
         final respuesta = await ApiService.getAuth(endpoint);
+
         return _normalizarRespuesta(
           respuesta,
           errorDefault: 'No se pudo obtener el perfil.',
@@ -121,6 +128,7 @@ class UsuarioService {
     for (final endpoint in endpoints) {
       try {
         final respuesta = await ApiService.putAuth(endpoint, body);
+
         return _normalizarRespuesta(
           respuesta,
           errorDefault: 'No se pudo actualizar el perfil.',
@@ -168,6 +176,7 @@ class UsuarioService {
     for (final endpoint in endpoints) {
       try {
         final respuesta = await ApiService.putAuth(endpoint, body);
+
         return _normalizarRespuesta(
           respuesta,
           errorDefault: 'No se pudo cambiar la contraseña.',
@@ -178,5 +187,122 @@ class UsuarioService {
     }
 
     throw ultimoError ?? Exception('No se pudo cambiar la contraseña.');
+  }
+
+  Future<Map<String, dynamic>> obtenerPerfilDuenio() async {
+    final endpoints = [
+      '/api/duenio-perfil/mi-perfil',
+      '/api/dueño-perfil/mi-perfil',
+      '/api/duenioPerfil/mi-perfil',
+      '/api/DuenioPerfil/mi-perfil',
+    ];
+
+    Exception? ultimoError;
+
+    for (final endpoint in endpoints) {
+      try {
+        final respuesta = await ApiService.getAuth(endpoint);
+
+        return _normalizarRespuesta(
+          respuesta,
+          errorDefault: 'No se pudo obtener el perfil de dueño.',
+        );
+      } catch (e) {
+        ultimoError = Exception(e.toString());
+      }
+    }
+
+    throw ultimoError ?? Exception('No se pudo obtener el perfil de dueño.');
+  }
+
+  Future<Map<String, dynamic>> actualizarPerfilDuenio({
+    String? direccion,
+    String? referenciasDireccion,
+    String? zona,
+    double? latitud,
+    double? longitud,
+    String? descripcion,
+    String? preferenciasPaseo,
+  }) async {
+    final body = {
+      'direccion': direccion?.trim(),
+      'Direccion': direccion?.trim(),
+      'referenciasDireccion': referenciasDireccion?.trim(),
+      'ReferenciasDireccion': referenciasDireccion?.trim(),
+      'zona': zona?.trim(),
+      'Zona': zona?.trim(),
+      'latitud': latitud,
+      'Latitud': latitud,
+      'longitud': longitud,
+      'Longitud': longitud,
+      'descripcion': descripcion?.trim(),
+      'Descripcion': descripcion?.trim(),
+      'preferenciasPaseo': preferenciasPaseo?.trim(),
+      'PreferenciasPaseo': preferenciasPaseo?.trim(),
+    };
+
+    final endpoints = [
+      '/api/duenio-perfil/mi-perfil',
+      '/api/dueño-perfil/mi-perfil',
+      '/api/duenioPerfil/mi-perfil',
+      '/api/DuenioPerfil/mi-perfil',
+    ];
+
+    Exception? ultimoError;
+
+    for (final endpoint in endpoints) {
+      try {
+        final respuesta = await ApiService.putAuth(endpoint, body);
+
+        return _normalizarRespuesta(
+          respuesta,
+          errorDefault: 'No se pudo actualizar el perfil de dueño.',
+        );
+      } catch (e) {
+        ultimoError = Exception(e.toString());
+      }
+    }
+
+    throw ultimoError ?? Exception('No se pudo actualizar el perfil de dueño.');
+  }
+
+  Future<Map<String, dynamic>> subirFotoPerfilDuenio(File foto) async {
+    final endpoints = [
+      '/api/duenio-perfil/foto',
+      '/api/dueño-perfil/foto',
+      '/api/duenioPerfil/foto',
+      '/api/DuenioPerfil/foto',
+    ];
+
+    final nombresCampo = [
+      'foto',
+      'fotoArchivo',
+      'archivo',
+      'file',
+      'imagen',
+    ];
+
+    Exception? ultimoError;
+
+    for (final endpoint in endpoints) {
+      for (final campo in nombresCampo) {
+        try {
+          final respuesta = await ApiService.postMultipartAuth(
+            endpoint,
+            filePath: foto.path,
+            fileFieldName: campo,
+          );
+
+          return _normalizarRespuesta(
+            respuesta,
+            errorDefault: 'No se pudo subir la foto de perfil.',
+          );
+        } catch (e) {
+          ultimoError = Exception(e.toString());
+        }
+      }
+    }
+
+    throw ultimoError ?? Exception('No se pudo subir la foto de perfil.');
   }
 }

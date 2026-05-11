@@ -8,6 +8,17 @@ class StorageService {
   static const String _keyNombre = 'doggo_nombre';
   static const String _keyEmail = 'doggo_email';
 
+  static const String _keyTrackingActivo = 'doggo_tracking_activo';
+  static const String _keyTrackingPaseoId = 'doggo_tracking_paseo_id';
+  static const String _keyTrackingNombrePerro = 'doggo_tracking_nombre_perro';
+  static const String _keyTrackingNombrePaseador =
+      'doggo_tracking_nombre_paseador';
+  static const String _keyTrackingUltimaLatitud =
+      'doggo_tracking_ultima_latitud';
+  static const String _keyTrackingUltimaLongitud =
+      'doggo_tracking_ultima_longitud';
+  static const String _keyTrackingUltimoEnvio = 'doggo_tracking_ultimo_envio';
+
   static Future<void> guardarBaseUrl(String baseUrl) async {
     final prefs = await SharedPreferences.getInstance();
     final limpia = _limpiarUrl(baseUrl);
@@ -145,12 +156,77 @@ class StorageService {
     await prefs.remove(_keyEmail);
   }
 
+  static Future<void> guardarTrackingActivo({
+    required int paseoId,
+    required String nombrePerro,
+    required String nombrePaseador,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setBool(_keyTrackingActivo, true);
+    await prefs.setInt(_keyTrackingPaseoId, paseoId);
+    await prefs.setString(_keyTrackingNombrePerro, nombrePerro);
+    await prefs.setString(_keyTrackingNombrePaseador, nombrePaseador);
+  }
+
+  static Future<void> guardarUltimaUbicacionTracking({
+    required double latitud,
+    required double longitud,
+    required DateTime fecha,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setDouble(_keyTrackingUltimaLatitud, latitud);
+    await prefs.setDouble(_keyTrackingUltimaLongitud, longitud);
+    await prefs.setString(_keyTrackingUltimoEnvio, fecha.toIso8601String());
+  }
+
+  static Future<Map<String, dynamic>?> obtenerTrackingActivo() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final activo = prefs.getBool(_keyTrackingActivo) ?? false;
+    final paseoId = prefs.getInt(_keyTrackingPaseoId);
+
+    if (!activo || paseoId == null) {
+      return null;
+    }
+
+    return {
+      'activo': activo,
+      'paseoId': paseoId,
+      'nombrePerro': prefs.getString(_keyTrackingNombrePerro) ?? 'Perro',
+      'nombrePaseador':
+          prefs.getString(_keyTrackingNombrePaseador) ?? 'Paseador',
+      'latitud': prefs.getDouble(_keyTrackingUltimaLatitud),
+      'longitud': prefs.getDouble(_keyTrackingUltimaLongitud),
+      'ultimoEnvio': prefs.getString(_keyTrackingUltimoEnvio),
+    };
+  }
+
+  static Future<bool> hayTrackingActivo() async {
+    final tracking = await obtenerTrackingActivo();
+    return tracking != null;
+  }
+
+  static Future<void> limpiarTrackingActivo() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.remove(_keyTrackingActivo);
+    await prefs.remove(_keyTrackingPaseoId);
+    await prefs.remove(_keyTrackingNombrePerro);
+    await prefs.remove(_keyTrackingNombrePaseador);
+    await prefs.remove(_keyTrackingUltimaLatitud);
+    await prefs.remove(_keyTrackingUltimaLongitud);
+    await prefs.remove(_keyTrackingUltimoEnvio);
+  }
+
   static Future<void> limpiarSesion() async {
     await limpiarToken();
     await limpiarUsuarioId();
     await limpiarRol();
     await limpiarNombre();
     await limpiarEmail();
+    await limpiarTrackingActivo();
   }
 
   static Future<void> limpiarTodo() async {

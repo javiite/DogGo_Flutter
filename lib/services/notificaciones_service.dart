@@ -5,7 +5,12 @@ class NotificacionesService {
     dynamic datos = respuesta;
 
     if (respuesta is Map) {
+      final statusCode = respuesta['statusCode'];
       final body = respuesta['body'];
+
+      if (statusCode is int && (statusCode < 200 || statusCode >= 300)) {
+        return [];
+      }
 
       datos = body ?? respuesta;
 
@@ -64,6 +69,8 @@ class NotificacionesService {
       '/api/Notificaciones/$notificacionId/leida',
       '/api/notificaciones/marcar-leida/$notificacionId',
       '/api/Notificaciones/marcar-leida/$notificacionId',
+      '/api/notificaciones/$notificacionId/marcar-como-leida',
+      '/api/Notificaciones/$notificacionId/marcar-como-leida',
     ];
 
     for (final endpoint in endpoints) {

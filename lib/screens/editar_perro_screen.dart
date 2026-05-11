@@ -5,55 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/perros_service.dart';
 import '../services/storage_service.dart';
-
-class _T {
-  static const teal = Color(0xFF0EC9A0);
-  static const tealDeep = Color(0xFF089B7A);
-  static const tealSurface = Color(0xFFE4FAF4);
-  static const violet = Color(0xFF7C5CBF);
-  static const violetSurf = Color(0xFFF0EBFA);
-  static const amber = Color(0xFFFFAB2E);
-  static const amberSurf = Color(0xFFFFF4E0);
-  static const emerald = Color(0xFF22C55E);
-  static const emeraldSurf = Color(0xFFE6FAF0);
-  static const rose = Color(0xFFEF4444);
-  static const roseSurf = Color(0xFFFEEEEE);
-  static const bg = Color(0xFFF4F0E8);
-  static const surface = Colors.white;
-  static const ink = Color(0xFF111827);
-  static const inkSub = Color(0xFF6B7280);
-  static const stroke = Color(0xFFE5E7EB);
-
-  static List<BoxShadow> shadow({
-    double opacity = .055,
-    double blur = 16,
-    Offset offset = const Offset(0, 5),
-  }) {
-    return [
-      BoxShadow(
-        color: Colors.black.withOpacity(opacity),
-        blurRadius: blur,
-        offset: offset,
-      ),
-    ];
-  }
-}
-
-TextStyle _ts(
-  double size,
-  FontWeight weight,
-  Color color, {
-  double spacing = 0,
-  double height = 1.2,
-}) {
-  return TextStyle(
-    fontSize: size,
-    fontWeight: weight,
-    color: color,
-    letterSpacing: spacing,
-    height: height,
-  );
-}
+import '../widgets/doggo_logo.dart';
 
 class EditarPerroScreen extends StatefulWidget {
   final Map<String, dynamic> perro;
@@ -244,6 +196,7 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
     );
 
     if (valor is int) return valor;
+
     return int.tryParse(valor?.toString() ?? '');
   }
 
@@ -285,13 +238,9 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             decoration: BoxDecoration(
-              color: _T.surface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: _T.shadow(
-                opacity: .12,
-                blur: 24,
-                offset: const Offset(0, 8),
-              ),
+              color: _DogGoWeb.card,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: _DogGoWeb.shadow(),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -300,28 +249,28 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
                   width: 44,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: _T.stroke,
+                    color: _DogGoWeb.stroke,
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   'Foto del perro',
-                  style: _ts(18, FontWeight.w900, _T.ink),
+                  style: _DogGoWeb.title(21),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Elige una foto existente o toma una nueva con la cámara.',
                   textAlign: TextAlign.center,
-                  style: _ts(12.5, FontWeight.w600, _T.inkSub, height: 1.35),
+                  style: _DogGoWeb.subtitle(13),
                 ),
                 const SizedBox(height: 16),
                 _BottomOption(
                   icon: Icons.photo_library_rounded,
                   title: 'Elegir desde galería',
                   subtitle: 'Seleccionar una imagen del celular',
-                  color: _T.teal,
-                  surface: _T.tealSurface,
+                  color: _DogGoWeb.teal,
+                  surface: _DogGoWeb.tealLight,
                   onTap: () => Navigator.pop(context, ImageSource.gallery),
                 ),
                 const SizedBox(height: 10),
@@ -329,8 +278,8 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
                   icon: Icons.camera_alt_rounded,
                   title: 'Tomar foto con cámara',
                   subtitle: 'Abrir cámara y tomar foto ahora',
-                  color: _T.violet,
-                  surface: _T.violetSurf,
+                  color: _DogGoWeb.purple,
+                  surface: _DogGoWeb.purpleLight,
                   onTap: () => Navigator.pop(context, ImageSource.camera),
                 ),
                 if (_imagenLocal != null) ...[
@@ -339,8 +288,8 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
                     icon: Icons.delete_outline_rounded,
                     title: 'Quitar foto seleccionada',
                     subtitle: 'Mantener la foto actual del servidor',
-                    color: _T.rose,
-                    surface: _T.roseSurf,
+                    color: _DogGoWeb.rose,
+                    surface: _DogGoWeb.roseLight,
                     onTap: () {
                       Navigator.pop(context);
                       setState(() {
@@ -349,7 +298,6 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
                     },
                   ),
                 ],
-                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -393,8 +341,18 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
     final edadTexto = _edadController.text.trim();
     final fotoUrl = _fotoUrlController.text.trim();
 
-    if (nombre.isEmpty || raza.isEmpty || edadTexto.isEmpty) {
-      _mostrarMensaje('Completa nombre, raza y edad.');
+    if (nombre.isEmpty) {
+      _mostrarMensaje('Escribe el nombre del perro.');
+      return false;
+    }
+
+    if (raza.isEmpty) {
+      _mostrarMensaje('Escribe la raza del perro.');
+      return false;
+    }
+
+    if (edadTexto.isEmpty) {
+      _mostrarMensaje('Escribe la edad del perro.');
       return false;
     }
 
@@ -426,6 +384,7 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
 
   Future<void> _guardar() async {
     if (_guardando) return;
+
     if (!_validar()) return;
 
     final id = _idPerro();
@@ -497,12 +456,14 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
 
         _mostrarMensaje(
           statusCode == null
-              ? result['message']?.toString() ?? 'No se pudo actualizar el perro.'
+              ? result['message']?.toString() ??
+                  'No se pudo actualizar el perro.'
               : '${result['message']} Código: $statusCode',
         );
       }
     } catch (e) {
       if (!mounted) return;
+
       _mostrarMensaje('Error de conexión: $e');
     } finally {
       if (mounted) {
@@ -514,41 +475,33 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
   }
 
   InputDecoration _decoracionCampo({
-    required String label,
+    required String hint,
     required IconData icon,
-    String? hint,
-    Color color = _T.teal,
-    Color surface = _T.tealSurface,
   }) {
     return InputDecoration(
-      labelText: label,
       hintText: hint,
-      prefixIcon: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 20,
-          ),
-        ),
+      prefixIcon: Icon(
+        icon,
+        color: _DogGoWeb.tealDeep,
       ),
       filled: true,
-      fillColor: const Color(0xFFF8F4EC),
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 18,
+      ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(17),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: _DogGoWeb.stroke),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: _DogGoWeb.stroke),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(17),
-        borderSide: BorderSide(
-          color: color,
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(
+          color: _DogGoWeb.teal,
           width: 1.4,
         ),
       ),
@@ -561,270 +514,290 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
         ? 'Perro'
         : _nombreController.text.trim();
 
-    final razaPreview = _razaController.text.trim().isEmpty
-        ? 'Raza'
-        : _razaController.text.trim();
-
-    final edadPreview = _edadController.text.trim().isEmpty
-        ? 'Edad'
-        : '${_edadController.text.trim()} años';
-
     return Scaffold(
-      backgroundColor: _T.bg,
-      appBar: AppBar(
-        backgroundColor: _T.tealDeep,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text('✏️', style: TextStyle(fontSize: 18)),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Editar perro',
-              style: _ts(20, FontWeight.w900, Colors.white, spacing: -.4),
-            ),
-          ],
-        ),
-      ),
-      body: ListView(
-        physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          _HeaderEditarPerro(
-            nombre: nombrePreview,
-            raza: razaPreview,
-            edad: edadPreview,
-            tamano: _tamanoSeleccionado,
-            imagenLocal: _imagenLocal,
-            fotoUrl: _fotoPreviewUrl(),
-            onPickImage: _mostrarOpcionesFoto,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            child: Column(
-              children: [
-                _FormCard(
-                  titulo: '🐾 Datos del perro',
+      backgroundColor: _DogGoWeb.bg,
+      body: SafeArea(
+        child: _PatternBackground(
+          child: ListView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              const _TopWebBar(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 28, 22, 34),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(22, 26, 22, 24),
+                  decoration: BoxDecoration(
+                    color: _DogGoWeb.card.withOpacity(.96),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: _DogGoWeb.stroke),
+                    boxShadow: _DogGoWeb.shadow(),
+                  ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        '✏️ EDITAR MASCOTA',
+                        style: _DogGoWeb.label(),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Editar perro',
+                        style: _DogGoWeb.title(34),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Actualiza la información de tu mascota para que los paseos sean más seguros y personalizados.',
+                        style: _DogGoWeb.subtitle(16),
+                      ),
+                      const SizedBox(height: 28),
+                      Center(
+                        child: Column(
+                          children: [
+                            _PhotoPreview(
+                              imagenLocal: _imagenLocal,
+                              fotoUrl: _fotoPreviewUrl(),
+                              onPickImage: _mostrarOpcionesFoto,
+                            ),
+                            const SizedBox(height: 14),
+                            ElevatedButton.icon(
+                              onPressed: _guardando
+                                  ? null
+                                  : _mostrarOpcionesFoto,
+                              icon: const Icon(Icons.camera_alt_rounded),
+                              label: const Text('Cambiar foto'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _DogGoWeb.cream,
+                                foregroundColor: _DogGoWeb.ink,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'La foto nueva se subirá al guardar cambios.',
+                              textAlign: TextAlign.center,
+                              style: _DogGoWeb.subtitle(13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      _Label('Nombre'),
                       TextField(
                         controller: _nombreController,
                         enabled: !_guardando,
                         textInputAction: TextInputAction.next,
                         onChanged: (_) => setState(() {}),
                         decoration: _decoracionCampo(
-                          label: 'Nombre',
-                          icon: Icons.pets_rounded,
                           hint: 'Ej. Max',
-                          color: _T.teal,
-                          surface: _T.tealSurface,
+                          icon: Icons.pets_rounded,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 18),
+                      _Label('Raza'),
                       TextField(
                         controller: _razaController,
                         enabled: !_guardando,
                         textInputAction: TextInputAction.next,
                         onChanged: (_) => setState(() {}),
                         decoration: _decoracionCampo(
-                          label: 'Raza',
+                          hint: 'Ej. Golden Retriever',
                           icon: Icons.badge_outlined,
-                          hint: 'Ej. Labrador',
-                          color: _T.violet,
-                          surface: _T.violetSurf,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 18),
+                      _Label('Edad (años)'),
                       TextField(
                         controller: _edadController,
                         enabled: !_guardando,
                         keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.done,
+                        textInputAction: TextInputAction.next,
                         onChanged: (_) => setState(() {}),
                         decoration: _decoracionCampo(
-                          label: 'Edad',
-                          icon: Icons.cake_outlined,
                           hint: 'Ej. 3',
-                          color: _T.amber,
-                          surface: _T.amberSurf,
+                          icon: Icons.cake_outlined,
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      _DropdownTamano(
-                        value: _tamanoSeleccionado,
-                        enabled: !_guardando,
-                        tamanos: _tamanos,
-                        onChanged: (value) {
-                          if (value == null) return;
+                      const SizedBox(height: 18),
+                      _Label('Tamaño'),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: _DogGoWeb.stroke),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _tamanoSeleccionado,
+                            isExpanded: true,
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                            items: _tamanos.map((tamano) {
+                              return DropdownMenuItem<String>(
+                                value: tamano,
+                                child: Text(tamano),
+                              );
+                            }).toList(),
+                            onChanged: _guardando
+                                ? null
+                                : (value) {
+                                    if (value == null) return;
 
-                          setState(() {
-                            _tamanoSeleccionado = value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _FormCard(
-                  titulo: '📷 Foto del perro',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _imagenLocal == null
-                            ? 'Puedes mantener la foto actual, elegir una imagen de galería o tomar una foto con cámara.'
-                            : 'Foto lista. Se subirá al servidor cuando guardes los cambios.',
-                        style: _ts(
-                          12.5,
-                          FontWeight.w700,
-                          _imagenLocal == null ? _T.inkSub : _T.tealDeep,
-                          height: 1.35,
+                                    setState(() {
+                                      _tamanoSeleccionado = value;
+                                    });
+                                  },
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _guardando
-                                  ? null
-                                  : () => _seleccionarImagen(
-                                        ImageSource.gallery,
-                                      ),
-                              icon: const Icon(Icons.photo_library_rounded),
-                              label: const Text('Galería'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _T.tealDeep,
-                                side: const BorderSide(color: _T.tealDeep),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _guardando
-                                  ? null
-                                  : () => _seleccionarImagen(
-                                        ImageSource.camera,
-                                      ),
-                              icon: const Icon(Icons.camera_alt_rounded),
-                              label: const Text('Cámara'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _T.violet,
-                                side: const BorderSide(color: _T.violet),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 18),
+                      _Label('Notas especiales'),
                       TextField(
+                        controller: _notasController,
+                        enabled: !_guardando,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Alergias, comportamiento, instrucciones para el paseador...',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide:
+                                const BorderSide(color: _DogGoWeb.stroke),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide:
+                                const BorderSide(color: _DogGoWeb.stroke),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: const BorderSide(
+                              color: _DogGoWeb.teal,
+                              width: 1.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _AdvancedPhotoPath(
                         controller: _fotoUrlController,
                         enabled: !_guardando && _imagenLocal == null,
-                        keyboardType: TextInputType.url,
-                        onChanged: (_) => setState(() {}),
-                        decoration: _decoracionCampo(
-                          label: 'URL o ruta manual opcional',
-                          icon: Icons.link_rounded,
-                          hint: 'Ej. /uploads/perros/max.jpg',
-                          color: _T.emerald,
-                          surface: _T.emeraldSurf,
+                        onChanged: () => setState(() {}),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          onPressed: _guardando ? null : _guardar,
+                          icon: _guardando
+                              ? const SizedBox(
+                                  width: 19,
+                                  height: 19,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.save_rounded),
+                          label: Text(
+                            _guardando
+                                ? 'Guardando...'
+                                : 'Guardar cambios 🐾',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _DogGoWeb.teal,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                _DogGoWeb.teal.withOpacity(.45),
+                            disabledForegroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: OutlinedButton(
+                          onPressed: _guardando
+                              ? null
+                              : () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _DogGoWeb.muted,
+                            side: const BorderSide(color: _DogGoWeb.stroke),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                          child: const Text('Cancelar'),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Si eliges cámara o galería, se usará esa imagen y se ignorará la ruta manual.',
-                        style: _ts(11.5, FontWeight.w600, _T.inkSub, height: 1.35),
-                      ),
-                      if (_imagenLocal != null) ...[
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: _guardando
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _imagenLocal = null;
-                                    });
-                                  },
-                            icon: const Icon(Icons.close_rounded),
-                            label: const Text('Quitar foto seleccionada'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: _T.rose,
-                            ),
-                          ),
+                      Center(
+                        child: Text(
+                          'Editando: $nombrePreview',
+                          style: _DogGoWeb.subtitle(12),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                _FormCard(
-                  titulo: '📝 Notas',
-                  child: TextField(
-                    controller: _notasController,
-                    enabled: !_guardando,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      hintText: 'Cuidados, temperamento, alergias, etc.',
-                      filled: true,
-                      fillColor: const Color(0xFFF8F4EC),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(17),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: _guardando ? null : _guardar,
-                    icon: _guardando
-                        ? const SizedBox(
-                            width: 19,
-                            height: 19,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.save_rounded),
-                    label: Text(_guardando ? 'Guardando...' : 'Guardar cambios'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _T.teal,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: _T.teal.withOpacity(.45),
-                      disabledForegroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-              ],
+              ),
+              const _FooterDogGo(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopWebBar extends StatelessWidget {
+  const _TopWebBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 78,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.92),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.black.withOpacity(.08),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const DogGoLogo(size: 58),
+          const Spacer(),
+          IconButton(
+            onPressed: () => Navigator.pop(context, false),
+            icon: const Icon(
+              Icons.close_rounded,
+              color: _DogGoWeb.ink,
             ),
           ),
         ],
@@ -833,20 +806,12 @@ class _EditarPerroScreenState extends State<EditarPerroScreen> {
   }
 }
 
-class _HeaderEditarPerro extends StatelessWidget {
-  final String nombre;
-  final String raza;
-  final String edad;
-  final String tamano;
+class _PhotoPreview extends StatelessWidget {
   final XFile? imagenLocal;
   final String fotoUrl;
   final VoidCallback onPickImage;
 
-  const _HeaderEditarPerro({
-    required this.nombre,
-    required this.raza,
-    required this.edad,
-    required this.tamano,
+  const _PhotoPreview({
     required this.imagenLocal,
     required this.fotoUrl,
     required this.onPickImage,
@@ -858,145 +823,44 @@ class _HeaderEditarPerro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF089B7A),
-            Color(0xFFF4F0E8),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _T.surface,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: _T.shadow(
-              opacity: .075,
-              blur: 22,
-              offset: const Offset(0, 8),
+    return GestureDetector(
+      onTap: onPickImage,
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          Container(
+            width: 124,
+            height: 124,
+            decoration: BoxDecoration(
+              color: _DogGoWeb.tealLight,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white,
+                width: 4,
+              ),
+              boxShadow: _DogGoWeb.shadow(),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _buildImage(),
+          ),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _DogGoWeb.purple,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white,
+                width: 3,
+              ),
+            ),
+            child: const Icon(
+              Icons.camera_alt_rounded,
+              color: Colors.white,
+              size: 20,
             ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              SizedBox(
-                width: double.infinity,
-                height: 220,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: _buildImage(),
-                    ),
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.black.withOpacity(.02),
-                              Colors.black.withOpacity(.34),
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 14,
-                      top: 14,
-                      child: _Tag(
-                        text: tamano,
-                        color: _T.tealDeep,
-                        background: Colors.white.withOpacity(.94),
-                      ),
-                    ),
-                    Positioned(
-                      right: 14,
-                      top: 14,
-                      child: Material(
-                        color: Colors.white.withOpacity(.94),
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          onTap: onPickImage,
-                          customBorder: const CircleBorder(),
-                          child: const Padding(
-                            padding: EdgeInsets.all(10),
-                            child: Icon(
-                              Icons.add_a_photo_rounded,
-                              color: _T.tealDeep,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 18,
-                      right: 18,
-                      bottom: 18,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            nombre,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: _ts(
-                              31,
-                              FontWeight.w900,
-                              Colors.white,
-                              spacing: -.8,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _Tag(
-                                text: raza,
-                                color: _T.tealDeep,
-                                background: Colors.white.withOpacity(.92),
-                              ),
-                              _Tag(
-                                text: edad,
-                                color: _T.violet,
-                                background: Colors.white.withOpacity(.92),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-                child: Column(
-                  children: [
-                    Text(
-                      'EDITAR MASCOTA',
-                      style: _ts(11, FontWeight.w900, _T.tealDeep, spacing: 1.2),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Actualiza los datos de tu mascota para mantener su perfil al día.',
-                      textAlign: TextAlign.center,
-                      style: _ts(13, FontWeight.w500, _T.inkSub, height: 1.3),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -1013,154 +877,149 @@ class _HeaderEditarPerro extends StatelessWidget {
       return Image.network(
         fotoUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const _LargeDogPlaceholder(),
+        errorBuilder: (_, __, ___) {
+          return const Center(
+            child: Text(
+              '🐶',
+              style: TextStyle(fontSize: 56),
+            ),
+          );
+        },
       );
     }
 
-    return const _LargeDogPlaceholder();
+    return const Center(
+      child: Text(
+        '🐶',
+        style: TextStyle(fontSize: 56),
+      ),
+    );
   }
 }
 
-class _DropdownTamano extends StatelessWidget {
-  final String value;
-  final bool enabled;
-  final List<String> tamanos;
-  final void Function(String?) onChanged;
+class _Label extends StatelessWidget {
+  final String text;
 
-  const _DropdownTamano({
-    required this.value,
-    required this.enabled,
-    required this.tamanos,
-    required this.onChanged,
-  });
+  const _Label(this.text);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F4EC),
-        borderRadius: BorderRadius.circular(17),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          items: tamanos.map((tamano) {
-            return DropdownMenuItem<String>(
-              value: tamano,
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: _T.violetSurf,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.straighten_rounded,
-                      color: _T.violet,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(tamano),
-                ],
-              ),
-            );
-          }).toList(),
-          onChanged: enabled ? onChanged : null,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Text(
+        text,
+        style: _DogGoWeb.body(
+          14,
+          color: _DogGoWeb.ink,
+          weight: FontWeight.w900,
         ),
       ),
     );
   }
 }
 
-class _LargeDogPlaceholder extends StatelessWidget {
-  const _LargeDogPlaceholder();
+class _AdvancedPhotoPath extends StatefulWidget {
+  final TextEditingController controller;
+  final bool enabled;
+  final VoidCallback onChanged;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: _T.tealSurface,
-      child: Stack(
-        children: [
-          Positioned(
-            top: -50,
-            right: -45,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                color: _T.teal.withOpacity(.13),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -35,
-            left: -35,
-            child: Container(
-              width: 130,
-              height: 130,
-              decoration: BoxDecoration(
-                color: _T.violet.withOpacity(.10),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Center(
-            child: Text(
-              '🐶',
-              style: TextStyle(
-                fontSize: 92,
-                shadows: [
-                  Shadow(
-                    color: Colors.black.withOpacity(.08),
-                    blurRadius: 14,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FormCard extends StatelessWidget {
-  final String titulo;
-  final Widget child;
-
-  const _FormCard({
-    required this.titulo,
-    required this.child,
+  const _AdvancedPhotoPath({
+    required this.controller,
+    required this.enabled,
+    required this.onChanged,
   });
 
   @override
+  State<_AdvancedPhotoPath> createState() => _AdvancedPhotoPathState();
+}
+
+class _AdvancedPhotoPathState extends State<_AdvancedPhotoPath> {
+  bool _mostrar = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: _T.surface,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: _T.shadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            titulo,
-            style: _ts(15, FontWeight.w900, _T.ink, spacing: -.2),
+    return Column(
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              _mostrar = !_mostrar;
+            });
+          },
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: _DogGoWeb.cream,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _DogGoWeb.stroke),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.link_rounded,
+                  color: _DogGoWeb.tealDeep,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Ruta manual de foto',
+                    style: _DogGoWeb.body(
+                      13,
+                      color: _DogGoWeb.ink,
+                      weight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                Icon(
+                  _mostrar
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: _DogGoWeb.muted,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          child,
+        ),
+        if (_mostrar) ...[
+          const SizedBox(height: 12),
+          TextField(
+            controller: widget.controller,
+            enabled: widget.enabled,
+            keyboardType: TextInputType.url,
+            onChanged: (_) => widget.onChanged(),
+            decoration: InputDecoration(
+              hintText: 'Ej. /uploads/perros/max.jpg',
+              filled: true,
+              fillColor: Colors.white,
+              prefixIcon: const Icon(
+                Icons.image_rounded,
+                color: _DogGoWeb.tealDeep,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: _DogGoWeb.stroke),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: _DogGoWeb.stroke),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(
+                  color: _DogGoWeb.teal,
+                  width: 1.4,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            'Normalmente no tienes que tocar esto. Usa cámara o galería.',
+            style: _DogGoWeb.subtitle(12),
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -1214,12 +1073,16 @@ class _BottomOption extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: _ts(13.5, FontWeight.w900, _T.ink),
+                      style: _DogGoWeb.body(
+                        14,
+                        color: _DogGoWeb.ink,
+                        weight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: _ts(11.5, FontWeight.w600, _T.inkSub),
+                      style: _DogGoWeb.subtitle(12),
                     ),
                   ],
                 ),
@@ -1236,32 +1099,157 @@ class _BottomOption extends StatelessWidget {
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String text;
-  final Color color;
-  final Color background;
-
-  const _Tag({
-    required this.text,
-    required this.color,
-    required this.background,
-  });
+class _FooterDogGo extends StatelessWidget {
+  const _FooterDogGo();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        text,
-        style: _ts(11, FontWeight.w900, color),
+      color: _DogGoWeb.tealLight.withOpacity(.45),
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 28),
+      child: Column(
+        children: [
+          const DogGoLogo(size: 42),
+          const SizedBox(height: 10),
+          Text(
+            'DogGo © 2026 — Proyecto universitario',
+            style: _DogGoWeb.subtitle(13),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _PatternBackground extends StatelessWidget {
+  final Widget child;
+
+  const _PatternBackground({
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DogPatternPainter(),
+      child: child,
+    );
+  }
+}
+
+class _DogPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = _DogGoWeb.teal.withOpacity(.10)
+      ..strokeWidth = 3.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    const stepX = 82.0;
+    const stepY = 82.0;
+
+    for (double y = 30; y < size.height + stepY; y += stepY) {
+      for (double x = 22; x < size.width + stepX; x += stepX) {
+        final shiftedX = x + ((y ~/ stepY) % 2 == 0 ? 0 : 34);
+
+        _drawPaw(canvas, paint, Offset(shiftedX, y));
+        _drawBone(canvas, paint, Offset(shiftedX + 38, y + 38));
+      }
+    }
+  }
+
+  void _drawPaw(Canvas canvas, Paint paint, Offset c) {
+    canvas.drawCircle(c + const Offset(0, 7), 7, paint);
+    canvas.drawCircle(c + const Offset(-9, -2), 3.8, paint);
+    canvas.drawCircle(c + const Offset(-3, -8), 3.8, paint);
+    canvas.drawCircle(c + const Offset(5, -8), 3.8, paint);
+    canvas.drawCircle(c + const Offset(11, -2), 3.8, paint);
+  }
+
+  void _drawBone(Canvas canvas, Paint paint, Offset c) {
+    canvas.drawLine(
+      c + const Offset(-11, -11),
+      c + const Offset(11, 11),
+      paint,
+    );
+
+    canvas.drawCircle(c + const Offset(-15, -13), 4, paint);
+    canvas.drawCircle(c + const Offset(-9, -17), 4, paint);
+    canvas.drawCircle(c + const Offset(15, 13), 4, paint);
+    canvas.drawCircle(c + const Offset(9, 17), 4, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _DogGoWeb {
+  static const teal = Color(0xFF009C8C);
+  static const tealDeep = Color(0xFF087E73);
+  static const tealLight = Color(0xFFD9F5EF);
+
+  static const purple = Color(0xFF7156C8);
+  static const purpleLight = Color(0xFFEDE7FA);
+
+  static const rose = Color(0xFFEF4444);
+  static const roseLight = Color(0xFFFEEEEE);
+
+  static const bg = Color(0xFFF5F0E8);
+  static const cream = Color(0xFFFFF4E8);
+  static const card = Colors.white;
+  static const ink = Color(0xFF202033);
+  static const muted = Color(0xFF6B7280);
+  static const stroke = Color(0xFFE5E1DA);
+
+  static TextStyle title(double size) {
+    return TextStyle(
+      fontSize: size,
+      fontWeight: FontWeight.w900,
+      color: ink,
+      letterSpacing: -.6,
+      height: 1.08,
+    );
+  }
+
+  static TextStyle subtitle(double size) {
+    return TextStyle(
+      fontSize: size,
+      fontWeight: FontWeight.w500,
+      color: muted,
+      height: 1.35,
+    );
+  }
+
+  static TextStyle label() {
+    return const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w900,
+      color: tealDeep,
+      letterSpacing: 1.6,
+    );
+  }
+
+  static TextStyle body(
+    double size, {
+    Color color = ink,
+    FontWeight weight = FontWeight.w600,
+  }) {
+    return TextStyle(
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      height: 1.25,
+    );
+  }
+
+  static List<BoxShadow> shadow() {
+    return [
+      BoxShadow(
+        color: Colors.black.withOpacity(.06),
+        blurRadius: 18,
+        offset: const Offset(0, 7),
+      ),
+    ];
   }
 }

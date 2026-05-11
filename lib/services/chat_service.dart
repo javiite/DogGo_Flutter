@@ -16,6 +16,8 @@ class ChatService {
               body['mensaje']?.toString() ??
               body['error']?.toString() ??
               mensaje;
+        } else if (body != null) {
+          mensaje = body.toString();
         }
 
         throw Exception(mensaje);
@@ -67,13 +69,16 @@ class ChatService {
       datos = body ?? respuesta;
 
       if (datos is Map) {
-        datos = datos['data'] ??
+        final interno = datos['data'] ??
             datos['mensaje'] ??
             datos['message'] ??
             datos['resultado'] ??
             datos['result'] ??
-            datos['value'] ??
-            datos;
+            datos['value'];
+
+        if (interno is Map) {
+          datos = interno;
+        }
       }
     }
 
@@ -89,7 +94,9 @@ class ChatService {
   Future<List<Map<String, dynamic>>> obtenerMensajesPaseo(int paseoId) async {
     final endpoints = [
       '/api/chat/paseo/$paseoId',
+      '/api/chat/paseos/$paseoId/mensajes',
       '/api/Chat/paseo/$paseoId',
+      '/api/Chat/paseos/$paseoId/mensajes',
       '/api/chat/$paseoId',
       '/api/Chat/$paseoId',
       '/api/mensajes/paseo/$paseoId',
@@ -105,7 +112,7 @@ class ChatService {
         final respuesta = await ApiService.getAuth(endpoint);
         return _normalizarLista(respuesta);
       } catch (e) {
-        ultimoError = Exception(e.toString());
+        ultimoError = Exception(e.toString().replaceFirst('Exception: ', ''));
       }
     }
 
@@ -116,18 +123,28 @@ class ChatService {
     required int paseoId,
     required String contenido,
   }) async {
+    final texto = contenido.trim();
+
+    if (texto.isEmpty) {
+      throw Exception('Escribe un mensaje antes de enviarlo.');
+    }
+
     final body = {
       'paseoId': paseoId,
       'PaseoId': paseoId,
-      'contenido': contenido,
-      'Contenido': contenido,
-      'mensaje': contenido,
-      'Mensaje': contenido,
-      'texto': contenido,
-      'Texto': contenido,
+      'contenido': texto,
+      'Contenido': texto,
+      'mensaje': texto,
+      'Mensaje': texto,
+      'texto': texto,
+      'Texto': texto,
     };
 
     final endpoints = [
+      '/api/chat/paseo/$paseoId/mensajes',
+      '/api/chat/paseos/$paseoId/mensajes',
+      '/api/Chat/paseo/$paseoId/mensajes',
+      '/api/Chat/paseos/$paseoId/mensajes',
       '/api/chat/enviar',
       '/api/Chat/enviar',
       '/api/chat',
@@ -145,10 +162,32 @@ class ChatService {
         final respuesta = await ApiService.postAuth(endpoint, body);
         return _normalizarRespuesta(respuesta);
       } catch (e) {
-        ultimoError = Exception(e.toString());
+        ultimoError = Exception(e.toString().replaceFirst('Exception: ', ''));
       }
     }
 
     throw ultimoError ?? Exception('No se pudo enviar el mensaje.');
+  }
+
+  Future<void> marcarComoLeidos(int paseoId) async {
+    final endpoints = [
+      '/api/chat/paseo/$paseoId/leidos',
+      '/api/chat/paseos/$paseoId/leidos',
+      '/api/Chat/paseo/$paseoId/leidos',
+      '/api/Chat/paseos/$paseoId/leidos',
+    ];
+
+    for (final endpoint in endpoints) {
+      try {
+        final respuesta = await ApiService.putAuth(endpoint);
+        final statusCode = respuesta['statusCode'];
+
+        if (statusCode is int && statusCode >= 200 && statusCode < 300) {
+          return;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
   }
 }

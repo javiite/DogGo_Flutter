@@ -1,64 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../services/paseadores_service.dart';
+import '../services/storage_service.dart';
+import '../theme/doggo_theme.dart';
+import '../widgets/doggo_logo.dart';
+import 'crear_paseo_screen.dart';
 import 'detalle_paseador_screen.dart';
-
-class G {
-  static const brand = Color(0xFF0D9E7E);
-  static const brandPale = Color(0xFFE8F8F3);
-  static const brandDark = Color(0xFF0A7A62);
-  static const clay = Color(0xFFD4694A);
-  static const clayLight = Color(0xFFFAEDE8);
-  static const sage = Color(0xFF5B8C5A);
-  static const sagePale = Color(0xFFECF4EB);
-  static const gold = Color(0xFFCB9B3B);
-  static const goldPale = Color(0xFFFBF3E0);
-  static const plum = Color(0xFF6B4E8A);
-  static const plumPale = Color(0xFFF2EDF8);
-  static const ink0 = Color(0xFFFAF7F2);
-  static const ink1 = Color(0xFFF3EFE8);
-  static const ink2 = Color(0xFFE8E2D9);
-  static const ink3 = Color(0xFFC8C0B4);
-  static const ink4 = Color(0xFF8C8278);
-  static const ink5 = Color(0xFF4A4540);
-  static const ink6 = Color(0xFF1E1A16);
-  static const white = Color(0xFFFFFFFF);
-
-  static const r8 = BorderRadius.all(Radius.circular(8));
-  static const r12 = BorderRadius.all(Radius.circular(12));
-  static const r16 = BorderRadius.all(Radius.circular(16));
-  static const r20 = BorderRadius.all(Radius.circular(20));
-  static const r24 = BorderRadius.all(Radius.circular(24));
-
-  static const shadow1 = [
-    BoxShadow(color: Color(0x0C000000), blurRadius: 16, offset: Offset(0, 4)),
-  ];
-
-  static TextStyle h2(Color c) => TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        color: c,
-        letterSpacing: -.4,
-        height: 1.15,
-      );
-
-  static TextStyle h3(Color c) => TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: c,
-        letterSpacing: -.2,
-      );
-
-  static TextStyle body(Color c, {double size = 13.5}) =>
-      TextStyle(fontSize: size, fontWeight: FontWeight.w400, color: c);
-
-  static TextStyle label(Color c, {double size = 12}) => TextStyle(
-        fontSize: size,
-        fontWeight: FontWeight.w700,
-        color: c,
-        letterSpacing: .3,
-      );
-}
 
 class PaseadoresScreen extends StatefulWidget {
   const PaseadoresScreen({super.key});
@@ -69,21 +16,41 @@ class PaseadoresScreen extends StatefulWidget {
 
 class _PaseadoresScreenState extends State<PaseadoresScreen> {
   bool _cargando = true;
-  String? _error;
-  List<dynamic> _paseadores = [];
+  bool _soloDisponibles = false;
 
+  String? _error;
+  String? _baseUrl;
+  String _zonaSeleccionada = 'Todas';
+  String _ordenSeleccionado = 'Mejor calificación';
+
+  List<dynamic> _paseadores = [];
   final TextEditingController _busquedaController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _cargarPaseadores();
+    _inicializar();
   }
 
   @override
   void dispose() {
     _busquedaController.dispose();
     super.dispose();
+  }
+
+  Future<void> _inicializar() async {
+    await _cargarBaseUrl();
+    await _cargarPaseadores();
+  }
+
+  Future<void> _cargarBaseUrl() async {
+    final url = await StorageService.obtenerBaseUrl();
+
+    if (!mounted) return;
+
+    setState(() {
+      _baseUrl = url;
+    });
   }
 
   Future<void> _cargarPaseadores() async {
@@ -118,189 +85,590 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
     }
   }
 
-  String _ts2(dynamic v, [String fb = 'Sin dato']) {
-    if (v == null) return fb;
-    final t = v.toString().trim();
-    return (t.isEmpty || t.toLowerCase() == 'null') ? fb : t;
+  String _texto(dynamic valor, {String fallback = 'Sin dato'}) {
+    if (valor == null) return fallback;
+
+    final texto = valor.toString().trim();
+
+    if (texto.isEmpty || texto.toLowerCase() == 'null') {
+      return fallback;
+    }
+
+    return texto;
   }
 
-  Map<String, dynamic> _map(dynamic v) {
-    if (v is Map<String, dynamic>) return v;
-    if (v is Map) return Map<String, dynamic>.from(v);
+  Map<String, dynamic> _map(dynamic valor) {
+    if (valor is Map<String, dynamic>) return valor;
+    if (valor is Map) return Map<String, dynamic>.from(valor);
     return {};
   }
 
-  dynamic _val(Map<String, dynamic> m, List<String> keys) {
-    for (final k in keys) {
-      if (m.containsKey(k) && m[k] != null) return m[k];
+  dynamic _val(Map<String, dynamic> mapa, List<String> keys) {
+    for (final key in keys) {
+      if (mapa.containsKey(key) && mapa[key] != null) {
+        return mapa[key];
+      }
     }
+
     return null;
   }
 
-  Map<String, dynamic> _usuario(Map<String, dynamic> p) =>
-      _map(_val(p, ['usuario', 'Usuario', 'user', 'User']));
-
-  String _nombre(Map<String, dynamic> p) {
-    final u = _usuario(p);
-
-    final n = _ts2(
-      _val(p, [
-            'nombre',
-            'Nombre',
-            'paseadorNombre',
-            'PaseadorNombre',
-          ]) ??
-          _val(u, ['nombre', 'Nombre']),
-      '',
-    );
-
-    final a = _ts2(
-      _val(p, [
-            'apellido',
-            'Apellido',
-            'paseadorApellido',
-            'PaseadorApellido',
-          ]) ??
-          _val(u, ['apellido', 'Apellido']),
-      '',
-    );
-
-    final c = '$n $a'.trim();
-
-    return c.isEmpty ? 'Sin dato' : c;
-  }
-
-  String _descripcion(Map<String, dynamic> p) => _ts2(
-        _val(p, ['descripcion', 'Descripcion', 'bio', 'Bio']),
-        'Sin descripción',
-      );
-
-  String _zona(Map<String, dynamic> p) => _ts2(
-        _val(p, ['zonaServicio', 'ZonaServicio', 'zona', 'Zona']),
-        'Sin zona',
-      );
-
-  String _foto(Map<String, dynamic> p) {
-    final u = _usuario(p);
-
-    return _ts2(
-      _val(p, ['fotoUrl', 'FotoUrl', 'imagenUrl', 'ImagenUrl']) ??
-          _val(u, ['fotoUrl', 'FotoUrl', 'imagenUrl', 'ImagenUrl']),
-      '',
+  Map<String, dynamic> _usuario(Map<String, dynamic> paseador) {
+    return _map(
+      _val(
+        paseador,
+        [
+          'usuario',
+          'Usuario',
+          'user',
+          'User',
+          'datosUsuario',
+          'DatosUsuario',
+        ],
+      ),
     );
   }
 
-  String _tarifa(Map<String, dynamic> p) {
-    final t = _val(p, [
-      'tarifaPorHora',
-      'TarifaPorHora',
-      'tarifa',
-      'Tarifa',
-    ]);
+  int? _idPaseador(Map<String, dynamic> paseador) {
+    final valor = _val(
+      paseador,
+      [
+        'id',
+        'Id',
+        'paseadorId',
+        'PaseadorId',
+        'idPaseador',
+        'IdPaseador',
+      ],
+    );
 
-    if (t == null) return 'Tarifa n/d';
+    if (valor is int) return valor;
 
-    final n = double.tryParse(t.toString());
-
-    return n == null ? '\$$t/h' : '\$${n.toStringAsFixed(2)}/h';
+    return int.tryParse(valor?.toString() ?? '');
   }
 
-  String _rating(Map<String, dynamic> p) {
-    final c = _val(p, [
-      'calificacionPromedio',
-      'CalificacionPromedio',
-      'rating',
-      'Rating',
-    ]);
+  String _nombre(Map<String, dynamic> paseador) {
+    final usuario = _usuario(paseador);
 
-    if (c == null) return 'Sin cal.';
+    final nombreCompleto = _texto(
+      _val(
+        paseador,
+        [
+          'nombreCompleto',
+          'NombreCompleto',
+          'paseadorNombreCompleto',
+          'PaseadorNombreCompleto',
+        ],
+      ),
+      fallback: '',
+    );
 
-    final n = double.tryParse(c.toString());
+    if (nombreCompleto.isNotEmpty) return nombreCompleto;
 
-    return n == null ? '⭐ $c' : '⭐ ${n.toStringAsFixed(1)}';
+    final nombre = _texto(
+      _val(
+            paseador,
+            [
+              'nombre',
+              'Nombre',
+              'paseadorNombre',
+              'PaseadorNombre',
+              'nombrePaseador',
+              'NombrePaseador',
+            ],
+          ) ??
+          _val(
+            usuario,
+            [
+              'nombre',
+              'Nombre',
+              'name',
+              'Name',
+            ],
+          ),
+      fallback: '',
+    );
+
+    final apellido = _texto(
+      _val(
+            paseador,
+            [
+              'apellido',
+              'Apellido',
+              'paseadorApellido',
+              'PaseadorApellido',
+              'apellidoPaseador',
+              'ApellidoPaseador',
+            ],
+          ) ??
+          _val(
+            usuario,
+            [
+              'apellido',
+              'Apellido',
+              'lastName',
+              'LastName',
+            ],
+          ),
+      fallback: '',
+    );
+
+    final completo = '$nombre $apellido'.trim();
+
+    return completo.isEmpty ? 'Paseador DogGo' : completo;
   }
 
-  String _exp(Map<String, dynamic> p) {
-    final e = _val(p, [
-      'experienciaAnios',
-      'ExperienciaAnios',
-      'experiencia',
-      'Experiencia',
-    ]);
+  String _email(Map<String, dynamic> paseador) {
+    final usuario = _usuario(paseador);
 
-    return e == null ? 'Sin exp.' : '$e año(s)';
+    return _texto(
+      _val(
+            paseador,
+            [
+              'email',
+              'Email',
+              'correo',
+              'Correo',
+              'paseadorEmail',
+              'PaseadorEmail',
+            ],
+          ) ??
+          _val(
+            usuario,
+            [
+              'email',
+              'Email',
+              'correo',
+              'Correo',
+            ],
+          ),
+      fallback: '',
+    );
   }
 
-  bool _disponible(Map<String, dynamic> p) {
-    final v = _val(p, ['disponible', 'Disponible', 'activo', 'Activo']);
-
-    if (v is bool) return v;
-
-    final t = v?.toString().trim().toLowerCase();
-
-    if (t == null || t.isEmpty || t == 'null') return true;
-
-    return t == 'true' || t == '1' || t == 'si' || t == 'sí';
+  String _descripcion(Map<String, dynamic> paseador) {
+    return _texto(
+      _val(
+        paseador,
+        [
+          'descripcion',
+          'Descripcion',
+          'descripción',
+          'bio',
+          'Bio',
+          'presentacion',
+          'Presentacion',
+        ],
+      ),
+      fallback: 'Sin descripción registrada.',
+    );
   }
 
-  List<String> _zonas(Map<String, dynamic> p) {
-    final z = _zona(p);
+  String _zona(Map<String, dynamic> paseador) {
+    return _texto(
+      _val(
+        paseador,
+        [
+          'zonaServicio',
+          'ZonaServicio',
+          'zona',
+          'Zona',
+          'zonas',
+          'Zonas',
+          'ubicacion',
+          'Ubicacion',
+        ],
+      ),
+      fallback: 'Sin zona',
+    );
+  }
 
-    if (z == 'Sin zona') return [z];
+  String? _foto(Map<String, dynamic> paseador) {
+    final usuario = _usuario(paseador);
 
-    final s = z
+    final raw = _val(
+          paseador,
+          [
+            'fotoUrl',
+            'FotoUrl',
+            'fotoPerfilUrl',
+            'FotoPerfilUrl',
+            'imagenUrl',
+            'ImagenUrl',
+          ],
+        ) ??
+        _val(
+          usuario,
+          [
+            'fotoUrl',
+            'FotoUrl',
+            'fotoPerfilUrl',
+            'FotoPerfilUrl',
+            'imagenUrl',
+            'ImagenUrl',
+          ],
+        );
+
+    return _urlPublica(raw);
+  }
+
+  String? _urlPublica(dynamic valor) {
+    final raw = valor?.toString().trim();
+
+    if (raw == null || raw.isEmpty || raw.toLowerCase() == 'null') {
+      return null;
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+
+    final base = _baseUrl?.trim() ?? '';
+
+    if (base.isEmpty) return raw;
+
+    if (raw.startsWith('/')) {
+      return '$base$raw';
+    }
+
+    return '$base/$raw';
+  }
+
+  double? _tarifaNumero(Map<String, dynamic> paseador) {
+    final valor = _val(
+      paseador,
+      [
+        'tarifaPorHora',
+        'TarifaPorHora',
+        'tarifa',
+        'Tarifa',
+        'precioHora',
+        'PrecioHora',
+      ],
+    );
+
+    if (valor == null) return null;
+
+    return double.tryParse(valor.toString());
+  }
+
+  String _tarifa(Map<String, dynamic> paseador) {
+    final valor = _val(
+      paseador,
+      [
+        'tarifaPorHora',
+        'TarifaPorHora',
+        'tarifa',
+        'Tarifa',
+        'precioHora',
+        'PrecioHora',
+      ],
+    );
+
+    if (valor == null) return 'Tarifa no disponible';
+
+    final numero = double.tryParse(valor.toString());
+
+    if (numero == null) return '\$${valor.toString()} / hora';
+
+    return '\$${numero.toStringAsFixed(2)} / hora';
+  }
+
+  double _ratingNumero(Map<String, dynamic> paseador) {
+    final valor = _val(
+      paseador,
+      [
+        'calificacionPromedio',
+        'CalificacionPromedio',
+        'rating',
+        'Rating',
+        'calificacion',
+        'Calificacion',
+      ],
+    );
+
+    if (valor == null) return 0;
+
+    return double.tryParse(valor.toString()) ?? 0;
+  }
+
+  String _rating(Map<String, dynamic> paseador) {
+    final numero = _ratingNumero(paseador);
+
+    if (numero <= 0) return '0.0';
+
+    return numero.toStringAsFixed(1);
+  }
+
+  String _experiencia(Map<String, dynamic> paseador) {
+    final valor = _val(
+      paseador,
+      [
+        'experienciaAnios',
+        'ExperienciaAnios',
+        'experienciaAños',
+        'ExperienciaAños',
+        'experiencia',
+        'Experiencia',
+      ],
+    );
+
+    if (valor == null) return 'Sin experiencia';
+
+    final numero = int.tryParse(valor.toString());
+
+    if (numero == null) return '${valor.toString()} año(s)';
+
+    if (numero == 1) return '1 año';
+
+    return '$numero años';
+  }
+
+  int _experienciaNumero(Map<String, dynamic> paseador) {
+    final valor = _val(
+      paseador,
+      [
+        'experienciaAnios',
+        'ExperienciaAnios',
+        'experienciaAños',
+        'ExperienciaAños',
+        'experiencia',
+        'Experiencia',
+      ],
+    );
+
+    return int.tryParse(valor?.toString() ?? '') ?? 0;
+  }
+
+  bool _disponible(Map<String, dynamic> paseador) {
+    final valor = _val(
+      paseador,
+      [
+        'disponible',
+        'Disponible',
+        'estaDisponible',
+        'EstaDisponible',
+        'activo',
+        'Activo',
+      ],
+    );
+
+    if (valor is bool) return valor;
+
+    final texto = valor?.toString().trim().toLowerCase();
+
+    if (texto == null || texto.isEmpty || texto == 'null') return true;
+
+    return texto == 'true' || texto == '1' || texto == 'si' || texto == 'sí';
+  }
+
+  List<String> _zonas(Map<String, dynamic> paseador) {
+    final zona = _zona(paseador);
+
+    if (zona == 'Sin zona') return [zona];
+
+    final zonas = zona
         .split(',')
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
 
-    return s.isEmpty ? [z] : s;
+    return zonas.isEmpty ? [zona] : zonas;
   }
 
-  Map<String, dynamic> _normalizar(Map<String, dynamic> p) {
-    final n = Map<String, dynamic>.from(p);
+  List<String> get _zonasDisponibles {
+    final zonas = <String>{};
 
-    n['nombre'] = _nombre(p);
-    n['descripcion'] = _descripcion(p);
-    n['zonaServicio'] = _zona(p);
-    n['fotoUrl'] = _foto(p);
-    n['disponible'] = _disponible(p);
-    n['tarifaPorHora'] = _val(p, [
-      'tarifaPorHora',
-      'TarifaPorHora',
-      'tarifa',
-      'Tarifa',
-    ]);
-    n['calificacionPromedio'] = _val(p, [
-      'calificacionPromedio',
-      'CalificacionPromedio',
-      'rating',
-      'Rating',
-    ]);
-    n['experienciaAnios'] = _val(p, [
-      'experienciaAnios',
-      'ExperienciaAnios',
-      'experiencia',
-      'Experiencia',
-    ]);
+    for (final item in _paseadores) {
+      final paseador = _map(item);
 
-    return n;
+      for (final zona in _zonas(paseador)) {
+        if (zona.trim().isNotEmpty && zona != 'Sin zona') {
+          zonas.add(zona.trim());
+        }
+      }
+    }
+
+    final lista = zonas.toList()..sort();
+
+    return ['Todas', ...lista];
+  }
+
+  int get _totalDisponibles {
+    return _paseadores.where((item) => _disponible(_map(item))).length;
+  }
+
+  double get _promedioRating {
+    if (_paseadores.isEmpty) return 0;
+
+    final ratings = _paseadores
+        .map((item) => _ratingNumero(_map(item)))
+        .where((rating) => rating > 0)
+        .toList();
+
+    if (ratings.isEmpty) return 0;
+
+    final total = ratings.fold<double>(0, (sum, item) => sum + item);
+
+    return total / ratings.length;
+  }
+
+  Map<String, dynamic> _normalizar(Map<String, dynamic> paseador) {
+    final normalizado = Map<String, dynamic>.from(paseador);
+    final id = _idPaseador(paseador);
+
+    if (id != null) {
+      normalizado['id'] = id;
+      normalizado['paseadorId'] = id;
+    }
+
+    normalizado['nombre'] = _nombre(paseador);
+    normalizado['nombreCompleto'] = _nombre(paseador);
+    normalizado['email'] = _email(paseador);
+    normalizado['descripcion'] = _descripcion(paseador);
+    normalizado['zonaServicio'] = _zona(paseador);
+    normalizado['fotoUrl'] = _foto(paseador);
+    normalizado['imagenUrl'] = _foto(paseador);
+    normalizado['disponible'] = _disponible(paseador);
+
+    normalizado['tarifaPorHora'] = _val(
+      paseador,
+      [
+        'tarifaPorHora',
+        'TarifaPorHora',
+        'tarifa',
+        'Tarifa',
+        'precioHora',
+        'PrecioHora',
+      ],
+    );
+
+    normalizado['calificacionPromedio'] = _val(
+      paseador,
+      [
+        'calificacionPromedio',
+        'CalificacionPromedio',
+        'rating',
+        'Rating',
+        'calificacion',
+        'Calificacion',
+      ],
+    );
+
+    normalizado['experienciaAnios'] = _val(
+      paseador,
+      [
+        'experienciaAnios',
+        'ExperienciaAnios',
+        'experienciaAños',
+        'ExperienciaAños',
+        'experiencia',
+        'Experiencia',
+      ],
+    );
+
+    return normalizado;
   }
 
   List<dynamic> get _filtrados {
-    final q = _busquedaController.text.trim().toLowerCase();
+    final query = _busquedaController.text.trim().toLowerCase();
 
-    if (q.isEmpty) return _paseadores;
+    final filtrados = _paseadores.where((item) {
+      final paseador = _map(item);
 
-    return _paseadores.where((item) {
-      final p = _map(item);
+      if (_soloDisponibles && !_disponible(paseador)) {
+        return false;
+      }
 
-      return [
-        _nombre(p),
-        _descripcion(p),
-        _zona(p),
-      ].join(' ').toLowerCase().contains(q);
+      if (_zonaSeleccionada != 'Todas') {
+        final zonas = _zonas(paseador).map((e) => e.toLowerCase()).toList();
+
+        if (!zonas.contains(_zonaSeleccionada.toLowerCase())) {
+          return false;
+        }
+      }
+
+      if (query.isEmpty) return true;
+
+      final texto = [
+        _nombre(paseador),
+        _email(paseador),
+        _descripcion(paseador),
+        _zona(paseador),
+        _tarifa(paseador),
+        _experiencia(paseador),
+        _rating(paseador),
+      ].join(' ').toLowerCase();
+
+      return texto.contains(query);
     }).toList();
+
+    filtrados.sort((a, b) {
+      final pa = _map(a);
+      final pb = _map(b);
+
+      final disponibleA = _disponible(pa) ? 1 : 0;
+      final disponibleB = _disponible(pb) ? 1 : 0;
+
+      if (disponibleA != disponibleB) {
+        return disponibleB.compareTo(disponibleA);
+      }
+
+      if (_ordenSeleccionado == 'Menor tarifa') {
+        final tarifaA = _tarifaNumero(pa) ?? 999999;
+        final tarifaB = _tarifaNumero(pb) ?? 999999;
+
+        return tarifaA.compareTo(tarifaB);
+      }
+
+      if (_ordenSeleccionado == 'Más experiencia') {
+        return _experienciaNumero(pb).compareTo(_experienciaNumero(pa));
+      }
+
+      return _ratingNumero(pb).compareTo(_ratingNumero(pa));
+    });
+
+    return filtrados;
+  }
+
+  Future<void> _abrirDetalle(Map<String, dynamic> paseador) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetallePaseadorScreen(
+          paseador: _normalizar(paseador),
+        ),
+      ),
+    );
+
+    if (mounted) {
+      await _cargarPaseadores();
+    }
+  }
+
+  Future<void> _solicitarPaseo(Map<String, dynamic> paseador) async {
+    final normalizado = _normalizar(paseador);
+
+    final creado = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CrearPaseoScreen(
+          paseador: normalizado,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (creado == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Paseo creado correctamente.'),
+        ),
+      );
+
+      await _cargarPaseadores();
+    }
   }
 
   @override
@@ -308,96 +676,252 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
     final lista = _filtrados;
 
     return Scaffold(
-      backgroundColor: G.ink0,
-      body: NestedScrollView(
-        headerSliverBuilder: (_, __) => [
-          SliverAppBar(
-            pinned: true,
-            floating: true,
-            snap: true,
-            backgroundColor: G.ink0,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: G.ink6,
-                size: 20,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text('Paseadores', style: G.h2(G.ink6)),
-            centerTitle: true,
-            actions: [
-              IconButton(
-                onPressed: _cargarPaseadores,
-                icon: const Icon(Icons.refresh_rounded, color: G.ink6),
-              ),
-            ],
+      backgroundColor: DogGoTheme.cream,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: _PawBackground(),
+          ),
+          SafeArea(
+            child: _cargando
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _cargarPaseadores,
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      slivers: [
+                        SliverToBoxAdapter(child: _buildTopBar()),
+                        SliverToBoxAdapter(child: _buildHeader(lista.length)),
+                        SliverToBoxAdapter(child: _buildBuscador()),
+                        SliverToBoxAdapter(child: _buildFiltros()),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 18, 24, 36),
+                            child: _error != null
+                                ? _buildError()
+                                : lista.isEmpty
+                                    ? _buildVacio()
+                                    : Column(
+                                        children: lista.map((item) {
+                                          final paseador = _map(item);
+
+                                          return _PaseadorCard(
+                                            nombre: _nombre(paseador),
+                                            precio: _tarifa(paseador),
+                                            descripcion:
+                                                _descripcion(paseador),
+                                            zonas: _zonas(paseador),
+                                            experiencia:
+                                                _experiencia(paseador),
+                                            disponible:
+                                                _disponible(paseador),
+                                            rating: _rating(paseador),
+                                            fotoUrl: _foto(paseador),
+                                            onVerPerfil: () =>
+                                                _abrirDetalle(paseador),
+                                            onSolicitar: () =>
+                                                _solicitarPaseo(paseador),
+                                          );
+                                        }).toList(),
+                                      ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         ],
-        body: _cargando
-            ? const Center(child: CircularProgressIndicator(color: G.brand))
-            : _error != null
-                ? _buildError()
-                : Column(
-                    children: [
-                      _buildHeader(lista.length),
-                      Expanded(
-                        child: lista.isEmpty
-                            ? _buildVacio()
-                            : _buildLista(lista),
-                      ),
-                    ],
-                  ),
       ),
     );
   }
 
-  Widget _buildHeader(int count) {
+  Widget _buildTopBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-      color: G.ink0,
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
+      decoration: BoxDecoration(
+        color: DogGoTheme.cream2.withOpacity(.96),
+        border: Border(
+          bottom: BorderSide(
+            color: DogGoTheme.border.withOpacity(.8),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: DogGoTheme.ink,
+            ),
+          ),
+          const SizedBox(width: 2),
+          const DogGoLogo(size: 40),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            decoration: BoxDecoration(
+              color: DogGoTheme.tealLight,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: DogGoTheme.teal.withOpacity(.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.person_search_rounded,
+                  size: 16,
+                  color: DogGoTheme.teal,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  'Paseadores',
+                  style: DogGoTheme.body(
+                    size: 11.5,
+                    color: DogGoTheme.teal,
+                    weight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _cargarPaseadores,
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: DogGoTheme.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(int total) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$count paseadores encontrados', style: G.label(G.ink4)),
+          Text(
+            'PASEADORES DOGGO',
+            style: DogGoTheme.label(size: 11),
+          ),
           const SizedBox(height: 10),
+          Text(
+            'Encuentra un paseador',
+            style: DogGoTheme.title(size: 34),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Compara perfiles, tarifa, zona, experiencia y calificación antes de solicitar tu paseo.',
+            style: DogGoTheme.subtitle(size: 15.5),
+          ),
+          const SizedBox(height: 18),
           Container(
-            height: 48,
-            decoration: const BoxDecoration(
-              color: G.white,
-              borderRadius: G.r16,
-              boxShadow: G.shadow1,
+            width: double.infinity,
+            padding: const EdgeInsets.all(19),
+            decoration: BoxDecoration(
+              color: DogGoTheme.teal,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: DogGoTheme.softShadow(),
             ),
-            child: TextField(
-              controller: _busquedaController,
-              onChanged: (_) => setState(() {}),
-              style: G.body(G.ink6),
-              decoration: InputDecoration(
-                hintText: 'Buscar paseador o zona...',
-                hintStyle: G.body(G.ink3),
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: G.ink4,
-                  size: 20,
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -30,
+                  top: -30,
+                  child: Container(
+                    width: 126,
+                    height: 126,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.10),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 ),
-                suffixIcon: _busquedaController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: G.ink4,
+                Positioned(
+                  right: 24,
+                  bottom: -25,
+                  child: Icon(
+                    Icons.pets_rounded,
+                    color: Colors.white.withOpacity(.12),
+                    size: 108,
+                  ),
+                ),
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 58,
+                          height: 58,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.16),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.person_search_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
                         ),
-                        onPressed: () {
-                          _busquedaController.clear();
-                          setState(() {});
-                        },
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$total paseadores encontrados',
+                                style: DogGoTheme.title(
+                                  size: 22,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                'Elige el perfil que mejor encaje con tu perro.',
+                                style: DogGoTheme.body(
+                                  size: 13,
+                                  color: Colors.white.withOpacity(.9),
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 17),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _HeaderStat(
+                            value: '$_totalDisponibles',
+                            label: 'Disponibles',
+                            icon: Icons.check_circle_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _HeaderStat(
+                            value: _promedioRating <= 0
+                                ? '0.0'
+                                : _promedioRating.toStringAsFixed(1),
+                            label: 'Promedio',
+                            icon: Icons.star_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -405,80 +929,256 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
     );
   }
 
-  Widget _buildLista(List<dynamic> lista) {
-    return RefreshIndicator(
-      color: G.brand,
-      onRefresh: _cargarPaseadores,
-      child: ListView.builder(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-        itemCount: lista.length,
-        itemBuilder: (_, i) {
-          final p = _map(lista[i]);
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _PaseadorCard(
-              nombre: _nombre(p),
-              precio: _tarifa(p),
-              descripcion: _descripcion(p),
-              zonas: _zonas(p),
-              experiencia: _exp(p),
-              disponible: _disponible(p),
-              rating: _rating(p),
-              fotoUrl: _foto(p),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => DetallePaseadorScreen(
-                    paseador: _normalizar(p),
-                  ),
+  Widget _buildBuscador() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+      child: TextField(
+        controller: _busquedaController,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          hintText: 'Buscar paseador, zona o experiencia...',
+          prefixIcon: const Icon(Icons.search_rounded),
+          suffixIcon: _busquedaController.text.trim().isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () {
+                    _busquedaController.clear();
+                    setState(() {});
+                  },
                 ),
-              ),
+          filled: true,
+          fillColor: DogGoTheme.card,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: const BorderSide(color: DogGoTheme.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: const BorderSide(color: DogGoTheme.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: const BorderSide(
+              color: DogGoTheme.teal,
+              width: 1.4,
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline_rounded, size: 64, color: G.clay),
-            const SizedBox(height: 14),
-            Text(_error!, textAlign: TextAlign.center, style: G.h3(G.ink6)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _cargarPaseadores,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Reintentar'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: G.brand,
-                foregroundColor: G.white,
-                shape: const RoundedRectangleBorder(borderRadius: G.r12),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildVacio() {
-    return Center(
+  Widget _buildFiltros() {
+    final zonas = _zonasDisponibles;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.person_search_rounded, size: 72, color: G.ink3),
+          Row(
+            children: [
+              Expanded(
+                child: _FilterBox(
+                  icon: Icons.tune_rounded,
+                  label: 'Orden',
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _ordenSeleccionado,
+                      isExpanded: true,
+                      borderRadius: BorderRadius.circular(18),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Mejor calificación',
+                          child: Text('Mejor calificación'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Menor tarifa',
+                          child: Text('Menor tarifa'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Más experiencia',
+                          child: Text('Más experiencia'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+
+                        setState(() {
+                          _ordenSeleccionado = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _FilterBox(
+                  icon: Icons.location_on_rounded,
+                  label: 'Zona',
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: zonas.contains(_zonaSeleccionada)
+                          ? _zonaSeleccionada
+                          : 'Todas',
+                      isExpanded: true,
+                      borderRadius: BorderRadius.circular(18),
+                      items: zonas
+                          .map(
+                            (zona) => DropdownMenuItem(
+                              value: zona,
+                              child: Text(
+                                zona,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+
+                        setState(() {
+                          _zonaSeleccionada = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Material(
+            color:
+                _soloDisponibles ? DogGoTheme.greenLight : DogGoTheme.card,
+            borderRadius: BorderRadius.circular(22),
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _soloDisponibles = !_soloDisponibles;
+                });
+              },
+              borderRadius: BorderRadius.circular(22),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: _soloDisponibles
+                        ? DogGoTheme.green.withOpacity(.22)
+                        : DogGoTheme.border,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _soloDisponibles
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      color: _soloDisponibles
+                          ? DogGoTheme.green
+                          : DogGoTheme.muted,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        'Mostrar solo paseadores disponibles',
+                        style: DogGoTheme.body(
+                          size: 13.3,
+                          color: DogGoTheme.ink,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return _WebCard(
+      child: Column(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 64,
+            color: DogGoTheme.red,
+          ),
           const SizedBox(height: 14),
-          Text('No se encontraron paseadores', style: G.h3(G.ink6)),
-          const SizedBox(height: 6),
-          Text('Prueba con otra búsqueda', style: G.body(G.ink4)),
+          Text(
+            _error ?? 'No se pudieron cargar los paseadores.',
+            textAlign: TextAlign.center,
+            style: DogGoTheme.title(size: 20),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _cargarPaseadores,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Reintentar'),
+            style: DogGoTheme.primaryButton(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVacio() {
+    return _WebCard(
+      child: Column(
+        children: [
+          Container(
+            width: 86,
+            height: 86,
+            decoration: BoxDecoration(
+              color: DogGoTheme.tealLight,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: const Icon(
+              Icons.person_search_rounded,
+              size: 48,
+              color: DogGoTheme.teal,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No se encontraron paseadores',
+            style: DogGoTheme.title(size: 21),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 7),
+          Text(
+            'Prueba con otra búsqueda, cambia los filtros o actualiza la lista.',
+            style: DogGoTheme.subtitle(size: 13.5),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {
+              _busquedaController.clear();
+
+              setState(() {
+                _zonaSeleccionada = 'Todas';
+                _soloDisponibles = false;
+              });
+            },
+            icon: const Icon(Icons.filter_alt_off_rounded),
+            label: const Text('Limpiar filtros'),
+            style: DogGoTheme.secondaryButton(),
+          ),
         ],
       ),
     );
@@ -491,10 +1191,11 @@ class _PaseadorCard extends StatelessWidget {
   final String descripcion;
   final String experiencia;
   final String rating;
-  final String fotoUrl;
+  final String? fotoUrl;
   final List<String> zonas;
   final bool disponible;
-  final VoidCallback onTap;
+  final VoidCallback onVerPerfil;
+  final VoidCallback onSolicitar;
 
   const _PaseadorCard({
     required this.nombre,
@@ -505,105 +1206,223 @@ class _PaseadorCard extends StatelessWidget {
     required this.disponible,
     required this.rating,
     required this.fotoUrl,
-    required this.onTap,
+    required this.onVerPerfil,
+    required this.onSolicitar,
   });
 
-  bool get _tieneFoto =>
-      fotoUrl.startsWith('http://') || fotoUrl.startsWith('https://');
+  bool get _tieneFoto {
+    final foto = fotoUrl;
+
+    if (foto == null) return false;
+
+    return foto.startsWith('http://') || foto.startsWith('https://');
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: G.white,
-          borderRadius: G.r20,
-          boxShadow: G.shadow1,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onVerPerfil,
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: DogGoTheme.card,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: DogGoTheme.border.withOpacity(.9)),
+            boxShadow: DogGoTheme.softShadow(),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: const BoxDecoration(
-                      color: G.brandPale,
-                      borderRadius: G.r16,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: _tieneFoto
-                        ? Image.network(
-                            fotoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.person,
-                              color: G.brand,
-                              size: 28,
-                            ),
-                          )
-                        : const Icon(Icons.person, color: G.brand, size: 28),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              Container(
+                height: 8,
+                color: disponible ? DogGoTheme.teal : DogGoTheme.muted,
+              ),
+              Padding(
+                padding: const EdgeInsets.all(17),
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-                        Text(nombre, style: G.h3(G.ink6).copyWith(fontSize: 15)),
-                        const SizedBox(height: 3),
-                        Text(precio, style: G.label(G.ink4)),
+                        Hero(
+                          tag: 'paseador-$nombre-$precio',
+                          child: Container(
+                            width: 76,
+                            height: 76,
+                            decoration: BoxDecoration(
+                              color: DogGoTheme.tealLight,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: _tieneFoto
+                                ? Image.network(
+                                    fotoUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) {
+                                      return const Icon(
+                                        Icons.person_rounded,
+                                        color: DogGoTheme.teal,
+                                        size: 38,
+                                      );
+                                    },
+                                  )
+                                : const Icon(
+                                    Icons.person_rounded,
+                                    color: DogGoTheme.teal,
+                                    size: 38,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                nombre,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: DogGoTheme.title(size: 21),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                precio,
+                                style: DogGoTheme.body(
+                                  size: 13.3,
+                                  color: DogGoTheme.teal,
+                                  weight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 7),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    color: DogGoTheme.orange,
+                                    size: 19,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    rating,
+                                    style: DogGoTheme.body(
+                                      size: 12.5,
+                                      color: DogGoTheme.ink,
+                                      weight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Calificación',
+                                    style: DogGoTheme.subtitle(size: 11.5),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: disponible
+                                ? DogGoTheme.greenLight
+                                : DogGoTheme.redLight,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Text(
+                            disponible ? 'Disponible' : 'Ocupado',
+                            style: DogGoTheme.body(
+                              size: 10.5,
+                              color: disponible
+                                  ? DogGoTheme.green
+                                  : DogGoTheme.red,
+                              weight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text(
-                        '★★★★★',
-                        style: TextStyle(color: G.gold, fontSize: 12),
+                    const SizedBox(height: 15),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: DogGoTheme.cream2,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: DogGoTheme.border.withOpacity(.8),
+                        ),
                       ),
-                      Text(
-                        rating,
-                        style: G.label(G.ink4).copyWith(fontSize: 11),
+                      child: Text(
+                        descripcion,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: DogGoTheme.body(
+                          size: 13,
+                          color: DogGoTheme.ink,
+                          weight: FontWeight.w700,
+                        ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  descripcion,
-                  style: G.body(G.ink5).copyWith(height: 1.4),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 13),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ...zonas.take(3).map(
+                                (zona) => _Chip(
+                                  label: zona,
+                                  color: DogGoTheme.teal,
+                                  surface: DogGoTheme.tealLight,
+                                  icon: Icons.location_on_rounded,
+                                ),
+                              ),
+                          _Chip(
+                            label: experiencia,
+                            color: DogGoTheme.orange,
+                            surface: DogGoTheme.orangeLight,
+                            icon: Icons.workspace_premium_rounded,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onVerPerfil,
+                            icon: const Icon(
+                              Icons.visibility_rounded,
+                              size: 18,
+                            ),
+                            label: const Text('Ver perfil'),
+                            style: DogGoTheme.secondaryButton(),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: disponible ? onSolicitar : null,
+                            icon: const Icon(
+                              Icons.directions_walk_rounded,
+                              size: 18,
+                            ),
+                            label: const Text('Solicitar'),
+                            style: DogGoTheme.primaryButton(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ...zonas.map((z) => _Chip(z, G.brandDark, G.brandPale)),
-                  _Chip(experiencia, G.gold, G.goldPale),
-                  _Chip(
-                    disponible ? 'Disponible' : 'Ocupado',
-                    disponible ? G.sage : G.clay,
-                    disponible ? G.sagePale : G.clayLight,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(child: _OutBtn('Ver perfil', onTap)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _FillBtn('Solicitar', onTap)),
-                ],
               ),
             ],
           ),
@@ -613,62 +1432,231 @@ class _PaseadorCard extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
+class _HeaderStat extends StatelessWidget {
+  final String value;
   final String label;
-  final Color fg;
-  final Color bg;
+  final IconData icon;
 
-  const _Chip(this.label, this.fg, this.bg);
+  const _HeaderStat({
+    required this.value,
+    required this.label,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: G.r8),
-      child: Text(label, style: G.label(fg).copyWith(fontSize: 10.5)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 11,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(.12),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: Colors.white,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DogGoTheme.title(
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DogGoTheme.body(
+                    size: 11,
+                    color: Colors.white.withOpacity(.82),
+                    weight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _OutBtn extends StatelessWidget {
+class _FilterBox extends StatelessWidget {
+  final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final Widget child;
 
-  const _OutBtn(this.label, this.onTap);
+  const _FilterBox({
+    required this.icon,
+    required this.label,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: G.brand,
-        side: const BorderSide(color: G.brand, width: 1.5),
-        shape: const RoundedRectangleBorder(borderRadius: G.r12),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.fromLTRB(12, 8, 10, 7),
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: DogGoTheme.border),
       ),
-      child: Text(label, style: G.label(G.brand).copyWith(fontSize: 13)),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: DogGoTheme.teal,
+            size: 21,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: DogGoTheme.subtitle(size: 10.5),
+                ),
+                Expanded(child: child),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _FillBtn extends StatelessWidget {
+class _Chip extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+  final Color color;
+  final Color surface;
+  final IconData icon;
 
-  const _FillBtn(this.label, this.onTap);
+  const _Chip({
+    required this.label,
+    required this.color,
+    required this.surface,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: G.brand,
-        foregroundColor: G.white,
-        shape: const RoundedRectangleBorder(borderRadius: G.r12),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        elevation: 0,
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 6,
       ),
-      child: Text(label, style: G.label(G.white).copyWith(fontSize: 13)),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: DogGoTheme.body(
+              size: 10.5,
+              color: color,
+              weight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
     );
+  }
+}
+
+class _WebCard extends StatelessWidget {
+  final Widget child;
+
+  const _WebCard({
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: DogGoTheme.border),
+        boxShadow: DogGoTheme.softShadow(),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PawBackground extends StatelessWidget {
+  const _PawBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _PawBackgroundPainter(),
+    );
+  }
+}
+
+class _PawBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = DogGoTheme.teal.withOpacity(.055)
+      ..style = PaintingStyle.fill;
+
+    const spacing = 72.0;
+
+    for (double x = -20; x < size.width + spacing; x += spacing) {
+      for (double y = -10; y < size.height + spacing; y += spacing) {
+        final dx = x + ((y ~/ spacing).isEven ? 0 : 28);
+        final dy = y;
+
+        canvas.drawCircle(Offset(dx + 15, dy + 19), 4.2, paint);
+        canvas.drawCircle(Offset(dx + 24, dy + 12), 4.0, paint);
+        canvas.drawCircle(Offset(dx + 33, dy + 19), 4.2, paint);
+
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(dx + 24, dy + 31),
+            width: 22,
+            height: 17,
+          ),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }
