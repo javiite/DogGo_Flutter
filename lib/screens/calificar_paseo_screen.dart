@@ -89,16 +89,31 @@ class _CalificarPaseoScreenState extends State<CalificarPaseoScreen> {
       _snack('Escribe un comentario más completo.');
       return;
     }
+
     setState(() => _enviando = true);
+
     try {
-      await _svc.calificarPaseo(
+      final res = await _svc.calificarPaseo(
         paseoId: widget.paseoId,
         puntaje: _puntaje,
         comentario: com,
       );
+
       if (!mounted) return;
-      _snack('Calificación enviada ✅');
-      Navigator.pop(context, true);
+
+      // Verificamos si la respuesta del API fue exitosa (200 o 201)
+      if (res['statusCode'] == 200 || res['statusCode'] == 201) {
+        _snack('Calificación enviada ✅');
+
+        // FIX: Usamos addPostFrameCallback para cerrar la pantalla de forma segura
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context, true);
+          }
+        });
+      } else {
+        _snack('Error: ${res['body']['message'] ?? 'No se pudo enviar'}');
+      }
     } catch (e) {
       if (!mounted) return;
       _snack('No se pudo enviar: $e');
