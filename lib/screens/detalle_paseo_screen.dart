@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 
-import '../services/background_tracking_service.dart';
-import '../services/paseos_service.dart';
-import '../services/session_service.dart';
-import '../services/storage_service.dart';
+import '../shared/widgets/doggo_error_view.dart';
+import '../shared/widgets/doggo_loading_view.dart';
+import '../theme/doggo_radius.dart';
+import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
-import '../widgets/doggo_logo.dart';
 import 'calificar_paseo_screen.dart';
 import 'chat_paseo_screen.dart';
 import 'evidencia_paseo_screen.dart';
+import 'home/models/home_walk_status.dart';
 import 'mapa_paseo_screen.dart';
 import 'tracking_paseo_screen.dart';
+import 'walks/models/walk_detail.dart';
+import 'walks/walk_detail_controller.dart';
+import 'walks/walk_detail_state.dart';
 
 class DetallePaseoScreen extends StatefulWidget {
   final int? id;
@@ -31,3344 +32,2181 @@ class DetallePaseoScreen extends StatefulWidget {
   });
 
   @override
-  State<DetallePaseoScreen> createState() => _DetallePaseoScreenState();
+  State<DetallePaseoScreen> createState() =>
+      _DetallePaseoScreenState();
 }
 
-class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
-  Map<String, dynamic>? _paseo;
-  bool _cargando = true;
-  bool _accionando = false;
-  String? _rolReal;
-  String? _baseUrl;
+class _DetallePaseoScreenState
+    extends State<DetallePaseoScreen> {
+  late final WalkDetailController _controller;
 
   @override
   void initState() {
     super.initState();
 
-    if (widget.paseo != null) {
-      _paseo = Map<String, dynamic>.from(widget.paseo!);
-    }
-
-    _inicializar();
-  }
-
-  Future<void> _inicializar() async {
-    await _cargarBaseUrl();
-    await _cargarRol();
-    await _cargarDetalle();
-  }
-
-  Future<void> _cargarBaseUrl() async {
-    final url = await StorageService.obtenerBaseUrl();
-
-    if (!mounted) return;
-
-    setState(() {
-      _baseUrl = url;
-    });
-  }
-
-  Future<void> _cargarRol() async {
-    try {
-      final rol = await SessionService.obtenerRol();
-
-      if (!mounted) return;
-
-      setState(() {
-        _rolReal = rol ?? widget.rol;
-      });
-    } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _rolReal = widget.rol;
-      });
-    }
-  }
-
-  String get _rolUsuario {
-    return _rolReal ?? widget.rol ?? '';
-  }
-
-  bool get _esPaseador {
-    return SessionService.esPaseadorRol(_rolUsuario);
-  }
-
-  bool get _esDuenio {
-    return SessionService.esDuenioRol(_rolUsuario);
-  }
-
-  int? get _idPaseo {
-    final idDirecto = widget.paseoId ?? widget.id;
-
-    if (idDirecto != null) return idDirecto;
-
-    final idMapa = _paseo?['id'] ??
-        _paseo?['Id'] ??
-        widget.paseo?['id'] ??
-        widget.paseo?['Id'] ??
-        widget.paseo?['paseoId'] ??
-        widget.paseo?['PaseoId'];
-
-    if (idMapa is int) return idMapa;
-    if (idMapa is num) return idMapa.toInt();
-
-    return int.tryParse(idMapa?.toString() ?? '');
-  }
-
-  String _texto(dynamic valor, {String fallback = 'No disponible'}) {
-    if (valor == null) return fallback;
-
-    final texto = valor.toString().trim();
-
-    if (texto.isEmpty || texto.toLowerCase() == 'null') {
-      return fallback;
-    }
-
-    return texto;
-  }
-
-  double? _doubleSeguro(dynamic valor) {
-    if (valor == null) return null;
-
-    if (valor is double) return valor;
-    if (valor is int) return valor.toDouble();
-    if (valor is num) return valor.toDouble();
-
-    final texto = valor.toString().trim();
-
-    if (texto.isEmpty || texto.toLowerCase() == 'null') return null;
-
-    return double.tryParse(texto);
-  }
-
-  bool _coordenadaValida(double? lat, double? lng) {
-    if (lat == null || lng == null) return false;
-    if (lat == 0 && lng == 0) return false;
-    if (lat < -90 || lat > 90) return false;
-    if (lng < -180 || lng > 180) return false;
-
-    return true;
-  }
-
-  String _estado() {
-    return _texto(
-      _paseo?['estado'] ?? _paseo?['Estado'],
-      fallback: 'Pendiente',
-    );
-  }
-
-  String _normalizarEstado() {
-    return _estado().replaceAll(' ', '').toLowerCase();
-  }
-
-  bool get _esPendiente => _normalizarEstado() == 'pendiente';
-  bool get _esAceptado => _normalizarEstado() == 'aceptado';
-  bool get _esEnCurso => _normalizarEstado() == 'encurso';
-  bool get _esFinalizado => _normalizarEstado() == 'finalizado';
-  bool get _esCancelado => _normalizarEstado() == 'cancelado';
-
-  bool get _puedeAceptar => _esPaseador && _esPendiente;
-  bool get _puedeRechazar => _esPaseador && _esPendiente;
-  bool get _puedeIniciar => _esPaseador && _esAceptado;
-  bool get _puedeFinalizar => _esPaseador && _esEnCurso;
-
-  bool get _puedeCancelar {
-    if (_esFinalizado || _esCancelado) return false;
-    return _esPaseador || _esDuenio;
-  }
-
-  bool get _puedeCalificar {
-    return _esDuenio && _esFinalizado;
-  }
-
-  bool get _puedeAbrirTrackingGps {
-    return _esPaseador && _esEnCurso;
-  }
-
-  bool get _tieneFotoInicio {
-    return _fotoInicio() != null;
-  }
-
-  bool get _tieneFotoFin {
-    return _fotoFin() != null;
-  }
-
-  Color _colorEstado() {
-    switch (_normalizarEstado()) {
-      case 'pendiente':
-        return DogGoTheme.orange;
-      case 'aceptado':
-        return DogGoTheme.purple;
-      case 'encurso':
-        return DogGoTheme.green;
-      case 'finalizado':
-        return DogGoTheme.teal;
-      case 'cancelado':
-        return DogGoTheme.red;
-      default:
-        return DogGoTheme.muted;
-    }
-  }
-
-  Color _surfaceEstado() {
-    switch (_normalizarEstado()) {
-      case 'pendiente':
-        return DogGoTheme.orangeLight;
-      case 'aceptado':
-        return DogGoTheme.purpleLight;
-      case 'encurso':
-        return DogGoTheme.greenLight;
-      case 'finalizado':
-        return DogGoTheme.tealLight;
-      case 'cancelado':
-        return DogGoTheme.redLight;
-      default:
-        return const Color(0xFFF3F4F6);
-    }
-  }
-
-  IconData _iconoEstado() {
-    switch (_normalizarEstado()) {
-      case 'pendiente':
-        return Icons.schedule_rounded;
-      case 'aceptado':
-        return Icons.verified_rounded;
-      case 'encurso':
-        return Icons.directions_walk_rounded;
-      case 'finalizado':
-        return Icons.flag_rounded;
-      case 'cancelado':
-        return Icons.cancel_rounded;
-      default:
-        return Icons.info_outline_rounded;
-    }
-  }
-
-  String _fechaBonita(dynamic valor) {
-    if (valor == null) return 'No disponible';
-
-    final fecha = DateTime.tryParse(valor.toString());
-
-    if (fecha == null) return valor.toString();
-
-    final local = fecha.toLocal();
-
-    String dos(int n) => n.toString().padLeft(2, '0');
-
-    return '${dos(local.day)}/${dos(local.month)}/${local.year} ${dos(local.hour)}:${dos(local.minute)}';
-  }
-
-  String _fechaCorta(dynamic valor) {
-    if (valor == null) return '--/--';
-
-    final fecha = DateTime.tryParse(valor.toString());
-
-    if (fecha == null) return valor.toString();
-
-    final local = fecha.toLocal();
-
-    const meses = [
-      'ene',
-      'feb',
-      'mar',
-      'abr',
-      'may',
-      'jun',
-      'jul',
-      'ago',
-      'sep',
-      'oct',
-      'nov',
-      'dic',
-    ];
-
-    return '${local.day} ${meses[local.month - 1]}';
-  }
-
-  String _horaCorta(dynamic valor) {
-    if (valor == null) return '--:--';
-
-    final fecha = DateTime.tryParse(valor.toString());
-
-    if (fecha == null) return '--:--';
-
-    final local = fecha.toLocal();
-
-    String dos(int n) => n.toString().padLeft(2, '0');
-
-    return '${dos(local.hour)}:${dos(local.minute)}';
-  }
-
-  String _precio(dynamic valor) {
-    if (valor == null) return 'No disponible';
-
-    final numero = double.tryParse(valor.toString());
-
-    if (numero == null) return valor.toString();
-
-    return '\$${numero.toStringAsFixed(2)}';
-  }
-
-  String? _urlPublica(dynamic valor) {
-    final raw = valor?.toString().trim();
-
-    if (raw == null || raw.isEmpty || raw.toLowerCase() == 'null') {
-      return null;
-    }
-
-    if (raw.startsWith('http://') || raw.startsWith('https://')) {
-      return raw;
-    }
-
-    final base = _baseUrl?.trim() ?? '';
-
-    if (base.isEmpty) return raw;
-
-    if (raw.startsWith('/')) {
-      return '$base$raw';
-    }
-
-    return '$base/$raw';
-  }
-
-  Map<String, dynamic> _normalizarDetalle(dynamic respuesta) {
-    dynamic datos = respuesta;
-
-    if (respuesta is Map) {
-      if (respuesta.containsKey('statusCode') && respuesta.containsKey('body')) {
-        datos = respuesta['body'];
-      } else {
-        datos = respuesta;
-      }
-    }
-
-    if (datos is Map) {
-      datos = datos['data'] ??
-          datos['paseo'] ??
-          datos['detalle'] ??
-          datos['resultado'] ??
-          datos['result'] ??
-          datos['value'] ??
-          datos;
-    }
-
-    if (datos is Map) {
-      return Map<String, dynamic>.from(datos);
-    }
-
-    throw Exception('La respuesta del detalle del paseo no tiene formato válido.');
-  }
-
-  Future<Map<String, dynamic>> _obtenerDetalleCompatible(int id) async {
-    final respuesta = await PaseosService.obtenerPaseoPorId(id);
-    return _normalizarDetalle(respuesta);
-  }
-
-  Future<void> _aceptarCompatible(int id) async {
-    final result = await PaseosService.aceptarPaseo(id);
-
-    if (result['success'] != true) {
-      throw Exception(result['message'] ?? 'No se pudo aceptar el paseo.');
-    }
-  }
-
-  Future<void> _rechazarCompatible(int id) async {
-    final result = await PaseosService.rechazarPaseo(id);
-
-    if (result['success'] != true) {
-      throw Exception(result['message'] ?? 'No se pudo rechazar el paseo.');
-    }
-  }
-
-  Future<void> _iniciarCompatible(int id) async {
-    final result = await PaseosService.iniciarPaseo(id);
-
-    if (result['success'] != true) {
-      throw Exception(result['message'] ?? 'No se pudo iniciar el paseo.');
-    }
-  }
-
-  Future<void> _finalizarCompatible(int id) async {
-    final result = await PaseosService.finalizarPaseo(id);
-
-    if (result['success'] != true) {
-      throw Exception(result['message'] ?? 'No se pudo finalizar el paseo.');
-    }
-  }
-
-  Future<void> _cancelarCompatible(int id, String motivo) async {
-    final result = await PaseosService.cancelarPaseo(
-      id,
-      motivo: motivo,
+    _controller = WalkDetailController(
+      id: widget.id,
+      walkId: widget.paseoId,
+      initialWalk: widget.paseo,
+      role: widget.rol,
     );
 
-    if (result['success'] != true) {
-      throw Exception(result['message'] ?? 'No se pudo cancelar el paseo.');
-    }
+    _controller.initialize();
   }
 
-  Future<void> _cargarDetalle() async {
-    final id = _idPaseo;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-    if (id == null) {
-      setState(() {
-        _cargando = false;
-      });
+  Future<void> _performAction(
+    WalkDetailAction action, {
+    String cancellationReason = '',
+  }) async {
+    final result = await _controller.perform(
+      action,
+      cancellationReason: cancellationReason,
+    );
+
+    if (!mounted) {
       return;
     }
 
-    try {
-      final detalle = await _obtenerDetalleCompatible(id);
-
-      if (!mounted) return;
-
-      setState(() {
-        _paseo = detalle;
-        _cargando = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _cargando = false;
-      });
-
-      if (_paseo == null) {
-        _mostrarMensaje('No se pudo cargar el detalle del paseo: $e');
-      }
-    }
-  }
-
-  Future<void> _ejecutarAccion({
-    required Future<void> Function() accion,
-    required String mensajeExito,
-  }) async {
-    if (_accionando) return;
-
-    setState(() {
-      _accionando = true;
-    });
-
-    try {
-      await accion();
-
-      if (!mounted) return;
-
-      _mostrarMensaje(mensajeExito);
-      widget.onPaseoActualizado?.call();
-
-      await _cargarDetalle();
-    } catch (e) {
-      if (!mounted) return;
-      _mostrarMensaje('Ocurrió un error: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _accionando = false;
-        });
-      }
-    }
-  }
-
-  void _mostrarMensaje(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje)),
-    );
-  }
-
-  Future<void> _aceptarPaseo() async {
-    final id = _idPaseo;
-
-    if (id == null || !_puedeAceptar) return;
-
-    await _ejecutarAccion(
-      accion: () => _aceptarCompatible(id),
-      mensajeExito:
-          'Paseo aceptado. Ahora puedes iniciarlo cuando llegues con el perro.',
-    );
-  }
-
-  Future<void> _rechazarPaseo() async {
-    final id = _idPaseo;
-
-    if (id == null || !_puedeRechazar) return;
-
-    await _ejecutarAccion(
-      accion: () => _rechazarCompatible(id),
-      mensajeExito: 'Paseo rechazado correctamente.',
-    );
-  }
-
-  Future<void> _iniciarPaseo() async {
-    final id = _idPaseo;
-
-    if (id == null || !_puedeIniciar) return;
-
-    await _ejecutarAccion(
-      accion: () => _iniciarCompatible(id),
-      mensajeExito: 'Paseo iniciado. Ahora sube la foto de inicio.',
-    );
-  }
-
-  Future<void> _finalizarPaseo() async {
-    final id = _idPaseo;
-
-    if (id == null || !_puedeFinalizar) return;
-
-    if (_fotoFin() == null) {
-      final subir = await showDialog<bool>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: DogGoTheme.card,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
-            ),
-            title: const Text('Foto final requerida'),
-            content: const Text(
-              'Antes de finalizar el paseo, sube una foto de fin como evidencia.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pop(context, true),
-                icon: const Icon(Icons.photo_camera_back_rounded),
-                label: const Text('Subir foto de fin'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DogGoTheme.teal,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                ),
-              ),
-            ],
-          );
-        },
+    if (result.code ==
+        WalkDetailResultCode.finalEvidenceRequired) {
+      final upload = await _confirmDialog(
+        title: 'Evidencia final requerida',
+        message:
+            'Antes de finalizar el paseo debes registrar una fotografía de entrega.',
+        confirmText: 'Subir evidencia',
+        icon: Icons.photo_camera_outlined,
       );
 
-      if (subir == true) {
-        await _abrirEvidencia('fin');
+      if (upload == true) {
+        await _openEvidence('fin');
       }
 
       return;
     }
 
-    await _ejecutarAccion(
-      accion: () async {
-        await BackgroundTrackingService.detenerTracking();
-        await _finalizarCompatible(id);
-      },
-      mensajeExito: 'Paseo finalizado correctamente.',
+    _showMessage(
+      result.message,
+      success: result.success,
+    );
+
+    if (result.success) {
+      widget.onPaseoActualizado?.call();
+    }
+  }
+
+  Future<void> _acceptWalk() async {
+    final confirmed = await _confirmDialog(
+      title: 'Aceptar paseo',
+      message:
+          'Confirma que puedes realizar el servicio en la fecha, horario y ubicación indicados.',
+      confirmText: 'Aceptar solicitud',
+      icon: Icons.check_circle_outline_rounded,
+    );
+
+    if (confirmed == true) {
+      await _performAction(
+        WalkDetailAction.accept,
+      );
+    }
+  }
+
+  Future<void> _rejectWalk() async {
+    final confirmed = await _confirmDialog(
+      title: 'Rechazar solicitud',
+      message:
+          'La solicitud dejará de estar disponible para este servicio.',
+      confirmText: 'Rechazar',
+      destructive: true,
+      icon: Icons.block_outlined,
+    );
+
+    if (confirmed == true) {
+      await _performAction(
+        WalkDetailAction.reject,
+      );
+    }
+  }
+
+  Future<void> _startWalk() async {
+    final confirmed = await _confirmDialog(
+      title: 'Iniciar paseo',
+      message:
+          'Inicia el servicio únicamente cuando ya estés con la mascota en el punto de recogida.',
+      confirmText: 'Iniciar paseo',
+      icon: Icons.directions_walk_rounded,
+    );
+
+    if (confirmed == true) {
+      await _performAction(
+        WalkDetailAction.start,
+      );
+    }
+  }
+
+  Future<void> _finishWalk() async {
+    final state = _controller.state;
+
+    if (state.needsEndEvidence) {
+      await _performAction(
+        WalkDetailAction.finish,
+      );
+      return;
+    }
+
+    final confirmed = await _confirmDialog(
+      title: 'Finalizar paseo',
+      message:
+          'Confirma que la mascota fue entregada correctamente y que el servicio terminó.',
+      confirmText: 'Finalizar',
+      icon: Icons.flag_outlined,
+    );
+
+    if (confirmed == true) {
+      await _performAction(
+        WalkDetailAction.finish,
+      );
+    }
+  }
+
+  Future<void> _cancelWalk() async {
+    final reason = await _requestCancellationReason();
+
+    if (reason == null) {
+      return;
+    }
+
+    await _performAction(
+      WalkDetailAction.cancel,
+      cancellationReason: reason,
     );
   }
 
-  Future<void> _cancelarPaseo() async {
-    final id = _idPaseo;
-
-    if (id == null || !_puedeCancelar) return;
-
-    final motivoController = TextEditingController();
-
-    final confirmar = await showDialog<bool>(
+  Future<bool?> _confirmDialog({
+    required String title,
+    required String message,
+    required String confirmText,
+    required IconData icon,
+    bool destructive = false,
+  }) {
+    return showDialog<bool>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: DogGoTheme.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: const Text('Cancelar paseo'),
-          content: TextField(
-            controller: motivoController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: 'Motivo de cancelación',
-              hintText: 'Ej. Cambio de horario, lluvia, emergencia...',
-              filled: true,
-              fillColor: DogGoTheme.cream,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+          title: Row(
+            children: [
+              Icon(
+                icon,
+                color: destructive
+                    ? DogGoTheme.red
+                    : DogGoTheme.teal,
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(title),
+              ),
+            ],
           ),
+          content: Text(message),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, false),
               child: const Text('Volver'),
             ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context, true),
-              icon: const Icon(Icons.cancel_rounded),
-              label: const Text('Cancelar paseo'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DogGoTheme.red,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, true),
+              style: destructive
+                  ? ElevatedButton.styleFrom(
+                      backgroundColor:
+                          DogGoTheme.red,
+                      foregroundColor: Colors.white,
+                    )
+                  : null,
+              child: Text(confirmText),
             ),
           ],
         );
       },
     );
+  }
 
-    if (confirmar != true) {
-      motivoController.dispose();
-      return;
-    }
+  Future<String?> _requestCancellationReason() async {
+    final controller = TextEditingController();
+    String? errorText;
 
-    final motivo = motivoController.text.trim();
-    motivoController.dispose();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(
+                    Icons.cancel_outlined,
+                    color: DogGoTheme.red,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Cancelar paseo'),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Indica por qué necesitas cancelar el servicio.',
+                    style:
+                        DogGoTheme.subtitle(size: 12.5),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: controller,
+                    minLines: 3,
+                    maxLines: 5,
+                    maxLength: 250,
+                    textCapitalization:
+                        TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      labelText:
+                          'Motivo de cancelación',
+                      hintText:
+                          'Ejemplo: cambio de horario, emergencia o clima.',
+                      errorText: errorText,
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  Text(
+                    'Este motivo quedará visible en el detalle.',
+                    style:
+                        DogGoTheme.caption(size: 10),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pop(dialogContext),
+                  child: const Text('Volver'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final reason =
+                        controller.text.trim();
 
-    if (motivo.isEmpty) {
-      _mostrarMensaje('Escribe el motivo de cancelación.');
-      return;
-    }
+                    if (reason.length < 3) {
+                      setDialogState(() {
+                        errorText =
+                            'Escribe un motivo más completo.';
+                      });
+                      return;
+                    }
 
-    await _ejecutarAccion(
-      accion: () async {
-        await BackgroundTrackingService.detenerTracking();
-        await _cancelarCompatible(id, motivo);
+                    Navigator.pop(
+                      dialogContext,
+                      reason,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        DogGoTheme.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text(
+                    'Confirmar cancelación',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
       },
-      mensajeExito: 'Paseo cancelado correctamente.',
     );
+
+    controller.dispose();
+    return result;
   }
 
-  Future<void> _abrirCalificarPaseo() async {
-    final id = _idPaseo;
+  Future<void> _openChat() async {
+    final state = _controller.state;
+    final walk = state.walk;
+    final id = state.walkId;
 
-    if (id == null || !_puedeCalificar) return;
-
-    final actualizado = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CalificarPaseoScreen(
-          paseoId: id,
-          nombrePerro: _nombrePerro(),
-          nombrePaseador: _nombrePaseador(),
-        ),
-      ),
-    );
-
-    if (actualizado == true) {
-      await _cargarDetalle();
-      widget.onPaseoActualizado?.call();
+    if (walk == null ||
+        id == null ||
+        !state.canOpenChat) {
+      _showMessage(
+        'El chat no está disponible para este paseo.',
+      );
+      return;
     }
-  }
 
-  Future<void> _abrirChatPaseo() async {
-    final id = _idPaseo;
-
-    if (id == null) return;
-
-    final nombreOtroUsuario = _esPaseador ? _nombreDuenio() : _nombrePaseador();
+    final otherName = state.isWalker
+        ? walk.ownerName
+        : walk.walkerName;
 
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ChatPaseoScreen(
           paseoId: id,
-          nombrePerro: _nombrePerro(),
-          nombreOtroUsuario: nombreOtroUsuario,
+          nombrePerro: walk.petName,
+          nombreOtroUsuario: otherName,
         ),
       ),
     );
   }
 
-  Future<void> _abrirEvidencia(String tipo) async {
-    final id = _idPaseo;
+  Future<void> _openMap() async {
+    final state = _controller.state;
+    final walk = state.walk;
 
-    if (id == null) return;
-
-    final actualizado = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EvidenciaPaseoScreen(
-          paseoId: id,
-          tipo: tipo,
-          nombrePerro: _nombrePerro(),
-          nombrePaseador: _nombrePaseador(),
-        ),
-      ),
-    );
-
-    if (actualizado == true) {
-      await _cargarDetalle();
-      widget.onPaseoActualizado?.call();
-
-      if (tipo == 'inicio') {
-        _mostrarMensaje(
-          'Foto de inicio guardada. Ahora activa la ubicación en vivo.',
-        );
-      } else {
-        _mostrarMensaje('Foto final guardada. Ya puedes finalizar el paseo.');
-      }
+    if (walk == null || !state.canOpenMap) {
+      _showMessage(
+        'El mapa todavía no está disponible.',
+      );
+      return;
     }
-  }
-
-  Future<void> _abrirTrackingGps() async {
-    final id = _idPaseo;
-
-    if (id == null || !_puedeAbrirTrackingGps) return;
-
-    final actualizado = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TrackingPaseoScreen(
-          paseoId: id,
-          nombrePerro: _nombrePerro(),
-          nombrePaseador: _nombrePaseador(),
-        ),
-      ),
-    );
-
-    if (actualizado == true) {
-      await _cargarDetalle();
-      widget.onPaseoActualizado?.call();
-    }
-  }
-
-  Future<void> _abrirMapaPaseo() async {
-    if (_paseo == null) return;
 
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => MapaPaseoScreen(
-          paseo: _paseo!,
+          paseo: walk.toNavigationMap(),
         ),
       ),
     );
   }
 
-  String _nombrePerro() {
-    return _texto(
-      _paseo?['perroNombre'] ??
-          _paseo?['nombrePerro'] ??
-          _paseo?['perro']?['nombre'] ??
-          _paseo?['Perro']?['Nombre'],
-      fallback: 'Perro',
+  Future<void> _openTracking() async {
+    final state = _controller.state;
+    final walk = state.walk;
+    final id = state.walkId;
+
+    if (walk == null ||
+        id == null ||
+        !state.canOpenTracking) {
+      _showMessage(
+        'El seguimiento todavía no está disponible.',
+      );
+      return;
+    }
+
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TrackingPaseoScreen(
+          paseoId: id,
+          nombrePerro: walk.petName,
+          nombrePaseador: walk.walkerName,
+        ),
+      ),
     );
+
+    if (updated == true) {
+      await _refreshAfterChild();
+    }
   }
 
-  String _nombrePaseador() {
-    final nombre = _paseo?['paseadorNombre'] ??
-        _paseo?['nombrePaseador'] ??
-        _paseo?['paseador']?['nombre'] ??
-        _paseo?['paseador']?['usuario']?['nombre'] ??
-        _paseo?['Paseador']?['Usuario']?['Nombre'];
+  Future<void> _openEvidence(String type) async {
+    final state = _controller.state;
+    final walk = state.walk;
+    final id = state.walkId;
 
-    final apellido = _paseo?['paseadorApellido'] ??
-        _paseo?['apellidoPaseador'] ??
-        _paseo?['paseador']?['usuario']?['apellido'] ??
-        _paseo?['Paseador']?['Usuario']?['Apellido'];
+    if (walk == null || id == null) {
+      return;
+    }
 
-    final textoNombre = _texto(nombre, fallback: '');
-    final textoApellido = _texto(apellido, fallback: '');
-
-    final completo = '$textoNombre $textoApellido'.trim();
-
-    return completo.isEmpty ? 'Paseador no asignado' : completo;
-  }
-
-  String _nombreDuenio() {
-    final nombre = _paseo?['duenioNombre'] ??
-        _paseo?['nombreDuenio'] ??
-        _paseo?['dueñoNombre'] ??
-        _paseo?['perro']?['duenio']?['nombre'] ??
-        _paseo?['perro']?['usuario']?['nombre'];
-
-    final apellido = _paseo?['duenioApellido'] ??
-        _paseo?['apellidoDuenio'] ??
-        _paseo?['dueñoApellido'] ??
-        _paseo?['perro']?['duenio']?['apellido'] ??
-        _paseo?['perro']?['usuario']?['apellido'];
-
-    final textoNombre = _texto(nombre, fallback: '');
-    final textoApellido = _texto(apellido, fallback: '');
-
-    final completo = '$textoNombre $textoApellido'.trim();
-
-    return completo.isEmpty ? 'Dueño no disponible' : completo;
-  }
-
-  String _direccionRecogida() {
-    return _texto(
-      _paseo?['ubicacionTexto'] ??
-          _paseo?['ubicacionRecogidaTexto'] ??
-          _paseo?['direccionRecogida'] ??
-          _paseo?['direccion'] ??
-          _paseo?['UbicacionTexto'] ??
-          _paseo?['UbicacionRecogidaTexto'] ??
-          _paseo?['DireccionRecogida'] ??
-          _paseo?['Direccion'],
-      fallback: 'Ubicación de recogida no definida',
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvidenciaPaseoScreen(
+          paseoId: id,
+          tipo: type,
+          nombrePerro: walk.petName,
+          nombrePaseador: walk.walkerName,
+        ),
+      ),
     );
+
+    if (updated == true) {
+      await _refreshAfterChild();
+
+      _showMessage(
+        type == 'inicio'
+            ? 'Evidencia inicial guardada.'
+            : 'Evidencia final guardada.',
+        success: true,
+      );
+    }
   }
 
-  String _referenciasRecogida() {
-    return _texto(
-      _paseo?['referenciasRecogida'] ??
-          _paseo?['ReferenciasRecogida'] ??
-          _paseo?['referencias'] ??
-          _paseo?['Referencias'],
-      fallback: 'Sin referencias adicionales',
+  Future<void> _openRating() async {
+    final state = _controller.state;
+    final walk = state.walk;
+    final id = state.walkId;
+
+    if (walk == null ||
+        id == null ||
+        !state.canRate) {
+      return;
+    }
+
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CalificarPaseoScreen(
+          paseoId: id,
+          nombrePerro: walk.petName,
+          nombrePaseador: walk.walkerName,
+        ),
+      ),
     );
+
+    if (updated == true) {
+      await _refreshAfterChild();
+      _showMessage(
+        'Gracias por compartir tu opinión.',
+        success: true,
+      );
+    }
   }
 
-  double? _latitudRecogida() {
-    return _doubleSeguro(
-      _paseo?['latitudRecogida'] ??
-          _paseo?['latRecogida'] ??
-          _paseo?['ubicacionLatitud'] ??
-          _paseo?['latitud'] ??
-          _paseo?['LatitudRecogida'] ??
-          _paseo?['LatRecogida'] ??
-          _paseo?['UbicacionLatitud'] ??
-          _paseo?['Latitud'],
-    );
-  }
+  Future<void> _refreshAfterChild() async {
+    await _controller.refresh();
 
-  double? _longitudRecogida() {
-    return _doubleSeguro(
-      _paseo?['longitudRecogida'] ??
-          _paseo?['lngRecogida'] ??
-          _paseo?['lonRecogida'] ??
-          _paseo?['ubicacionLongitud'] ??
-          _paseo?['longitud'] ??
-          _paseo?['LongitudRecogida'] ??
-          _paseo?['LngRecogida'] ??
-          _paseo?['LonRecogida'] ??
-          _paseo?['UbicacionLongitud'] ??
-          _paseo?['Longitud'],
-    );
-  }
-
-  bool _tieneCoordenadasRecogida() {
-    return _coordenadaValida(_latitudRecogida(), _longitudRecogida());
-  }
-
-  String _coordenadasRecogida() {
-    final latitud = _latitudRecogida();
-    final longitud = _longitudRecogida();
-
-    if (!_coordenadaValida(latitud, longitud)) {
-      return 'Coordenadas no disponibles';
+    if (!mounted) {
+      return;
     }
 
-    return '${latitud!.toStringAsFixed(6)}, ${longitud!.toStringAsFixed(6)}';
+    widget.onPaseoActualizado?.call();
   }
 
-  dynamic _fechaProgramada() {
-    return _paseo?['fechaProgramada'] ??
-        _paseo?['FechaProgramada'] ??
-        _paseo?['fechaInicio'] ??
-        _paseo?['FechaInicio'];
-  }
-
-  dynamic _fechaInicio() {
-    return _paseo?['fechaInicio'] ?? _paseo?['FechaInicio'];
-  }
-
-  dynamic _fechaFin() {
-    return _paseo?['fechaFin'] ?? _paseo?['FechaFin'];
-  }
-
-  dynamic _duracion() {
-    return _paseo?['duracionMinutos'] ?? _paseo?['DuracionMinutos'];
-  }
-
-  dynamic _precioPaseo() {
-    return _paseo?['precio'] ?? _paseo?['Precio'];
-  }
-
-  String? _motivoCancelacion() {
-    final valor = _paseo?['motivoCancelacion'] ?? _paseo?['MotivoCancelacion'];
-    final texto = valor?.toString().trim();
-
-    if (texto == null || texto.isEmpty || texto.toLowerCase() == 'null') {
-      return null;
+  void _showMessage(
+    String message, {
+    bool success = false,
+  }) {
+    if (!mounted) {
+      return;
     }
 
-    return texto;
-  }
-
-  String? _canceladoPor() {
-    final valor = _paseo?['canceladoPor'] ?? _paseo?['CanceladoPor'];
-    final texto = valor?.toString().trim();
-
-    if (texto == null || texto.isEmpty || texto.toLowerCase() == 'null') {
-      return null;
-    }
-
-    return texto;
-  }
-
-  dynamic _fechaCancelacion() {
-    return _paseo?['fechaCancelacion'] ?? _paseo?['FechaCancelacion'];
-  }
-
-  String? _fotoInicio() {
-    final foto = _paseo?['fotoInicioUrl'] ?? _paseo?['FotoInicioUrl'];
-    return _urlPublica(foto);
-  }
-
-  String? _fotoFin() {
-    final foto = _paseo?['fotoFinUrl'] ?? _paseo?['FotoFinUrl'];
-    return _urlPublica(foto);
-  }
-
-  String? _fotoPerro() {
-    final foto = _paseo?['perroFotoUrl'] ??
-        _paseo?['fotoPerroUrl'] ??
-        _paseo?['PerroFotoUrl'] ??
-        _paseo?['FotoPerroUrl'] ??
-        _paseo?['perro']?['fotoUrl'] ??
-        _paseo?['perro']?['FotoUrl'] ??
-        _paseo?['perro']?['imagenUrl'] ??
-        _paseo?['perro']?['ImagenUrl'] ??
-        _paseo?['Perro']?['FotoUrl'] ??
-        _paseo?['Perro']?['ImagenUrl'];
-
-    return _urlPublica(foto);
-  }
-
-  String _duracionTexto() {
-    final valor = _duracion();
-    if (valor == null) return 'Sin duración';
-    return '$valor min';
-  }
-
-  String _estadoMensaje() {
-    if (_esPendiente) {
-      return _esPaseador
-          ? 'Solicitud pendiente de respuesta.'
-          : 'El paseador todavía no confirma la solicitud.';
-    }
-
-    if (_esAceptado) {
-      return _esPaseador
-          ? 'Listo para iniciar cuando llegues al punto de recogida.'
-          : 'El paseador ya aceptó el servicio.';
-    }
-
-    if (_esEnCurso) {
-      return _tieneFotoInicio
-          ? 'Paseo activo. Revisa mapa, evidencias y ubicación en vivo.'
-          : 'Paseo activo. Falta subir la foto de inicio.';
-    }
-
-    if (_esFinalizado) {
-      return _esDuenio
-          ? 'Servicio terminado. Puedes calificar la experiencia.'
-          : 'Servicio terminado correctamente.';
-    }
-
-    if (_esCancelado) {
-      return 'Este paseo fue cancelado.';
-    }
-
-    return 'Consulta los datos principales del paseo.';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: success
+              ? DogGoTheme.teal
+              : DogGoTheme.ink,
+        ),
+      );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorEstado = _colorEstado();
-    final surfaceEstado = _surfaceEstado();
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
 
-    return Scaffold(
-      backgroundColor: DogGoTheme.cream,
-      body: SafeArea(
-        child: _cargando
-            ? const Center(child: CircularProgressIndicator())
-            : _paseo == null
-                ? _buildSinDatos()
-                : RefreshIndicator(
-                    onRefresh: _cargarDetalle,
-                    child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
-                      slivers: [
-                        SliverToBoxAdapter(child: _buildTopBar()),
-                        SliverToBoxAdapter(
-                          child: _buildHero(colorEstado, surfaceEstado),
-                        ),
-                        if (_accionando)
-                          const SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(24, 10, 24, 0),
-                              child: LinearProgressIndicator(),
-                            ),
-                          ),
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                            child: Column(
-                              children: [
-                                _buildSiguientePasoCard(),
-                                const SizedBox(height: 12),
-                                _buildBotonesPrincipales(),
-                                const SizedBox(height: 12),
-                                _buildTrackingBanner(),
-                                const SizedBox(height: 12),
-                                _buildResumenOperativo(),
-                                const SizedBox(height: 12),
-                                _buildUbicacionCard(),
-                                const SizedBox(height: 12),
-                                _buildEvidenciasCard(),
-                                const SizedBox(height: 12),
-                                _buildParticipantesCard(),
-                                const SizedBox(height: 12),
-                                _buildTimelineCard(),
-                                if (_esCancelado) ...[
-                                  const SizedBox(height: 12),
-                                  _buildCancelacionCard(),
-                                ],
-                                const SizedBox(height: 12),
-                                _buildAccionesSecundarias(),
-                                const SizedBox(height: 34),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar() {
-    return Container(
-      height: 68,
-      padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
-      decoration: BoxDecoration(
-        color: DogGoTheme.cream2,
-        border: Border(
-          bottom: BorderSide(
-            color: DogGoTheme.border.withOpacity(.8),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: DogGoTheme.ink,
-            ),
-          ),
-          const DogGoLogo(size: 38),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
+        return Scaffold(
+          backgroundColor: DogGoTheme.cream,
+          appBar: AppBar(
+            title: const Text(
               'Detalle del paseo',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: DogGoTheme.body(
-                size: 15,
-                color: DogGoTheme.ink,
-                weight: FontWeight.w900,
-              ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Actualizar',
-            onPressed: _cargarDetalle,
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: DogGoTheme.ink,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSinDatos() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: DogGoTheme.card,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: DogGoTheme.border),
-            boxShadow: DogGoTheme.softShadow(),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                size: 64,
-                color: DogGoTheme.muted,
+            actions: [
+              IconButton(
+                onPressed: state.loading
+                    ? null
+                    : _controller.refresh,
+                tooltip: 'Actualizar',
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                'No se encontró información del paseo.',
-                textAlign: TextAlign.center,
-                style: DogGoTheme.title(size: 20),
-              ),
-              const SizedBox(height: 18),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Volver'),
-                style: DogGoTheme.primaryButton(),
-              ),
+              const SizedBox(width: 7),
             ],
           ),
-        ),
-      ),
+          body: _buildBody(state),
+        );
+      },
     );
   }
 
-  Widget _buildHero(Color colorEstado, Color surfaceEstado) {
-    final foto = _fotoPerro();
-    final tieneFoto =
-        foto != null && (foto.startsWith('http://') || foto.startsWith('https://'));
+  Widget _buildBody(
+    WalkDetailState state,
+  ) {
+    if (state.loading && state.walk == null) {
+      return const DogGoLoadingView(
+        message:
+            'Cargando información del paseo...',
+      );
+    }
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      decoration: BoxDecoration(
-        color: DogGoTheme.ink,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: DogGoTheme.softShadow(),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
+    if (state.error != null &&
+        state.walk == null) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(
+          DogGoSpacing.screenHorizontal,
+        ),
+        child: DogGoErrorView(
+          title:
+              'No pudimos cargar el paseo',
+          message: state.error!,
+          icon: Icons.route_outlined,
+          onRetry: _controller.initialize,
+        ),
+      );
+    }
+
+    final walk = state.walk;
+
+    if (walk == null) {
+      return const Center(
+        child: Text(
+          'No hay información disponible.',
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _controller.refresh,
+      color: DogGoTheme.teal,
+      child: ListView(
+        physics:
+            const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          DogGoSpacing.screenHorizontal,
+          18,
+          DogGoSpacing.screenHorizontal,
+          110,
+        ),
         children: [
-          Positioned(
-            right: -36,
-            top: -42,
-            child: Container(
-              width: 148,
-              height: 148,
-              decoration: BoxDecoration(
-                color: colorEstado.withOpacity(.20),
-                shape: BoxShape.circle,
-              ),
-            ),
+          _StatusHero(
+            state: state,
           ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 82,
-                      height: 82,
-                      decoration: BoxDecoration(
-                        color: surfaceEstado,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(.18),
-                        ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: tieneFoto
-                          ? Image.network(
-                              foto,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(
-                                Icons.pets_rounded,
-                                color: colorEstado,
-                                size: 40,
-                              ),
-                            )
-                          : Icon(
-                              Icons.pets_rounded,
-                              color: colorEstado,
-                              size: 40,
-                            ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _StatusPill(
-                            text: _estado(),
-                            color: colorEstado,
-                            background: surfaceEstado,
-                            icon: _iconoEstado(),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _nombrePerro(),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: DogGoTheme.title(
-                              size: 30,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _esPaseador
-                                ? 'Dueño: ${_nombreDuenio()}'
-                                : 'Paseador: ${_nombrePaseador()}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: DogGoTheme.subtitle(
-                              size: 13.5,
-                              color: Colors.white.withOpacity(.80),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(.10),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _HeroMetric(
-                          label: 'Fecha',
-                          value: _fechaCorta(_fechaProgramada()),
-                        ),
-                      ),
-                      const _HeroDivider(),
-                      Expanded(
-                        child: _HeroMetric(
-                          label: 'Hora',
-                          value: _horaCorta(_fechaProgramada()),
-                        ),
-                      ),
-                      const _HeroDivider(),
-                      Expanded(
-                        child: _HeroMetric(
-                          label: 'Total',
-                          value: _precio(_precioPaseo()),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  _estadoMensaje(),
-                  style: DogGoTheme.subtitle(
-                    size: 13.5,
-                    color: Colors.white.withOpacity(.82),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 16),
+          _WalkProgress(
+            walk: walk,
+          ),
+          const SizedBox(height: 22),
+          _RecommendedStep(
+            state: state,
+            onStart: _startWalk,
+            onOpenMap: _openMap,
+            onTracking: _openTracking,
+            onStartEvidence: () =>
+                _openEvidence('inicio'),
+            onEndEvidence: () =>
+                _openEvidence('fin'),
+            onFinish: _finishWalk,
+            onRate: _openRating,
+          ),
+          const SizedBox(height: 22),
+          _QuickActions(
+            state: state,
+            onChat: _openChat,
+            onMap: _openMap,
+            onTracking: _openTracking,
+          ),
+          const SizedBox(height: 22),
+          _ServiceInformation(
+            walk: walk,
+          ),
+          const SizedBox(height: 14),
+          _ParticipantsCard(
+            walk: walk,
+            isWalker: state.isWalker,
+          ),
+          const SizedBox(height: 14),
+          _PickupCard(
+            walk: walk,
+            onOpenMap:
+                state.canOpenMap ? _openMap : null,
+          ),
+          const SizedBox(height: 22),
+          _EvidenceSection(
+            state: state,
+            onStartEvidence: () =>
+                _openEvidence('inicio'),
+            onEndEvidence: () =>
+                _openEvidence('fin'),
+          ),
+          if (walk.isCancelled ||
+              walk.isRejected) ...[
+            const SizedBox(height: 22),
+            _CancellationCard(
+              walk: walk,
             ),
+          ],
+          const SizedBox(height: 22),
+          _MainActions(
+            state: state,
+            onAccept: _acceptWalk,
+            onReject: _rejectWalk,
+            onStart: _startWalk,
+            onFinish: _finishWalk,
+            onCancel: _cancelWalk,
+            onRate: _openRating,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildSiguientePasoCard() {
-    String paso = 'Estado del paseo';
-    String titulo = 'Consulta el detalle del servicio';
-    String descripcion = 'Revisa datos, ubicación, evidencias, chat y seguimiento.';
-    IconData icono = Icons.info_outline_rounded;
-    Color color = DogGoTheme.teal;
-    Color surface = DogGoTheme.tealLight;
-    List<Widget> botones = [];
+class _StatusHero extends StatelessWidget {
+  final WalkDetailState state;
 
-    if (_esPendiente) {
-      paso = _esPaseador ? 'Acción pendiente' : 'Solicitud enviada';
-      titulo = _esPaseador ? 'Aceptar o rechazar solicitud' : 'Esperando respuesta';
-      descripcion = _esPaseador
-          ? 'Antes de aceptar, revisa horario, precio, perro y punto de recogida.'
-          : 'El paseador todavía no confirma si puede realizar este paseo.';
-      icono = Icons.schedule_rounded;
-      color = DogGoTheme.orange;
-      surface = DogGoTheme.orangeLight;
+  const _StatusHero({
+    required this.state,
+  });
 
-      if (_esPaseador) {
-        botones = [
-          _BotonAccion(
-            texto: 'Aceptar paseo',
-            icono: Icons.check_rounded,
-            color: DogGoTheme.green,
-            cargando: _accionando,
-            onPressed: _aceptarPaseo,
-          ),
-          const SizedBox(height: 10),
-          _BotonAccion(
-            texto: 'Rechazar paseo',
-            icono: Icons.close_rounded,
-            color: DogGoTheme.red,
-            cargando: _accionando,
-            onPressed: _rechazarPaseo,
-            outlined: true,
-          ),
-        ];
-      }
-    } else if (_esAceptado) {
-      paso = _esPaseador ? 'Listo para iniciar' : 'Confirmado';
-      titulo = _esPaseador ? 'Iniciar cuando llegues' : 'Paseo aceptado';
-      descripcion = _esPaseador
-          ? 'Cuando estés con el perro, inicia el paseo para activar el flujo de evidencia y tracking.'
-          : 'El paseador iniciará el servicio al llegar al punto de recogida.';
-      icono = Icons.play_circle_rounded;
-      color = DogGoTheme.purple;
-      surface = DogGoTheme.purpleLight;
+  @override
+  Widget build(BuildContext context) {
+    final walk = state.walk!;
+    final color = _statusColor(walk.status);
+    final surface = _statusSurface(walk.status);
 
-      if (_puedeIniciar) {
-        botones = [
-          _BotonAccion(
-            texto: 'Iniciar paseo',
-            icono: Icons.play_arrow_rounded,
-            color: DogGoTheme.green,
-            cargando: _accionando,
-            onPressed: _iniciarPaseo,
-          ),
-        ];
-      }
-    } else if (_esEnCurso && !_tieneFotoInicio) {
-      paso = 'Evidencia inicial';
-      titulo = 'Subir foto de inicio';
-      descripcion =
-          'La foto inicial deja evidencia de que el perro fue recogido correctamente.';
-      icono = Icons.add_a_photo_rounded;
-      color = DogGoTheme.green;
-      surface = DogGoTheme.greenLight;
-
-      if (_esPaseador) {
-        botones = [
-          _BotonAccion(
-            texto: 'Subir foto de inicio',
-            icono: Icons.add_a_photo_rounded,
-            color: DogGoTheme.green,
-            cargando: false,
-            onPressed: () => _abrirEvidencia('inicio'),
-          ),
-        ];
-      }
-    } else if (_esEnCurso && _tieneFotoInicio && !_tieneFotoFin) {
-      paso = 'Tracking y cierre';
-      titulo = 'Seguimiento activo';
-      descripcion =
-          'Mantén la ubicación activa y sube la foto final cuando termine el paseo.';
-      icono = Icons.my_location_rounded;
-      color = DogGoTheme.green;
-      surface = DogGoTheme.greenLight;
-
-      if (_esPaseador) {
-        botones = [
-          _BotonAccion(
-            texto: 'Ubicación en vivo',
-            icono: Icons.my_location_rounded,
-            color: DogGoTheme.green,
-            cargando: false,
-            onPressed: _abrirTrackingGps,
-          ),
-          const SizedBox(height: 10),
-          _BotonAccion(
-            texto: 'Subir foto de fin',
-            icono: Icons.photo_camera_back_rounded,
-            color: DogGoTheme.teal,
-            cargando: false,
-            onPressed: () => _abrirEvidencia('fin'),
-          ),
-        ];
-      }
-    } else if (_esEnCurso && _tieneFotoInicio && _tieneFotoFin) {
-      paso = 'Listo para finalizar';
-      titulo = 'Cerrar el servicio';
-      descripcion =
-          'Las evidencias ya están completas. Finaliza para guardar el cierre del paseo.';
-      icono = Icons.flag_rounded;
-      color = DogGoTheme.teal;
-      surface = DogGoTheme.tealLight;
-
-      if (_puedeFinalizar) {
-        botones = [
-          _BotonAccion(
-            texto: 'Finalizar paseo',
-            icono: Icons.flag_rounded,
-            color: DogGoTheme.teal,
-            cargando: _accionando,
-            onPressed: _finalizarPaseo,
-          ),
-        ];
-      }
-    } else if (_esFinalizado) {
-      paso = 'Servicio completado';
-      titulo = _esDuenio ? 'Calificar experiencia' : 'Paseo finalizado';
-      descripcion = _esDuenio
-          ? 'Puedes calificar al paseador y dejar un comentario para cerrar el flujo.'
-          : 'El servicio quedó finalizado con sus datos y evidencias.';
-      icono = Icons.check_circle_rounded;
-      color = DogGoTheme.teal;
-      surface = DogGoTheme.tealLight;
-
-      if (_puedeCalificar) {
-        botones = [
-          _BotonAccion(
-            texto: 'Calificar paseo',
-            icono: Icons.star_rounded,
-            color: DogGoTheme.orange,
-            cargando: _accionando,
-            onPressed: _abrirCalificarPaseo,
-          ),
-        ];
-      }
-    } else if (_esCancelado) {
-      paso = 'Cancelado';
-      titulo = 'Paseo sin actividad';
-      descripcion = 'Puedes revisar quién canceló el paseo y el motivo registrado.';
-      icono = Icons.cancel_rounded;
-      color = DogGoTheme.red;
-      surface = DogGoTheme.redLight;
-    }
-
-    return _SectionCard(
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.extraLarge,
+        ),
+        border: Border.all(
+          color: color.withValues(alpha: .2),
+        ),
+        boxShadow: DogGoTheme.softShadow(
+          opacity: .035,
+          blur: 22,
+          offset: const Offset(0, 8),
+        ),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _IconBox(
-                icon: icono,
-                color: color,
-                background: surface,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: surface,
+                  borderRadius: BorderRadius.circular(
+                    DogGoRadius.pill,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _statusIcon(walk.status),
+                      color: color,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      walk.status.label,
+                      style: DogGoTheme.caption(
+                        size: 10.5,
+                        color: color,
+                        weight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 12),
+              const Spacer(),
+              Text(
+                '#${walk.id}',
+                style:
+                    DogGoTheme.caption(size: 10.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              _PetPhoto(
+                url: state.petPhotoUrl,
+                name: walk.petName,
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
-                    _SmallPill(
-                      text: paso.toUpperCase(),
-                      color: color,
-                      background: surface,
-                    ),
-                    const SizedBox(height: 7),
                     Text(
-                      titulo,
-                      style: DogGoTheme.title(size: 20),
+                      walk.petName,
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style:
+                          DogGoTheme.title(size: 23),
+                    ),
+                    const SizedBox(height: 6),
+                    _HeroDetail(
+                      icon:
+                          Icons.calendar_month_outlined,
+                      text: walk.scheduledLabel,
+                    ),
+                    const SizedBox(height: 5),
+                    _HeroDetail(
+                      icon:
+                          Icons.schedule_outlined,
+                      text: walk.durationLabel,
+                    ),
+                    const SizedBox(height: 5),
+                    _HeroDetail(
+                      icon: Icons.person_outline_rounded,
+                      text: state.isWalker
+                          ? walk.ownerName
+                          : walk.walkerName,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            descripcion,
-            style: DogGoTheme.subtitle(size: 13.5),
+          const SizedBox(height: 17),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: surface.withValues(alpha: .65),
+              borderRadius: BorderRadius.circular(
+                DogGoRadius.medium,
+              ),
+            ),
+            child: Text(
+              state.statusMessage,
+              style: DogGoTheme.body(
+                size: 11.5,
+                color: color,
+                weight: FontWeight.w700,
+              ),
+            ),
           ),
-          if (botones.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            ...botones,
-          ],
         ],
       ),
     );
   }
+}
 
-  Widget _buildBotonesPrincipales() {
+class _PetPhoto extends StatelessWidget {
+  final String? url;
+  final String name;
+
+  const _PetPhoto({
+    required this.url,
+    required this.name,
+  });
+
+  bool get _hasPhoto {
+    final value = url?.trim() ?? '';
+
+    return value.startsWith('http://') ||
+        value.startsWith('https://');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 86,
+      height: 100,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: DogGoTheme.tealLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+      ),
+      child: _hasPhoto
+          ? Image.network(
+              url!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const _PetPlaceholder(),
+            )
+          : const _PetPlaceholder(),
+    );
+  }
+}
+
+class _PetPlaceholder extends StatelessWidget {
+  const _PetPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(
+      Icons.pets_rounded,
+      color: DogGoTheme.teal,
+      size: 37,
+    );
+  }
+}
+
+class _HeroDetail extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _HeroDetail({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: SizedBox(
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: _paseo == null ? null : _abrirMapaPaseo,
-              icon: const Icon(Icons.map_rounded, size: 18),
-              label: const Text('Mapa'),
-              style: DogGoTheme.primaryButton(),
-            ),
-          ),
+        Icon(
+          icon,
+          size: 15,
+          color: DogGoTheme.muted,
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 6),
         Expanded(
-          child: SizedBox(
-            height: 50,
-            child: OutlinedButton.icon(
-              onPressed: _abrirChatPaseo,
-              icon: const Icon(Icons.chat_rounded, size: 18),
-              label: const Text('Chat'),
-              style: DogGoTheme.secondaryButton(),
-            ),
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style:
+                DogGoTheme.subtitle(size: 11),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildTrackingBanner() {
-    if (!_esEnCurso) return const SizedBox.shrink();
+class _WalkProgress extends StatelessWidget {
+  final WalkDetail walk;
+
+  const _WalkProgress({
+    required this.walk,
+  });
+
+  int get _currentStep {
+    if (walk.isCompleted) {
+      return 4;
+    }
+
+    if (walk.isInProgress) {
+      return 3;
+    }
+
+    if (walk.isAccepted) {
+      return 2;
+    }
+
+    if (walk.isPending) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = [
+      'Solicitud',
+      'Aceptado',
+      'En curso',
+      'Finalizado',
+    ];
+
+    final closed =
+        walk.isCancelled || walk.isRejected;
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: DogGoTheme.greenLight,
-        borderRadius: BorderRadius.circular(22),
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
         border: Border.all(
-          color: DogGoTheme.green.withOpacity(.18),
+          color: DogGoTheme.border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Progreso del servicio',
+            style: DogGoTheme.title(size: 16),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: List.generate(
+              labels.length,
+              (index) {
+                final step = index + 1;
+                final completed =
+                    !closed && step <= _currentStep;
+
+                return Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              alignment:
+                                  Alignment.center,
+                              decoration: BoxDecoration(
+                                color: closed
+                                    ? DogGoTheme.redLight
+                                    : completed
+                                        ? DogGoTheme.teal
+                                        : DogGoTheme
+                                            .purpleLight,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                closed
+                                    ? Icons.close_rounded
+                                    : completed
+                                        ? Icons
+                                            .check_rounded
+                                        : Icons
+                                            .circle_outlined,
+                                size: 15,
+                                color: closed
+                                    ? DogGoTheme.red
+                                    : completed
+                                        ? Colors.white
+                                        : DogGoTheme.muted,
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              labels[index],
+                              textAlign:
+                                  TextAlign.center,
+                              style:
+                                  DogGoTheme.caption(
+                                size: 8.5,
+                                color: completed
+                                    ? DogGoTheme.teal
+                                    : DogGoTheme.muted,
+                                weight: completed
+                                    ? FontWeight.w800
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (index <
+                          labels.length - 1)
+                        Container(
+                          width: 10,
+                          height: 2,
+                          color: !closed &&
+                                  step < _currentStep
+                              ? DogGoTheme.teal
+                              : DogGoTheme.border,
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecommendedStep extends StatelessWidget {
+  final WalkDetailState state;
+  final VoidCallback onStart;
+  final VoidCallback onOpenMap;
+  final VoidCallback onTracking;
+  final VoidCallback onStartEvidence;
+  final VoidCallback onEndEvidence;
+  final VoidCallback onFinish;
+  final VoidCallback onRate;
+
+  const _RecommendedStep({
+    required this.state,
+    required this.onStart,
+    required this.onOpenMap,
+    required this.onTracking,
+    required this.onStartEvidence,
+    required this.onEndEvidence,
+    required this.onFinish,
+    required this.onRate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final action = state.recommendedAction;
+    final button = _buttonFor(action);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            DogGoTheme.tealLight,
+            DogGoTheme.card,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.teal.withValues(
+            alpha: .15,
+          ),
         ),
       ),
       child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: DogGoTheme.green,
-              borderRadius: BorderRadius.circular(15),
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: DogGoTheme.card,
+              shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.my_location_rounded,
-              color: Colors.white,
-              size: 22,
+            child: Icon(
+              _recommendedIcon(action),
+              color: DogGoTheme.teal,
+              size: 23,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Paseo en curso',
+                  'SIGUIENTE PASO',
+                  style: DogGoTheme.label(
+                    size: 9.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  state.recommendedTitle,
+                  style:
+                      DogGoTheme.title(size: 17),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  state.recommendedDescription,
+                  style:
+                      DogGoTheme.subtitle(size: 11.5),
+                ),
+                if (button != null) ...[
+                  const SizedBox(height: 13),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: state.acting
+                          ? null
+                          : button.onPressed,
+                      icon: Icon(
+                        button.icon,
+                        size: 18,
+                      ),
+                      label:
+                          Text(button.label),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  _RecommendedButton? _buttonFor(
+    WalkDetailRecommendedAction action,
+  ) {
+    switch (action) {
+      case WalkDetailRecommendedAction.startWalk:
+        return _RecommendedButton(
+          label: 'Iniciar paseo',
+          icon: Icons.directions_walk_rounded,
+          onPressed: onStart,
+        );
+
+      case WalkDetailRecommendedAction
+            .uploadStartEvidence:
+        return _RecommendedButton(
+          label: 'Subir evidencia inicial',
+          icon: Icons.photo_camera_outlined,
+          onPressed: onStartEvidence,
+        );
+
+      case WalkDetailRecommendedAction.activateTracking:
+        return _RecommendedButton(
+          label: 'Abrir seguimiento',
+          icon: Icons.location_searching_rounded,
+          onPressed: onTracking,
+        );
+
+      case WalkDetailRecommendedAction.followRoute:
+        return _RecommendedButton(
+          label: 'Ver recorrido',
+          icon: Icons.map_outlined,
+          onPressed: onOpenMap,
+        );
+
+      case WalkDetailRecommendedAction
+            .uploadEndEvidence:
+        return _RecommendedButton(
+          label: 'Subir evidencia final',
+          icon:
+              Icons.photo_camera_back_outlined,
+          onPressed: onEndEvidence,
+        );
+
+      case WalkDetailRecommendedAction.finishWalk:
+        return _RecommendedButton(
+          label: 'Finalizar paseo',
+          icon: Icons.flag_outlined,
+          onPressed: onFinish,
+        );
+
+      case WalkDetailRecommendedAction.rateExperience:
+        return _RecommendedButton(
+          label: 'Calificar paseo',
+          icon: Icons.star_outline_rounded,
+          onPressed: onRate,
+        );
+
+      case WalkDetailRecommendedAction.waitForWalker:
+      case WalkDetailRecommendedAction.reviewRequest:
+      case WalkDetailRecommendedAction.preparePet:
+      case WalkDetailRecommendedAction.completed:
+      case WalkDetailRecommendedAction.cancelled:
+      case WalkDetailRecommendedAction.unavailable:
+        return null;
+    }
+  }
+}
+
+class _RecommendedButton {
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _RecommendedButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+}
+
+class _QuickActions extends StatelessWidget {
+  final WalkDetailState state;
+  final VoidCallback onChat;
+  final VoidCallback onMap;
+  final VoidCallback onTracking;
+
+  const _QuickActions({
+    required this.state,
+    required this.onChat,
+    required this.onMap,
+    required this.onTracking,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = <Widget>[
+      _QuickAction(
+        icon: Icons.chat_bubble_outline_rounded,
+        label: 'Chat',
+        enabled: state.canOpenChat,
+        onTap: onChat,
+      ),
+      _QuickAction(
+        icon: Icons.map_outlined,
+        label: 'Mapa',
+        enabled: state.canOpenMap,
+        onTap: onMap,
+      ),
+      if (state.isWalker)
+        _QuickAction(
+          icon: Icons.location_searching_rounded,
+          label: 'Tracking',
+          enabled: state.canOpenTracking,
+          onTap: onTracking,
+        ),
+    ];
+
+    return Row(
+      children: List.generate(
+        actions.length,
+        (index) {
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: index == actions.length - 1
+                    ? 0
+                    : 9,
+              ),
+              child: actions[index],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: DogGoTheme.card,
+      borderRadius: BorderRadius.circular(
+        DogGoRadius.medium,
+      ),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.medium,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 14,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(
+              DogGoRadius.medium,
+            ),
+            border: Border.all(
+              color: DogGoTheme.border,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                color: enabled
+                    ? DogGoTheme.teal
+                    : DogGoTheme.disabled,
+                size: 22,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: DogGoTheme.caption(
+                  size: 10,
+                  color: enabled
+                      ? DogGoTheme.ink
+                      : DogGoTheme.disabled,
+                  weight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ServiceInformation extends StatelessWidget {
+  final WalkDetail walk;
+
+  const _ServiceInformation({
+    required this.walk,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      icon: Icons.receipt_long_outlined,
+      title: 'Información del servicio',
+      child: Column(
+        children: [
+          _DetailRow(
+            icon: Icons.calendar_month_outlined,
+            label: 'Programado',
+            value: walk.scheduledLabel,
+          ),
+          const Divider(height: 22),
+          _DetailRow(
+            icon: Icons.schedule_outlined,
+            label: 'Duración',
+            value: walk.durationLabel,
+          ),
+          const Divider(height: 22),
+          _DetailRow(
+            icon: Icons.payments_outlined,
+            label: 'Precio',
+            value: walk.priceLabel,
+            valueColor: DogGoTheme.teal,
+          ),
+          if (walk.startedAt != null) ...[
+            const Divider(height: 22),
+            _DetailRow(
+              icon: Icons.play_circle_outline_rounded,
+              label: 'Inicio real',
+              value: walk.startedLabel,
+            ),
+          ],
+          if (walk.finishedAt != null) ...[
+            const Divider(height: 22),
+            _DetailRow(
+              icon: Icons.flag_outlined,
+              label: 'Finalización',
+              value: walk.finishedLabel,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ParticipantsCard extends StatelessWidget {
+  final WalkDetail walk;
+  final bool isWalker;
+
+  const _ParticipantsCard({
+    required this.walk,
+    required this.isWalker,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      icon: Icons.people_outline_rounded,
+      title: 'Participantes',
+      child: Column(
+        children: [
+          _Participant(
+            icon: Icons.pets_rounded,
+            role: 'Mascota',
+            name: walk.petName,
+            color: DogGoTheme.teal,
+          ),
+          const SizedBox(height: 13),
+          _Participant(
+            icon: Icons.directions_walk_rounded,
+            role: 'Paseador',
+            name: walk.walkerName,
+            color: DogGoTheme.purple,
+          ),
+          const SizedBox(height: 13),
+          _Participant(
+            icon: Icons.person_outline_rounded,
+            role: 'Dueño',
+            name: walk.ownerName,
+            color: DogGoTheme.orange,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Participant extends StatelessWidget {
+  final IconData icon;
+  final String role;
+  final String name;
+  final Color color;
+
+  const _Participant({
+    required this.icon,
+    required this.role,
+    required this.name,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 39,
+          height: 39,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 19,
+          ),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Text(
+                role,
+                style:
+                    DogGoTheme.caption(size: 9.5),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DogGoTheme.body(
+                  size: 12,
+                  weight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PickupCard extends StatelessWidget {
+  final WalkDetail walk;
+  final VoidCallback? onOpenMap;
+
+  const _PickupCard({
+    required this.walk,
+    this.onOpenMap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      icon: Icons.location_on_outlined,
+      title: 'Punto de recogida',
+      trailing: onOpenMap == null
+          ? null
+          : IconButton(
+              onPressed: onOpenMap,
+              tooltip: 'Abrir mapa',
+              icon: const Icon(
+                Icons.open_in_new_rounded,
+              ),
+              color: DogGoTheme.teal,
+            ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Text(
+            walk.pickupAddress,
+            style: DogGoTheme.body(
+              size: 12.5,
+              weight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            walk.pickupReferences,
+            style:
+                DogGoTheme.subtitle(size: 11),
+          ),
+          const SizedBox(height: 11),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: walk.hasPickupCoordinates
+                  ? DogGoTheme.tealLight
+                  : DogGoTheme.orangeLight,
+              borderRadius: BorderRadius.circular(
+                DogGoRadius.medium,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  walk.hasPickupCoordinates
+                      ? Icons.gps_fixed_rounded
+                      : Icons.gps_off_rounded,
+                  color: walk.hasPickupCoordinates
+                      ? DogGoTheme.teal
+                      : DogGoTheme.orange,
+                  size: 17,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    walk.pickupCoordinatesLabel,
+                    style: DogGoTheme.caption(
+                      size: 10,
+                      color:
+                          walk.hasPickupCoordinates
+                              ? DogGoTheme.teal
+                              : DogGoTheme.orange,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EvidenceSection extends StatelessWidget {
+  final WalkDetailState state;
+  final VoidCallback onStartEvidence;
+  final VoidCallback onEndEvidence;
+
+  const _EvidenceSection({
+    required this.state,
+    required this.onStartEvidence,
+    required this.onEndEvidence,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final walk = state.walk!;
+
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Evidencias',
+          style: DogGoTheme.title(size: 21),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Registro fotográfico del servicio',
+          style: DogGoTheme.subtitle(size: 12),
+        ),
+        const SizedBox(height: 13),
+        _EvidenceCard(
+          title: 'Evidencia inicial',
+          subtitle: walk.hasStartEvidence
+              ? 'Recepción registrada'
+              : 'Pendiente de registrar',
+          imageUrl: state.startPhotoUrl,
+          completed: walk.hasStartEvidence,
+          canUpload:
+              state.canUploadStartEvidence,
+          onUpload: onStartEvidence,
+        ),
+        const SizedBox(height: 11),
+        _EvidenceCard(
+          title: 'Evidencia final',
+          subtitle: walk.hasEndEvidence
+              ? 'Entrega registrada'
+              : 'Pendiente de registrar',
+          imageUrl: state.endPhotoUrl,
+          completed: walk.hasEndEvidence,
+          canUpload:
+              state.canUploadEndEvidence,
+          onUpload: onEndEvidence,
+        ),
+      ],
+    );
+  }
+}
+
+class _EvidenceCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String? imageUrl;
+  final bool completed;
+  final bool canUpload;
+  final VoidCallback onUpload;
+
+  const _EvidenceCard({
+    required this.title,
+    required this.subtitle,
+    required this.imageUrl,
+    required this.completed,
+    required this.canUpload,
+    required this.onUpload,
+  });
+
+  bool get _hasImage {
+    final value = imageUrl?.trim() ?? '';
+
+    return value.startsWith('http://') ||
+        value.startsWith('https://');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: completed
+              ? DogGoTheme.green.withValues(
+                  alpha: .25,
+                )
+              : DogGoTheme.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 66,
+            height: 66,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: completed
+                  ? DogGoTheme.greenLight
+                  : DogGoTheme.purpleLight,
+              borderRadius: BorderRadius.circular(
+                DogGoRadius.medium,
+              ),
+            ),
+            child: _hasImage
+                ? Image.network(
+                    imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) {
+                      return _EvidencePlaceholder(
+                        completed: completed,
+                      );
+                    },
+                  )
+                : _EvidencePlaceholder(
+                    completed: completed,
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
                   style: DogGoTheme.body(
-                    size: 15,
-                    color: DogGoTheme.ink,
-                    weight: FontWeight.w900,
+                    size: 12.5,
+                    weight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  _esPaseador
-                      ? 'Mantén el tracking activo durante el servicio.'
-                      : 'Puedes revisar el seguimiento del paseo en el mapa.',
-                  style: DogGoTheme.subtitle(size: 12.5),
+                  subtitle,
+                  style: DogGoTheme.caption(
+                    size: 10,
+                    color: completed
+                        ? DogGoTheme.green
+                        : DogGoTheme.muted,
+                    weight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: _esPaseador ? _abrirTrackingGps : _abrirMapaPaseo,
-            icon: const Icon(
-              Icons.chevron_right_rounded,
-              color: DogGoTheme.green,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResumenOperativo() {
-    return _SectionCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: _MiniMetric(
-              icon: Icons.timer_rounded,
-              label: 'Duración',
-              value: _duracionTexto(),
-              color: DogGoTheme.orange,
-              background: DogGoTheme.orangeLight,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _MiniMetric(
-              icon: Icons.attach_money_rounded,
-              label: 'Precio',
-              value: _precio(_precioPaseo()),
+          if (canUpload)
+            IconButton(
+              onPressed: onUpload,
+              tooltip: 'Subir fotografía',
+              icon: const Icon(
+                Icons.add_a_photo_outlined,
+              ),
               color: DogGoTheme.teal,
-              background: DogGoTheme.tealLight,
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    DogGoTheme.tealLight,
+              ),
+            )
+          else
+            Icon(
+              completed
+                  ? Icons.check_circle_rounded
+                  : Icons.schedule_rounded,
+              color: completed
+                  ? DogGoTheme.green
+                  : DogGoTheme.muted,
             ),
-          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildUbicacionCard() {
-    final latitud = _latitudRecogida();
-    final longitud = _longitudRecogida();
-    final tieneCoordenadas = _coordenadaValida(latitud, longitud);
+class _EvidencePlaceholder extends StatelessWidget {
+  final bool completed;
 
-    return _CardSeccion(
-      titulo: 'Ubicación de recogida',
-      icono: Icons.location_on_rounded,
-      color: DogGoTheme.teal,
-      surface: DogGoTheme.tealLight,
-      children: [
-        if (tieneCoordenadas)
-          _PickupMapPreview(
-            punto: LatLng(latitud!, longitud!),
-            direccion: _direccionRecogida(),
-            referencia: _referenciasRecogida(),
-            coordenadas: _coordenadasRecogida(),
-            onTap: _abrirMapaPaseo,
-          )
-        else
-          _NoMapLocationCard(
-            direccion: _direccionRecogida(),
-            referencia: _referenciasRecogida(),
-          ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 46,
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _abrirMapaPaseo,
-            icon: const Icon(Icons.map_rounded, size: 18),
-            label: const Text('Abrir mapa completo'),
-            style: DogGoTheme.primaryButton(),
-          ),
-        ),
-      ],
+  const _EvidencePlaceholder({
+    required this.completed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      completed
+          ? Icons.photo_outlined
+          : Icons.add_a_photo_outlined,
+      color: completed
+          ? DogGoTheme.green
+          : DogGoTheme.muted,
+      size: 27,
     );
   }
+}
 
-  Widget _buildEvidenciasCard() {
-    final fotoInicio = _fotoInicio();
-    final fotoFin = _fotoFin();
+class _CancellationCard extends StatelessWidget {
+  final WalkDetail walk;
 
-    return _CardSeccion(
-      titulo: 'Evidencias',
-      icono: Icons.photo_camera_rounded,
-      color: DogGoTheme.orange,
-      surface: DogGoTheme.orangeLight,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _EvidenciaEstado(
-                titulo: 'Inicio',
-                completo: fotoInicio != null,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _EvidenciaEstado(
-                titulo: 'Fin',
-                completo: fotoFin != null,
-              ),
-            ),
-          ],
+  const _CancellationCard({
+    required this.walk,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: DogGoTheme.redLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
         ),
-        if (_esPaseador && _esEnCurso) ...[
-          const SizedBox(height: 12),
+        border: Border.all(
+          color:
+              DogGoTheme.red.withValues(alpha: .2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
           Row(
             children: [
-              Expanded(
-                child: _TinyActionButton(
-                  text: 'Foto inicio',
-                  icon: Icons.add_a_photo_rounded,
-                  color: DogGoTheme.green,
-                  onTap: () => _abrirEvidencia('inicio'),
-                ),
+              const Icon(
+                Icons.info_outline_rounded,
+                color: DogGoTheme.red,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _TinyActionButton(
-                  text: 'Foto fin',
-                  icon: Icons.photo_camera_back_rounded,
-                  color: DogGoTheme.teal,
-                  onTap: () => _abrirEvidencia('fin'),
+              const SizedBox(width: 9),
+              Text(
+                walk.isRejected
+                    ? 'Solicitud rechazada'
+                    : 'Paseo cancelado',
+                style: DogGoTheme.title(
+                  size: 16,
+                  color: DogGoTheme.red,
                 ),
               ),
             ],
           ),
-        ],
-        const SizedBox(height: 14),
-        if (fotoInicio == null && fotoFin == null)
-          const _EmptyInline(
-            icon: Icons.photo_library_outlined,
-            text: 'Todavía no hay fotos registradas para este paseo.',
-          ),
-        if (fotoInicio != null)
-          _FotoEvidencia(
-            titulo: 'Foto de inicio',
-            url: fotoInicio,
-          ),
-        if (fotoInicio != null && fotoFin != null) const SizedBox(height: 12),
-        if (fotoFin != null)
-          _FotoEvidencia(
-            titulo: 'Foto de fin',
-            url: fotoFin,
-          ),
-      ],
-    );
-  }
-
-  Widget _buildParticipantesCard() {
-    return _SectionCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          _DarkCardHeader(
-            icon: Icons.groups_rounded,
-            title: 'Participantes',
-            subtitle: 'Mascota, dueño y paseador del servicio.',
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              children: [
-                _ParticipantTile(
-                  label: 'Mascota',
-                  name: _nombrePerro(),
-                  description: 'Perro registrado para este paseo',
-                  icon: Icons.pets_rounded,
-                  color: DogGoTheme.teal,
-                  background: DogGoTheme.tealLight,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ParticipantSmallTile(
-                        label: 'Dueño',
-                        name: _nombreDuenio(),
-                        icon: Icons.person_rounded,
-                        color: DogGoTheme.purple,
-                        background: DogGoTheme.purpleLight,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _ParticipantSmallTile(
-                        label: 'Paseador',
-                        name: _nombrePaseador(),
-                        icon: Icons.directions_walk_rounded,
-                        color: DogGoTheme.green,
-                        background: DogGoTheme.greenLight,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          const SizedBox(height: 11),
+          Text(
+            walk.cancellationReason ??
+                (walk.isRejected
+                    ? 'El paseador no aceptó esta solicitud.'
+                    : 'No se registró un motivo.'),
+            style: DogGoTheme.body(
+              size: 11.5,
+              color: DogGoTheme.ink,
             ),
           ),
+          if (walk.cancelledBy != null) ...[
+            const SizedBox(height: 7),
+            Text(
+              'Cancelado por: ${walk.cancelledBy}',
+              style:
+                  DogGoTheme.caption(size: 10),
+            ),
+          ],
+          if (walk.cancelledAt != null) ...[
+            const SizedBox(height: 3),
+            Text(
+              walk.cancelledLabel,
+              style:
+                  DogGoTheme.caption(size: 10),
+            ),
+          ],
         ],
       ),
     );
   }
+}
 
-  Widget _buildTimelineCard() {
-    return _SectionCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          _LightCardHeader(
-            icon: Icons.calendar_month_rounded,
-            title: 'Línea de tiempo',
-            subtitle: 'Programación, inicio real y cierre del paseo.',
-            color: DogGoTheme.teal,
-            background: DogGoTheme.tealLight,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            child: Column(
-              children: [
-                _PremiumTimelineItem(
-                  title: 'Programado',
-                  value: _fechaBonita(_fechaProgramada()),
-                  chipText: 'Reserva',
-                  icon: Icons.event_available_rounded,
-                  color: DogGoTheme.purple,
-                  background: DogGoTheme.purpleLight,
-                  first: true,
-                ),
-                _PremiumTimelineItem(
-                  title: 'Inicio real',
-                  value: _fechaBonita(_fechaInicio()),
-                  chipText: _fechaInicio() == null ? 'Pendiente' : 'Registrado',
-                  icon: Icons.play_circle_rounded,
-                  color: DogGoTheme.green,
-                  background: DogGoTheme.greenLight,
-                ),
-                _PremiumTimelineItem(
-                  title: 'Fin del paseo',
-                  value: _fechaBonita(_fechaFin()),
-                  chipText: _fechaFin() == null ? 'Pendiente' : 'Cerrado',
-                  icon: Icons.flag_circle_rounded,
-                  color: _fechaFin() == null ? DogGoTheme.orange : DogGoTheme.teal,
-                  background:
-                      _fechaFin() == null ? DogGoTheme.orangeLight : DogGoTheme.tealLight,
-                  last: true,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class _MainActions extends StatelessWidget {
+  final WalkDetailState state;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+  final VoidCallback onStart;
+  final VoidCallback onFinish;
+  final VoidCallback onCancel;
+  final VoidCallback onRate;
 
-  Widget _buildCancelacionCard() {
-    return _CardSeccion(
-      titulo: 'Cancelación',
-      icono: Icons.cancel_rounded,
-      color: DogGoTheme.red,
-      surface: DogGoTheme.redLight,
-      children: [
-        _InfoRow(
-          icono: Icons.person_off_rounded,
-          titulo: 'Cancelado por',
-          valor: _canceladoPor() ?? 'No disponible',
-          color: DogGoTheme.red,
-          surface: DogGoTheme.redLight,
-        ),
-        _InfoRow(
-          icono: Icons.calendar_today_rounded,
-          titulo: 'Fecha de cancelación',
-          valor: _fechaBonita(_fechaCancelacion()),
-          color: DogGoTheme.orange,
-          surface: DogGoTheme.orangeLight,
-        ),
-        _InfoRow(
-          icono: Icons.notes_rounded,
-          titulo: 'Motivo',
-          valor: _motivoCancelacion() ?? 'Sin motivo registrado',
-          color: DogGoTheme.purple,
-          surface: DogGoTheme.purpleLight,
-          showBottomPadding: false,
-        ),
-      ],
-    );
-  }
+  const _MainActions({
+    required this.state,
+    required this.onAccept,
+    required this.onReject,
+    required this.onStart,
+    required this.onFinish,
+    required this.onCancel,
+    required this.onRate,
+  });
 
-  Widget _buildAccionesSecundarias() {
-    if (!_puedeCancelar) {
+  @override
+  Widget build(BuildContext context) {
+    final hasPrimaryAction = state.canAccept ||
+        state.canStart ||
+        state.canFinish ||
+        state.canRate;
+
+    if (!hasPrimaryAction &&
+        !state.canReject &&
+        !state.canCancel) {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: DogGoTheme.red.withOpacity(.18),
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Acciones',
+          style: DogGoTheme.title(size: 21),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.035),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
+        const SizedBox(height: 13),
+        if (state.canAccept)
+          ElevatedButton.icon(
+            onPressed:
+                state.acting ? null : onAccept,
+            icon: const Icon(
+              Icons.check_circle_outline_rounded,
+            ),
+            label:
+                const Text('Aceptar solicitud'),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _IconBox(
-                icon: Icons.admin_panel_settings_rounded,
+        if (state.canStart)
+          ElevatedButton.icon(
+            onPressed:
+                state.acting ? null : onStart,
+            icon: const Icon(
+              Icons.directions_walk_rounded,
+            ),
+            label:
+                const Text('Iniciar paseo'),
+          ),
+        if (state.canFinish)
+          ElevatedButton.icon(
+            onPressed:
+                state.acting ? null : onFinish,
+            icon: const Icon(
+              Icons.flag_outlined,
+            ),
+            label:
+                const Text('Finalizar paseo'),
+          ),
+        if (state.canRate)
+          ElevatedButton.icon(
+            onPressed:
+                state.acting ? null : onRate,
+            icon: const Icon(
+              Icons.star_outline_rounded,
+            ),
+            label:
+                const Text('Calificar paseo'),
+          ),
+        if (state.canReject) ...[
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed:
+                state.acting ? null : onReject,
+            icon: const Icon(
+              Icons.block_outlined,
+            ),
+            label:
+                const Text('Rechazar solicitud'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: DogGoTheme.red,
+              side: const BorderSide(
                 color: DogGoTheme.red,
-                background: DogGoTheme.redLight,
-                size: 42,
-                radius: 14,
               ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Gestión del paseo',
-                      style: DogGoTheme.title(size: 18),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'Acción disponible mientras el servicio sigue activo.',
-                      style: DogGoTheme.subtitle(size: 12.5),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          _BotonAccion(
-            texto: 'Cancelar paseo',
-            icono: Icons.cancel_rounded,
-            color: DogGoTheme.red,
-            cargando: _accionando,
-            onPressed: _cancelarPaseo,
-            outlined: true,
+            ),
           ),
         ],
-      ),
+        if (state.canCancel) ...[
+          const SizedBox(height: 10),
+          TextButton.icon(
+            onPressed:
+                state.acting ? null : onCancel,
+            icon: const Icon(
+              Icons.cancel_outlined,
+            ),
+            label:
+                const Text('Cancelar paseo'),
+            style: TextButton.styleFrom(
+              foregroundColor: DogGoTheme.red,
+              minimumSize:
+                  const Size(double.infinity, 48),
+            ),
+          ),
+        ],
+        if (state.acting) ...[
+          const SizedBox(height: 12),
+          const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
 
 class _SectionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
   final Widget child;
-  final EdgeInsetsGeometry padding;
+  final Widget? trailing;
 
   const _SectionCard({
+    required this.icon,
+    required this.title,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: padding,
+      padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: DogGoTheme.border.withOpacity(.92),
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.045),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
       ),
-      child: child,
-    );
-  }
-}
-
-class _CardSeccion extends StatelessWidget {
-  final String titulo;
-  final IconData icono;
-  final Color color;
-  final Color surface;
-  final List<Widget> children;
-
-  const _CardSeccion({
-    required this.titulo,
-    required this.icono,
-    required this.color,
-    required this.surface,
-    required this.children,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _IconBox(
-                icon: icono,
-                color: color,
-                background: surface,
-                size: 42,
-                radius: 14,
+              Container(
+                width: 39,
+                height: 39,
+                decoration: BoxDecoration(
+                  color: DogGoTheme.tealLight,
+                  borderRadius: BorderRadius.circular(
+                    DogGoRadius.medium,
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  color: DogGoTheme.teal,
+                  size: 20,
+                ),
               ),
-              const SizedBox(width: 11),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  titulo,
-                  style: DogGoTheme.title(size: 18),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _IconBox extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final Color background;
-  final double size;
-  final double radius;
-
-  const _IconBox({
-    required this.icon,
-    required this.color,
-    required this.background,
-    this.size = 52,
-    this.radius = 17,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: Icon(
-        icon,
-        color: color,
-        size: size * .52,
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  final String text;
-  final Color color;
-  final Color background;
-  final IconData icon;
-
-  const _StatusPill({
-    required this.text,
-    required this.color,
-    required this.background,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: 15,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            text,
-            style: DogGoTheme.body(
-              size: 11.5,
-              color: color,
-              weight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroMetric extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _HeroMetric({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: DogGoTheme.subtitle(
-            size: 11,
-            color: Colors.white.withOpacity(.62),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: DogGoTheme.body(
-            size: 14,
-            color: Colors.white,
-            weight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroDivider extends StatelessWidget {
-  const _HeroDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 32,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      color: Colors.white.withOpacity(.12),
-    );
-  }
-}
-
-class _MiniMetric extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  final Color background;
-
-  const _MiniMetric({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: background.withOpacity(.80),
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: color.withOpacity(.12)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: DogGoTheme.subtitle(size: 11.2),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DogGoTheme.body(
-                    size: 13.5,
-                    color: DogGoTheme.ink,
-                    weight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EvidenciaEstado extends StatelessWidget {
-  final String titulo;
-  final bool completo;
-
-  const _EvidenciaEstado({
-    required this.titulo,
-    required this.completo,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = completo ? DogGoTheme.green : DogGoTheme.orange;
-    final surface = completo ? DogGoTheme.greenLight : DogGoTheme.orangeLight;
-
-    return Container(
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(.18),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            completo ? Icons.check_circle_rounded : Icons.pending_rounded,
-            color: color,
-            size: 20,
-          ),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Text(
-              '$titulo: ${completo ? 'lista' : 'pendiente'}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: DogGoTheme.body(
-                size: 11.5,
-                color: color,
-                weight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icono;
-  final String titulo;
-  final String valor;
-  final Color color;
-  final Color surface;
-  final bool showBottomPadding;
-
-  const _InfoRow({
-    required this.icono,
-    required this.titulo,
-    required this.valor,
-    required this.color,
-    required this.surface,
-    this.showBottomPadding = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: showBottomPadding ? 13 : 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 39,
-            height: 39,
-            decoration: BoxDecoration(
-              color: surface,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icono,
-              size: 20,
-              color: color,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  titulo,
-                  style: DogGoTheme.subtitle(size: 12),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  valor,
-                  style: DogGoTheme.body(
-                    size: 14,
-                    color: DogGoTheme.ink,
-                    weight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FotoEvidencia extends StatelessWidget {
-  final String titulo;
-  final String url;
-
-  const _FotoEvidencia({
-    required this.titulo,
-    required this.url,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final esUrlAbsoluta =
-        url.startsWith('http://') || url.startsWith('https://');
-
-    if (!esUrlAbsoluta) {
-      return Container(
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: DogGoTheme.cream,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DogGoTheme.border),
-        ),
-        child: Text(
-          '$titulo: imagen registrada, pero falta URL pública.',
-          style: DogGoTheme.subtitle(size: 12.5),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          titulo,
-          style: DogGoTheme.body(
-            size: 13,
-            color: DogGoTheme.ink,
-            weight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: Image.network(
-            url,
-            height: 185,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                height: 130,
-                width: double.infinity,
-                color: DogGoTheme.cream,
-                alignment: Alignment.center,
-                child: Text(
-                  'No se pudo cargar la imagen',
-                  style: DogGoTheme.subtitle(size: 12.5),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BotonAccion extends StatelessWidget {
-  final String texto;
-  final IconData icono;
-  final Color color;
-  final bool cargando;
-  final VoidCallback onPressed;
-  final bool outlined;
-
-  const _BotonAccion({
-    required this.texto,
-    required this.icono,
-    required this.color,
-    required this.cargando,
-    required this.onPressed,
-    this.outlined = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (outlined) {
-      return SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: OutlinedButton.icon(
-          onPressed: cargando ? null : onPressed,
-          icon: cargando
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(icono, size: 18),
-          label: Text(texto),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: color,
-            side: BorderSide(
-              color: color,
-              width: 1.3,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-            ),
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 13.5,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton.icon(
-        onPressed: cargando ? null : onPressed,
-        icon: cargando
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Icon(icono, size: 18),
-        label: Text(texto),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.grey.shade300,
-          disabledForegroundColor: Colors.grey.shade600,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 13.5,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TinyActionButton extends StatelessWidget {
-  final String text;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _TinyActionButton({
-    required this.text,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 17),
-        label: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: color,
-          side: BorderSide(color: color.withOpacity(.55)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SmallPill extends StatelessWidget {
-  final String text;
-  final Color color;
-  final Color background;
-
-  const _SmallPill({
-    required this.text,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Text(
-        text,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: DogGoTheme.body(
-          size: 10,
-          color: color,
-          weight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyInline extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _EmptyInline({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: DogGoTheme.cream,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DogGoTheme.border),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: DogGoTheme.muted,
-            size: 22,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: DogGoTheme.subtitle(size: 12.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PickupMapPreview extends StatelessWidget {
-  final LatLng punto;
-  final String direccion;
-  final String referencia;
-  final String coordenadas;
-  final VoidCallback onTap;
-
-  const _PickupMapPreview({
-    required this.punto,
-    required this.direccion,
-    required this.referencia,
-    required this.coordenadas,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: DogGoTheme.border.withOpacity(.9),
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: onTap,
-            child: SizedBox(
-              height: 220,
-              width: double.infinity,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: FlutterMap(
-                      options: MapOptions(
-                        initialCenter: punto,
-                        initialZoom: 16,
-                        minZoom: 4,
-                        maxZoom: 19,
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.doggo_flutter',
-                        ),
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: punto,
-                              width: 86,
-                              height: 86,
-                              child: const _PickupMarker(),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    left: 12,
-                    top: 12,
-                    child: _MapFloatingPill(
-                      text: 'Punto de recogida',
-                      icon: Icons.home_rounded,
-                      color: DogGoTheme.teal,
-                      background: Colors.white,
-                    ),
-                  ),
-                  Positioned(
-                    right: 12,
-                    bottom: 12,
-                    child: GestureDetector(
-                      onTap: onTap,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: DogGoTheme.teal,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: DogGoTheme.teal.withOpacity(.28),
-                              blurRadius: 14,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.open_in_full_rounded,
-                              color: Colors.white,
-                              size: 15,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Ver mapa',
-                              style: DogGoTheme.body(
-                                size: 11.5,
-                                color: Colors.white,
-                                weight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(15, 14, 15, 15),
-            color: DogGoTheme.card,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  direccion,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: DogGoTheme.body(
-                    size: 15,
-                    color: DogGoTheme.ink,
-                    weight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.notes_rounded,
-                      color: DogGoTheme.muted,
-                      size: 17,
-                    ),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: Text(
-                        referencia,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: DogGoTheme.subtitle(size: 12.5),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 9),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: DogGoTheme.tealLight,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.pin_drop_rounded,
-                        color: DogGoTheme.teal,
-                        size: 15,
-                      ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          coordenadas,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: DogGoTheme.body(
-                            size: 11.5,
-                            color: DogGoTheme.teal,
-                            weight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NoMapLocationCard extends StatelessWidget {
-  final String direccion;
-  final String referencia;
-
-  const _NoMapLocationCard({
-    required this.direccion,
-    required this.referencia,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: DogGoTheme.orangeLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: DogGoTheme.orange.withOpacity(.25),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: DogGoTheme.orange.withOpacity(.16),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(
-              Icons.location_off_rounded,
-              color: DogGoTheme.orange,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sin coordenadas registradas',
-                  style: DogGoTheme.body(
-                    size: 14,
-                    color: DogGoTheme.orange,
-                    weight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  direccion,
-                  style: DogGoTheme.body(
-                    size: 13.5,
-                    color: DogGoTheme.ink,
-                    weight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  referencia,
-                  style: DogGoTheme.subtitle(size: 12.5),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MapFloatingPill extends StatelessWidget {
-  final String text;
-  final IconData icon;
-  final Color color;
-  final Color background;
-
-  const _MapFloatingPill({
-    required this.text,
-    required this.icon,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: background.withOpacity(.96),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: 16,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: DogGoTheme.body(
-              size: 11.5,
-              color: color,
-              weight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PickupMarker extends StatelessWidget {
-  const _PickupMarker();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: DogGoTheme.teal,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white,
-              width: 4,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(.24),
-                blurRadius: 12,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.home_rounded,
-            color: Colors.white,
-            size: 25,
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.only(top: 3),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 4,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(.10),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Text(
-            'Recogida',
-            style: DogGoTheme.body(
-              size: 9.5,
-              color: DogGoTheme.teal,
-              weight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DarkCardHeader extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _DarkCardHeader({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      decoration: BoxDecoration(
-        color: DogGoTheme.ink,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withOpacity(.08),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.10),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
                   title,
-                  style: DogGoTheme.title(
-                    size: 18,
-                    color: Colors.white,
-                  ),
+                  style:
+                      DogGoTheme.title(size: 16),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: DogGoTheme.subtitle(
-                    size: 12.5,
-                    color: Colors.white.withOpacity(.70),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LightCardHeader extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final Color background;
-
-  const _LightCardHeader({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: color.withOpacity(.10),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: DogGoTheme.title(size: 18),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: DogGoTheme.subtitle(size: 12.5),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ParticipantTile extends StatelessWidget {
-  final String label;
-  final String name;
-  final String description;
-  final IconData icon;
-  final Color color;
-  final Color background;
-
-  const _ParticipantTile({
-    required this.label,
-    required this.name,
-    required this.description,
-    required this.icon,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withOpacity(.14),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 27,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label.toUpperCase(),
-                  style: DogGoTheme.body(
-                    size: 10.5,
-                    color: color,
-                    weight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DogGoTheme.title(size: 19),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DogGoTheme.subtitle(size: 12.5),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ParticipantSmallTile extends StatelessWidget {
-  final String label;
-  final String name;
-  final IconData icon;
-  final Color color;
-  final Color background;
-
-  const _ParticipantSmallTile({
-    required this.label,
-    required this.name,
-    required this.icon,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(
-        minHeight: 132,
-      ),
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: background.withOpacity(.72),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withOpacity(.14),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 22,
-            ),
+              ),
+              if (trailing != null) trailing!,
+            ],
           ),
           const SizedBox(height: 16),
-          Text(
-            label.toUpperCase(),
-            style: DogGoTheme.body(
-              size: 10,
-              color: color,
-              weight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: DogGoTheme.body(
-              size: 14,
-              color: DogGoTheme.ink,
-              weight: FontWeight.w900,
-            ),
-          ),
+          child,
         ],
       ),
     );
   }
 }
 
-class _PremiumTimelineItem extends StatelessWidget {
-  final String title;
-  final String value;
-  final String chipText;
+class _DetailRow extends StatelessWidget {
   final IconData icon;
-  final Color color;
-  final Color background;
-  final bool first;
-  final bool last;
+  final String label;
+  final String value;
+  final Color valueColor;
 
-  const _PremiumTimelineItem({
-    required this.title,
-    required this.value,
-    required this.chipText,
+  const _DetailRow({
     required this.icon,
-    required this.color,
-    required this.background,
-    this.first = false,
-    this.last = false,
+    required this.label,
+    required this.value,
+    this.valueColor = DogGoTheme.ink,
   });
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        children: [
-          SizedBox(
-            width: 44,
-            child: Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: first ? Colors.transparent : DogGoTheme.border,
-                  ),
-                ),
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: background,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: color.withOpacity(.14),
-                    ),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 22,
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: last ? Colors.transparent : DogGoTheme.border,
-                  ),
-                ),
-              ],
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: DogGoTheme.muted,
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            label,
+            style: DogGoTheme.body(
+              size: 11,
+              color: DogGoTheme.muted,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              margin: EdgeInsets.only(bottom: last ? 0 : 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: DogGoTheme.cream,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: DogGoTheme.border.withOpacity(.75),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: DogGoTheme.body(
-                            size: 14,
-                            color: DogGoTheme.ink,
-                            weight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: background,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text(
-                          chipText,
-                          style: DogGoTheme.body(
-                            size: 10.5,
-                            color: color,
-                            weight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    value,
-                    style: DogGoTheme.subtitle(size: 13),
-                  ),
-                ],
-              ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: DogGoTheme.body(
+              size: 11,
+              color: valueColor,
+              weight: FontWeight.w800,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
+  }
+}
+
+IconData _recommendedIcon(
+  WalkDetailRecommendedAction action,
+) {
+  switch (action) {
+    case WalkDetailRecommendedAction.waitForWalker:
+      return Icons.hourglass_top_rounded;
+    case WalkDetailRecommendedAction.reviewRequest:
+      return Icons.fact_check_outlined;
+    case WalkDetailRecommendedAction.preparePet:
+      return Icons.pets_outlined;
+    case WalkDetailRecommendedAction.startWalk:
+      return Icons.directions_walk_rounded;
+    case WalkDetailRecommendedAction
+          .uploadStartEvidence:
+    case WalkDetailRecommendedAction
+          .uploadEndEvidence:
+      return Icons.photo_camera_outlined;
+    case WalkDetailRecommendedAction.activateTracking:
+      return Icons.location_searching_rounded;
+    case WalkDetailRecommendedAction.followRoute:
+      return Icons.map_outlined;
+    case WalkDetailRecommendedAction.finishWalk:
+      return Icons.flag_outlined;
+    case WalkDetailRecommendedAction.rateExperience:
+      return Icons.star_outline_rounded;
+    case WalkDetailRecommendedAction.completed:
+      return Icons.task_alt_rounded;
+    case WalkDetailRecommendedAction.cancelled:
+      return Icons.cancel_outlined;
+    case WalkDetailRecommendedAction.unavailable:
+      return Icons.info_outline_rounded;
+  }
+}
+
+Color _statusColor(HomeWalkStatus status) {
+  switch (status) {
+    case HomeWalkStatus.pending:
+      return DogGoTheme.orange;
+    case HomeWalkStatus.accepted:
+      return DogGoTheme.purple;
+    case HomeWalkStatus.inProgress:
+      return DogGoTheme.green;
+    case HomeWalkStatus.completed:
+      return DogGoTheme.teal;
+    case HomeWalkStatus.cancelled:
+    case HomeWalkStatus.rejected:
+      return DogGoTheme.red;
+    case HomeWalkStatus.none:
+    case HomeWalkStatus.unknown:
+      return DogGoTheme.muted;
+  }
+}
+
+Color _statusSurface(HomeWalkStatus status) {
+  switch (status) {
+    case HomeWalkStatus.pending:
+      return DogGoTheme.orangeLight;
+    case HomeWalkStatus.accepted:
+      return DogGoTheme.purpleLight;
+    case HomeWalkStatus.inProgress:
+      return DogGoTheme.greenLight;
+    case HomeWalkStatus.completed:
+      return DogGoTheme.tealLight;
+    case HomeWalkStatus.cancelled:
+    case HomeWalkStatus.rejected:
+      return DogGoTheme.redLight;
+    case HomeWalkStatus.none:
+    case HomeWalkStatus.unknown:
+      return DogGoTheme.purpleLight;
+  }
+}
+
+IconData _statusIcon(HomeWalkStatus status) {
+  switch (status) {
+    case HomeWalkStatus.pending:
+      return Icons.schedule_rounded;
+    case HomeWalkStatus.accepted:
+      return Icons.verified_outlined;
+    case HomeWalkStatus.inProgress:
+      return Icons.directions_walk_rounded;
+    case HomeWalkStatus.completed:
+      return Icons.flag_outlined;
+    case HomeWalkStatus.cancelled:
+    case HomeWalkStatus.rejected:
+      return Icons.cancel_outlined;
+    case HomeWalkStatus.none:
+    case HomeWalkStatus.unknown:
+      return Icons.info_outline_rounded;
   }
 }

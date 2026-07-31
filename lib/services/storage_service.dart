@@ -25,12 +25,15 @@ class StorageService {
     await prefs.setString(_keyBaseUrl, limpia);
   }
 
+  static const String _baseUrlPorDefecto =
+      "http://127.0.0.1:5230";
+
   static Future<String?> obtenerBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final valor = prefs.getString(_keyBaseUrl);
 
     if (valor == null || valor.trim().isEmpty) {
-      return null;
+      return _limpiarUrl(_baseUrlPorDefecto);
     }
 
     return _limpiarUrl(valor);

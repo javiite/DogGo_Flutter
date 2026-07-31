@@ -1,391 +1,477 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:permission_handler/permission_handler.dart';
 
-import '../services/storage_service.dart';
+import '../core/permissions/app_permission.dart';
 import 'cambiar_password_screen.dart';
+import 'settings/settings_controller.dart';
+import 'settings/settings_state.dart';
 
-class _T {
-  static const teal = Color(0xFF0EC9A0);
-  static const tealDeep = Color(0xFF089B7A);
-  static const tealSurface = Color(0xFFE4FAF4);
+class ConfiguracionScreen
+    extends StatefulWidget {
+  const ConfiguracionScreen({
+    super.key,
+  });
 
-  static const blue = Color(0xFF2563EB);
-  static const blueSurface = Color(0xFFEFF6FF);
-
-  static const violet = Color(0xFF7C5CBF);
-  static const violetSurf = Color(0xFFF0EBFA);
-
-  static const amber = Color(0xFFFFAB2E);
-  static const amberSurf = Color(0xFFFFF4E0);
-
-  static const emerald = Color(0xFF22C55E);
-  static const emeraldSurf = Color(0xFFE6FAF0);
-
-  static const rose = Color(0xFFEF4444);
-  static const roseSurf = Color(0xFFFEEEEE);
-
-  static const bg = Color(0xFFF4F0E8);
-  static const surface = Colors.white;
-  static const ink = Color(0xFF111827);
-  static const inkSub = Color(0xFF6B7280);
-  static const stroke = Color(0xFFE5E7EB);
-
-  static List<BoxShadow> shadow({
-    double opacity = .055,
-    double blur = 16,
-    Offset offset = const Offset(0, 5),
-  }) {
-    return [
-      BoxShadow(
-        color: Colors.black.withOpacity(opacity),
-        blurRadius: blur,
-        offset: offset,
-      ),
-    ];
+  @override
+  State<ConfiguracionScreen> createState() {
+    return _ConfiguracionScreenState();
   }
 }
 
-TextStyle _ts(
-  double size,
-  FontWeight weight,
-  Color color, {
-  double spacing = 0,
-  double height = 1.2,
-}) {
-  return TextStyle(
-    fontSize: size,
-    fontWeight: weight,
-    color: color,
-    letterSpacing: spacing,
-    height: height,
-  );
-}
+class _ConfiguracionScreenState
+    extends State<ConfiguracionScreen>
+    with WidgetsBindingObserver {
+  late final SettingsController
+      _controller;
+  late final TextEditingController
+      _urlController;
 
-class ConfiguracionScreen extends StatefulWidget {
-  const ConfiguracionScreen({super.key});
-
-  @override
-  State<ConfiguracionScreen> createState() => _ConfiguracionScreenState();
-}
-
-class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
-  final TextEditingController _urlController = TextEditingController();
-
-  bool _guardandoUrl = false;
-  bool _probandoConexion = false;
-  bool _cargandoPermisos = true;
-
-  PermissionStatus? _camaraStatus;
-  PermissionStatus? _ubicacionStatus;
+  bool _urlInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _cargarTodo();
+
+    WidgetsBinding.instance.addObserver(
+      this,
+    );
+
+    _urlController =
+        TextEditingController();
+    _controller = SettingsController();
+    _controller.addListener(
+      _handleControllerChange,
+    );
+    _controller.initialize();
+  }
+
+  void _handleControllerChange() {
+    if (!mounted) {
+      return;
+    }
+
+    final state = _controller.state;
+
+    if (!_urlInitialized &&
+        !state.loading) {
+      _urlInitialized = true;
+      _urlController.text =
+          state.baseUrl;
+    }
+
+    setState(() {});
+  }
+
+  @override
+  void didChangeAppLifecycleState(
+    AppLifecycleState state,
+  ) {
+    if (state ==
+        AppLifecycleState.resumed) {
+      _controller.refreshPermissions();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance
+        .removeObserver(this);
+
+    _controller.removeListener(
+      _handleControllerChange,
+    );
+    _controller.dispose();
     _urlController.dispose();
+
     super.dispose();
   }
 
-  Future<void> _cargarTodo() async {
-    await _cargarUrl();
-    await _cargarPermisos();
-  }
+  Future<void> _saveServer() async {
+    FocusScope.of(context).unfocus();
 
-  Future<void> _cargarUrl() async {
-    final url = await StorageService.obtenerBaseUrl();
+    final result =
+        await _controller.saveServer(
+      _urlController.text,
+    );
 
-    if (!mounted) return;
-
-    setState(() {
-      _urlController.text = url ?? '';
-    });
-  }
-
-  Future<void> _cargarPermisos() async {
-    setState(() {
-      _cargandoPermisos = true;
-    });
-
-    final camara = await Permission.camera.status;
-    final ubicacion = await Permission.locationWhenInUse.status;
-
-    if (!mounted) return;
-
-    setState(() {
-      _camaraStatus = camara;
-      _ubicacionStatus = ubicacion;
-      _cargandoPermisos = false;
-    });
-  }
-
-  String _limpiarUrl(String url) {
-    var limpia = url.trim();
-
-    while (limpia.endsWith('/')) {
-      limpia = limpia.substring(0, limpia.length - 1);
+    if (!mounted) {
+      return;
     }
 
-    return limpia;
-  }
+    if (result.success) {
+      _urlController.text =
+          _controller.state.baseUrl;
+    }
 
-  void _mensaje(String texto) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(texto)),
+    _showMessage(
+      result.message,
+      success: result.success,
     );
   }
 
-  bool _validarUrl(String url) {
-    if (url.isEmpty) {
-      _mensaje('Escribe la URL del servidor.');
-      return false;
+  Future<void> _testServer() async {
+    FocusScope.of(context).unfocus();
+
+    final result =
+        await _controller.testServer(
+      _urlController.text,
+    );
+
+    if (!mounted) {
+      return;
     }
 
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      _mensaje('La URL debe empezar con http:// o https://');
-      return false;
-    }
-
-    if (url.endsWith('/api')) {
-      _mensaje('No agregues /api al final. Guarda solo la URL base.');
-      return false;
-    }
-
-    return true;
-  }
-
-  Future<void> _guardarUrl() async {
-    final url = _limpiarUrl(_urlController.text);
-
-    if (!_validarUrl(url)) return;
-
-    setState(() {
-      _guardandoUrl = true;
-    });
-
-    try {
-      await StorageService.guardarBaseUrl(url);
-
-      if (!mounted) return;
-
-      _mensaje('Servidor actualizado correctamente.');
-    } catch (e) {
-      if (!mounted) return;
-      _mensaje('No se pudo guardar la URL: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _guardandoUrl = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _probarConexion() async {
-    final url = _limpiarUrl(_urlController.text);
-
-    if (!_validarUrl(url)) return;
-
-    setState(() {
-      _probandoConexion = true;
-    });
-
-    try {
-      final uri = Uri.parse(url);
-
-      final response = await http.get(uri).timeout(
-            const Duration(seconds: 8),
-          );
-
-      if (!mounted) return;
-
-      if (response.statusCode >= 200 && response.statusCode < 500) {
-        _mensaje('Servidor alcanzable. Código: ${response.statusCode}');
-      } else {
-        _mensaje('El servidor respondió con error: ${response.statusCode}');
-      }
-    } on TimeoutException {
-      if (!mounted) return;
-      _mensaje('No respondió el servidor. Revisa IP, puerto o red.');
-    } catch (e) {
-      if (!mounted) return;
-      _mensaje('No se pudo conectar al servidor: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _probandoConexion = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _pedirCamara() async {
-    await Permission.camera.request();
-    await _cargarPermisos();
-  }
-
-  Future<void> _pedirUbicacion() async {
-    await Permission.locationWhenInUse.request();
-    await _cargarPermisos();
-  }
-
-  Future<void> _abrirCambiarPassword() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const CambiarPasswordScreen(),
-      ),
+    _showMessage(
+      result.message,
+      success: result.success,
     );
   }
 
-  Future<void> _abrirAjustesTelefono() async {
-    await openAppSettings();
-    await _cargarPermisos();
+  Future<void> _handlePermission(
+    AppPermissionType type,
+  ) async {
+    final permission =
+        _controller.state
+            .permissionFor(type);
+
+    if (permission.isGranted) {
+      await _showPermissionEnabled(
+        type,
+      );
+      return;
+    }
+
+    if (permission.mustOpenSettings) {
+      await _showOpenSettingsDialog(
+        type,
+      );
+      return;
+    }
+
+    final result =
+        await _controller
+            .requestPermission(type);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result.requiresAppSettings) {
+      await _showOpenSettingsDialog(
+        type,
+      );
+      return;
+    }
+
+    _showMessage(
+      result.message,
+      success: result.success,
+    );
   }
 
-  void _showAcercaDe() {
-    showDialog(
+  Future<void> _showPermissionEnabled(
+    AppPermissionType type,
+  ) async {
+    final open = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-        ),
-        title: Row(
-          children: [
-            const Text('🐾', style: TextStyle(fontSize: 24)),
-            const SizedBox(width: 8),
-            Text(
-              'DogGo',
-              style: _ts(20, FontWeight.w900, _T.ink),
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(24),
+          ),
+          icon: const Icon(
+            Icons.verified_rounded,
+            color: Color(0xFF087D68),
+            size: 38,
+          ),
+          title: Text(
+            '${type.title} activada',
+          ),
+          content: Text(
+            'DogGo ya tiene acceso a ${type.title.toLowerCase()}. Puedes cambiarlo desde los ajustes del teléfono.',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                  false,
+                );
+              },
+              child: const Text('Cerrar'),
             ),
-          ],
-        ),
-        content: Text(
-          'DogGo móvil conecta dueños con paseadores usando la API real del proyecto. Esta pantalla solo muestra opciones que ya tienen función en la app.',
-          style: _ts(13, FontWeight.w500, _T.inkSub, height: 1.35),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _T.teal,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                  true,
+                );
+              },
+              child: const Text(
+                'Abrir ajustes',
               ),
             ),
-            child: const Text('Entendido'),
+          ],
+        );
+      },
+    );
+
+    if (open == true) {
+      await _openAppSettings();
+    }
+  }
+
+  Future<void> _showOpenSettingsDialog(
+    AppPermissionType type,
+  ) async {
+    final open = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(24),
           ),
-        ],
+          icon: const Icon(
+            Icons
+                .settings_suggest_rounded,
+            color: Color(0xFFE08A1E),
+            size: 38,
+          ),
+          title: Text(
+            'Permiso de ${type.title.toLowerCase()}',
+          ),
+          content: Text(
+            'Este permiso no puede solicitarse nuevamente desde DogGo. Actívalo manualmente en los ajustes del teléfono.',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                  false,
+                );
+              },
+              child: const Text('Ahora no'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                  true,
+                );
+              },
+              child: const Text(
+                'Abrir ajustes',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (open == true) {
+      await _openAppSettings();
+    }
+  }
+
+  Future<void> _openAppSettings() async {
+    final result =
+        await _controller.openAppSettings();
+
+    if (!mounted || result.success) {
+      return;
+    }
+
+    _showMessage(
+      result.message,
+      success: false,
+    );
+  }
+
+  Future<void>
+      _openChangePassword() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            const CambiarPasswordScreen(),
       ),
     );
   }
 
-  String _textoPermiso(PermissionStatus? status) {
-    if (status == null) return 'Revisando...';
-
-    if (status.isGranted) return 'Permitido';
-    if (status.isDenied) return 'Pendiente';
-    if (status.isPermanentlyDenied) return 'Bloqueado';
-    if (status.isRestricted) return 'Restringido';
-    if (status.isLimited) return 'Limitado';
-
-    return 'No permitido';
+  void _showAbout() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(24),
+          ),
+          icon: const Icon(
+            Icons.pets_rounded,
+            color: Color(0xFF087D68),
+            size: 39,
+          ),
+          title: const Text('DogGo'),
+          content: const Text(
+            'DogGo conecta dueños de mascotas con paseadores y permite administrar solicitudes, recorridos, evidencias y mensajes desde una sola aplicación.',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                );
+              },
+              child: const Text(
+                'Entendido',
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  Color _colorPermiso(PermissionStatus? status) {
-    if (status == null) return _T.inkSub;
-    if (status.isGranted) return _T.emerald;
-    if (status.isPermanentlyDenied) return _T.rose;
-    return _T.amber;
-  }
+  void _showMessage(
+    String message, {
+    required bool success,
+  }) {
+    _controller.clearFeedback();
 
-  Color _surfacePermiso(PermissionStatus? status) {
-    if (status == null) return const Color(0xFFF3F4F6);
-    if (status.isGranted) return _T.emeraldSurf;
-    if (status.isPermanentlyDenied) return _T.roseSurf;
-    return _T.amberSurf;
+    final messenger =
+        ScaffoldMessenger.of(context);
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior:
+              SnackBarBehavior.floating,
+          backgroundColor: success
+              ? const Color(0xFF087D68)
+              : const Color(0xFFB64238),
+          content: Row(
+            children: [
+              Icon(
+                success
+                    ? Icons
+                        .check_circle_rounded
+                    : Icons
+                        .error_rounded,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Text(message),
+              ),
+            ],
+          ),
+        ),
+      );
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = _controller.state;
+
     return Scaffold(
-      backgroundColor: _T.bg,
+      backgroundColor:
+          const Color(0xFFF7F8F7),
       appBar: AppBar(
-        backgroundColor: _T.tealDeep,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.white,
-        title: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text('⚙️', style: TextStyle(fontSize: 17)),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Configuración',
-              style: _ts(20, FontWeight.w900, Colors.white, spacing: -.4),
-            ),
-          ],
+        title: const Text(
+          'Configuración',
         ),
+        backgroundColor: Colors.white,
+        foregroundColor:
+            const Color(0xFF20212D),
+        elevation: 0,
+        surfaceTintColor:
+            Colors.transparent,
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _cargarTodo,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 14),
-              _buildServidorCard(),
-              const SizedBox(height: 14),
-              _buildPermisosCard(),
-              const SizedBox(height: 14),
-              _buildCuentaCard(),
-              const SizedBox(height: 14),
-              _buildInfoCard(),
-            ],
-          ),
-        ),
+        top: false,
+        child: state.loading
+            ? const _SettingsLoading()
+            : RefreshIndicator(
+                color:
+                    const Color(0xFF087D68),
+                onRefresh: _controller
+                    .refreshPermissions,
+                child: ListView(
+                  physics:
+                      const AlwaysScrollableScrollPhysics(
+                    parent:
+                        BouncingScrollPhysics(),
+                  ),
+                  padding:
+                      const EdgeInsets.fromLTRB(
+                    20,
+                    18,
+                    20,
+                    34,
+                  ),
+                  children: [
+                    _buildHeader(state),
+                    if (state.error !=
+                        null) ...[
+                      const SizedBox(
+                        height: 14,
+                      ),
+                      _buildError(
+                        state.error!,
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    _buildServerSection(
+                      state,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPermissionsSection(
+                      state,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildAccountSection(),
+                    const SizedBox(height: 16),
+                    _buildInformationSection(),
+                  ],
+                ),
+              ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(
+    SettingsState state,
+  ) {
+    final granted =
+        state.grantedPermissionCount;
+    final total =
+        state.totalPermissionCount;
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF0EC9A0),
-            Color(0xFF057A5F),
+            Color(0xFF0A806A),
+            Color(0xFF075F54),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius:
+            BorderRadius.circular(26),
         boxShadow: [
           BoxShadow(
-            color: _T.teal.withOpacity(.25),
-            blurRadius: 24,
+            color: const Color(0xFF087D68)
+                .withOpacity(0.20),
+            blurRadius: 22,
             offset: const Offset(0, 10),
           ),
         ],
@@ -393,14 +479,13 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
       child: Row(
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 62,
+            height: 62,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.16),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: Colors.white.withOpacity(.22),
-              ),
+              color:
+                  Colors.white.withOpacity(0.14),
+              borderRadius:
+                  BorderRadius.circular(20),
             ),
             child: const Icon(
               Icons.tune_rounded,
@@ -408,23 +493,55 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
               size: 32,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Ajustes reales de DogGo',
-                  style: _ts(20, FontWeight.w900, Colors.white),
+                const Text(
+                  'Tu DogGo, listo para usar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight:
+                        FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Aquí solo aparecen opciones funcionales para servidor, permisos y cuenta.',
-                  style: _ts(
-                    13,
-                    FontWeight.w600,
-                    Colors.white.withOpacity(.88),
-                    height: 1.3,
+                  state.allPermissionsGranted
+                      ? 'Los permisos principales están activos.'
+                      : '$granted de $total permisos principales activos.',
+                  style: TextStyle(
+                    color: Colors.white
+                        .withOpacity(0.86),
+                    fontSize: 13,
+                    height: 1.35,
+                    fontWeight:
+                        FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 11),
+                ClipRRect(
+                  borderRadius:
+                      BorderRadius.circular(
+                    20,
+                  ),
+                  child:
+                      LinearProgressIndicator(
+                    value: total == 0
+                        ? 0
+                        : granted / total,
+                    minHeight: 6,
+                    backgroundColor:
+                        Colors.white
+                            .withOpacity(0.16),
+                    valueColor:
+                        const AlwaysStoppedAnimation<
+                            Color>(
+                      Color(0xFFFFC447),
+                    ),
                   ),
                 ),
               ],
@@ -435,189 +552,354 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
     );
   }
 
-  Widget _buildServidorCard() {
-    return _CardSeccion(
-      titulo: 'Servidor',
-      icono: Icons.dns_rounded,
-      color: _T.teal,
-      surface: _T.tealSurface,
-      children: [
-        Text(
-          'URL base de la API',
-          style: _ts(12, FontWeight.w800, _T.inkSub),
+  Widget _buildError(String message) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF0EF),
+        borderRadius:
+            BorderRadius.circular(17),
+        border: Border.all(
+          color: const Color(0xFFF2B6B1),
         ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _urlController,
-          enabled: !_guardandoUrl && !_probandoConexion,
-          keyboardType: TextInputType.url,
-          decoration: InputDecoration(
-            hintText: 'http://192.168.1.43:5230',
-            prefixIcon: const Icon(Icons.link_rounded),
-            filled: true,
-            fillColor: const Color(0xFFF8F4EC),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(17),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(17),
-              borderSide: const BorderSide(
-                color: _T.teal,
-                width: 1.4,
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFB64238),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF87352F),
+                fontSize: 12.5,
+                fontWeight:
+                    FontWeight.w600,
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _BotonConfig(
-                texto: _guardandoUrl ? 'Guardando...' : 'Guardar',
-                icono: Icons.save_rounded,
-                color: _T.teal,
-                cargando: _guardandoUrl,
-                onTap: _guardarUrl,
-              ),
+          IconButton(
+            tooltip: 'Cerrar',
+            visualDensity:
+                VisualDensity.compact,
+            onPressed:
+                _controller.clearFeedback,
+            icon: const Icon(
+              Icons.close_rounded,
+              size: 19,
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _BotonConfig(
-                texto: _probandoConexion ? 'Probando...' : 'Probar',
-                icono: Icons.wifi_tethering_rounded,
-                color: _T.blue,
-                cargando: _probandoConexion,
-                onTap: _probarConexion,
-                outlined: true,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _Nota(
-          icono: Icons.info_outline_rounded,
-          color: _T.amber,
-          surface: _T.amberSurf,
-          texto:
-              'No uses localhost en el celular. Usa la IP de tu computadora o la URL de Cloudflare.',
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPermisosCard() {
-    return _CardSeccion(
-      titulo: 'Permisos del teléfono',
-      icono: Icons.verified_user_rounded,
-      color: _T.emerald,
-      surface: _T.emeraldSurf,
-      children: [
-        if (_cargandoPermisos)
-          const Padding(
-            padding: EdgeInsets.all(18),
-            child: Center(
-              child: CircularProgressIndicator(),
+  Widget _buildServerSection(
+    SettingsState state,
+  ) {
+    return _SettingsSection(
+      title: 'Conexión con el servidor',
+      subtitle:
+          'Dirección usada por la aplicación para comunicarse con DogGo.',
+      icon: Icons.dns_rounded,
+      color: const Color(0xFF087D68),
+      iconBackground:
+          const Color(0xFFE7F4F1),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'URL base de la API',
+            style: TextStyle(
+              color: Color(0xFF5F6069),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
             ),
-          )
-        else ...[
-          _PermisoRow(
-            icono: Icons.photo_camera_rounded,
-            titulo: 'Cámara',
-            descripcion: 'Para tomar fotos de perros y evidencias.',
-            estado: _textoPermiso(_camaraStatus),
-            color: _colorPermiso(_camaraStatus),
-            surface: _surfacePermiso(_camaraStatus),
-            onTap: _camaraStatus?.isGranted == true
-                ? _abrirAjustesTelefono
-                : _pedirCamara,
           ),
-          const SizedBox(height: 10),
-          _PermisoRow(
-            icono: Icons.my_location_rounded,
-            titulo: 'Ubicación',
-            descripcion: 'Para tracking GPS durante paseos activos.',
-            estado: _textoPermiso(_ubicacionStatus),
-            color: _colorPermiso(_ubicacionStatus),
-            surface: _surfacePermiso(_ubicacionStatus),
-            onTap: _ubicacionStatus?.isGranted == true
-                ? _abrirAjustesTelefono
-                : _pedirUbicacion,
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: _abrirAjustesTelefono,
-              icon: const Icon(Icons.settings_rounded),
-              label: const Text('Abrir ajustes del teléfono'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _T.ink,
-                side: const BorderSide(color: _T.stroke),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _urlController,
+            enabled: !state.savingServer &&
+                !state.testingServer,
+            keyboardType: TextInputType.url,
+            textInputAction:
+                TextInputAction.done,
+            autocorrect: false,
+            enableSuggestions: false,
+            onSubmitted: (_) {
+              _testServer();
+            },
+            decoration: InputDecoration(
+              hintText:
+                  'http://127.0.0.1:5230',
+              prefixIcon: const Icon(
+                Icons.link_rounded,
+              ),
+              suffixIcon: _urlController
+                      .text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Limpiar',
+                      onPressed: state.busy
+                          ? null
+                          : () {
+                              setState(
+                                _urlController
+                                    .clear,
+                              );
+                            },
+                      icon: const Icon(
+                        Icons.close_rounded,
+                      ),
+                    ),
+              filled: true,
+              fillColor:
+                  const Color(0xFFF5F7F6),
+              border: OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(17),
+                borderSide:
+                    BorderSide.none,
+              ),
+              enabledBorder:
+                  OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(17),
+                borderSide:
+                    const BorderSide(
+                  color:
+                      Color(0xFFE4E7E6),
+                ),
+              ),
+              focusedBorder:
+                  OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(17),
+                borderSide:
+                    const BorderSide(
+                  color:
+                      Color(0xFF087D68),
+                  width: 1.5,
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child:
+                    OutlinedButton.icon(
+                  onPressed:
+                      state.testingServer ||
+                              state.savingServer
+                          ? null
+                          : _testServer,
+                  icon: state.testingServer
+                      ? const SizedBox(
+                          width: 17,
+                          height: 17,
+                          child:
+                              CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(
+                          Icons
+                              .wifi_tethering_rounded,
+                        ),
+                  label: Text(
+                    state.testingServer
+                        ? 'Probando...'
+                        : 'Probar',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child:
+                    FilledButton.icon(
+                  onPressed:
+                      state.savingServer ||
+                              state.testingServer
+                          ? null
+                          : _saveServer,
+                  icon: state.savingServer
+                      ? const SizedBox(
+                          width: 17,
+                          height: 17,
+                          child:
+                              CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color:
+                                Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.save_rounded,
+                        ),
+                  label: Text(
+                    state.savingServer
+                        ? 'Guardando...'
+                        : 'Guardar',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          const _InformationNote(
+            icon: Icons.usb_rounded,
+            color: Color(0xFFB77716),
+            background:
+                Color(0xFFFFF6E6),
+            text:
+                'Con el teléfono conectado y adb reverse usa http://127.0.0.1:5230. Sin USB utiliza la IP local de tu computadora.',
+          ),
         ],
-      ],
+      ),
     );
   }
 
-  Widget _buildCuentaCard() {
-    return _CardSeccion(
-      titulo: 'Cuenta y seguridad',
-      icono: Icons.lock_rounded,
-      color: _T.violet,
-      surface: _T.violetSurf,
-      children: [
-        _AccionRow(
-          icono: Icons.lock_reset_rounded,
-          titulo: 'Cambiar contraseña',
-          descripcion: 'Actualiza tu contraseña con tu clave actual.',
-          color: _T.violet,
-          surface: _T.violetSurf,
-          onTap: _abrirCambiarPassword,
-        ),
-      ],
+  Widget _buildPermissionsSection(
+    SettingsState state,
+  ) {
+    return _SettingsSection(
+      title: 'Permisos del teléfono',
+      subtitle:
+          'Solo se solicitan cuando una función realmente los necesita.',
+      icon: Icons.verified_user_rounded,
+      color: const Color(0xFF3478D4),
+      iconBackground:
+          const Color(0xFFEAF2FD),
+      child: Column(
+        children: [
+          for (var index = 0;
+              index <
+                  AppPermissionType
+                      .values.length;
+              index++) ...[
+            _PermissionTile(
+              type: AppPermissionType
+                  .values[index],
+              permission:
+                  state.permissionFor(
+                AppPermissionType
+                    .values[index],
+              ),
+              loading:
+                  state.isRequesting(
+                AppPermissionType
+                    .values[index],
+              ),
+              onTap: () {
+                _handlePermission(
+                  AppPermissionType
+                      .values[index],
+                );
+              },
+            ),
+            if (index <
+                AppPermissionType
+                        .values.length -
+                    1)
+              const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 13),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: state.busy
+                  ? null
+                  : _openAppSettings,
+              icon: const Icon(
+                Icons.settings_rounded,
+              ),
+              label: const Text(
+                'Abrir ajustes del teléfono',
+              ),
+            ),
+          ),
+          const SizedBox(height: 13),
+          const _InformationNote(
+            icon: Icons
+                .info_outline_rounded,
+            color: Color(0xFF3478D4),
+            background:
+                Color(0xFFEAF2FD),
+            text:
+                'Las notificaciones internas de DogGo ya funcionan. Los avisos push remotos se conectarán posteriormente con Firebase.',
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildInfoCard() {
-    return _CardSeccion(
-      titulo: 'Información',
-      icono: Icons.info_outline_rounded,
-      color: _T.inkSub,
-      surface: const Color(0xFFF3F4F6),
-      children: [
-        _AccionRow(
-          icono: Icons.pets_rounded,
-          titulo: 'Acerca de DogGo',
-          descripcion: 'Información básica de la aplicación.',
-          color: _T.teal,
-          surface: _T.tealSurface,
-          onTap: _showAcercaDe,
-        ),
-      ],
+  Widget _buildAccountSection() {
+    return _SettingsSection(
+      title: 'Cuenta y seguridad',
+      subtitle:
+          'Opciones relacionadas con el acceso a tu cuenta.',
+      icon: Icons.lock_rounded,
+      color: const Color(0xFF7554B8),
+      iconBackground:
+          const Color(0xFFF1ECFA),
+      child: _ActionTile(
+        icon: Icons.lock_reset_rounded,
+        title: 'Cambiar contraseña',
+        subtitle:
+            'Actualiza tu contraseña usando tu clave actual.',
+        color: const Color(0xFF7554B8),
+        background:
+            const Color(0xFFF1ECFA),
+        onTap: _openChangePassword,
+      ),
+    );
+  }
+
+  Widget _buildInformationSection() {
+    return _SettingsSection(
+      title: 'Información',
+      subtitle:
+          'Información general de la aplicación.',
+      icon: Icons.info_outline_rounded,
+      color: const Color(0xFF61656C),
+      iconBackground:
+          const Color(0xFFF0F2F1),
+      child: _ActionTile(
+        icon: Icons.pets_rounded,
+        title: 'Acerca de DogGo',
+        subtitle:
+            'Conoce el objetivo de la aplicación.',
+        color: const Color(0xFF087D68),
+        background:
+            const Color(0xFFE7F4F1),
+        onTap: _showAbout,
+      ),
     );
   }
 }
 
-class _CardSeccion extends StatelessWidget {
-  final String titulo;
-  final IconData icono;
+class _SettingsSection
+    extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
   final Color color;
-  final Color surface;
-  final List<Widget> children;
+  final Color iconBackground;
+  final Widget child;
 
-  const _CardSeccion({
-    required this.titulo,
-    required this.icono,
+  const _SettingsSection({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
     required this.color,
-    required this.surface,
-    required this.children,
+    required this.iconBackground,
+    required this.child,
   });
 
   @override
@@ -625,179 +907,374 @@ class _CardSeccion extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: _T.surface,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: _T.shadow(),
+        color: Colors.white,
+        borderRadius:
+            BorderRadius.circular(23),
+        border: Border.all(
+          color: const Color(0xFFE8EAE9),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color:
+                Colors.black.withOpacity(0.035),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: surface,
-                  borderRadius: BorderRadius.circular(13),
+                  color: iconBackground,
+                  borderRadius:
+                      BorderRadius.circular(
+                    14,
+                  ),
                 ),
-                child: Icon(icono, color: color, size: 22),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 23,
+                ),
               ),
-              const SizedBox(width: 11),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  titulo,
-                  style: _ts(16, FontWeight.w900, _T.ink),
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
+                  children: [
+                    Text(
+                      title,
+                      style:
+                          const TextStyle(
+                        color:
+                            Color(0xFF20212D),
+                        fontSize: 16,
+                        fontWeight:
+                            FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 3,
+                    ),
+                    Text(
+                      subtitle,
+                      style:
+                          const TextStyle(
+                        color:
+                            Color(0xFF777880),
+                        fontSize: 11.5,
+                        height: 1.3,
+                        fontWeight:
+                            FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          ...children,
+          const SizedBox(height: 16),
+          child,
         ],
       ),
     );
   }
 }
 
-class _PermisoRow extends StatelessWidget {
-  final IconData icono;
-  final String titulo;
-  final String descripcion;
-  final String estado;
-  final Color color;
-  final Color surface;
+class _PermissionTile
+    extends StatelessWidget {
+  final AppPermissionType type;
+  final AppPermissionInfo permission;
+  final bool loading;
   final VoidCallback onTap;
 
-  const _PermisoRow({
-    required this.icono,
-    required this.titulo,
-    required this.descripcion,
-    required this.estado,
-    required this.color,
-    required this.surface,
+  const _PermissionTile({
+    required this.type,
+    required this.permission,
+    required this.loading,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color =
+        _statusColor(permission.status);
+    final background =
+        _statusBackground(
+      permission.status,
+    );
+
     return Material(
-      color: const Color(0xFFF8F4EC),
-      borderRadius: BorderRadius.circular(18),
+      color: const Color(0xFFF7F8F7),
+      borderRadius:
+          BorderRadius.circular(18),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Padding(
+        onTap: loading ? null : onTap,
+        borderRadius:
+            BorderRadius.circular(18),
+        child: Container(
           padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(18),
+            border: Border.all(
+              color:
+                  const Color(0xFFE7E9E8),
+            ),
+          ),
           child: Row(
             children: [
               Container(
-                width: 43,
-                height: 43,
+                width: 45,
+                height: 45,
                 decoration: BoxDecoration(
-                  color: surface,
-                  borderRadius: BorderRadius.circular(13),
+                  color: background,
+                  borderRadius:
+                      BorderRadius.circular(
+                    14,
+                  ),
                 ),
-                child: Icon(icono, color: color, size: 22),
+                child: Icon(
+                  _permissionIcon(type),
+                  color: color,
+                  size: 23,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
                   children: [
                     Text(
-                      titulo,
-                      style: _ts(14, FontWeight.w900, _T.ink),
+                      type.title,
+                      style:
+                          const TextStyle(
+                        color:
+                            Color(0xFF20212D),
+                        fontSize: 13.5,
+                        fontWeight:
+                            FontWeight.w900,
+                      ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(
+                      height: 3,
+                    ),
                     Text(
-                      descripcion,
-                      style: _ts(11.5, FontWeight.w600, _T.inkSub),
+                      type.description,
+                      style:
+                          const TextStyle(
+                        color:
+                            Color(0xFF73747D),
+                        fontSize: 11,
+                        height: 1.3,
+                        fontWeight:
+                            FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 5,
+              if (loading)
+                SizedBox(
+                  width: 21,
+                  height: 21,
+                  child:
+                      CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: color,
+                  ),
+                )
+              else
+                Container(
+                  padding:
+                      const EdgeInsets
+                          .symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: background,
+                    borderRadius:
+                        BorderRadius.circular(
+                      20,
+                    ),
+                  ),
+                  child: Text(
+                    permission
+                        .status.label,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 10,
+                      fontWeight:
+                          FontWeight.w900,
+                    ),
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: surface,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  estado,
-                  style: _ts(10.5, FontWeight.w900, color),
-                ),
-              ),
             ],
           ),
         ),
       ),
     );
   }
+
+  static IconData _permissionIcon(
+    AppPermissionType type,
+  ) {
+    switch (type) {
+      case AppPermissionType.camera:
+        return Icons
+            .photo_camera_rounded;
+      case AppPermissionType.location:
+        return Icons.my_location_rounded;
+      case AppPermissionType.notifications:
+        return Icons
+            .notifications_active_rounded;
+    }
+  }
+
+  static Color _statusColor(
+    AppPermissionStatus status,
+  ) {
+    if (status.isGranted) {
+      return const Color(0xFF087D68);
+    }
+
+    if (status.mustOpenSettings) {
+      return const Color(0xFFB64238);
+    }
+
+    if (status ==
+        AppPermissionStatus.unavailable) {
+      return const Color(0xFF666A70);
+    }
+
+    return const Color(0xFFB77716);
+  }
+
+  static Color _statusBackground(
+    AppPermissionStatus status,
+  ) {
+    if (status.isGranted) {
+      return const Color(0xFFE7F4F1);
+    }
+
+    if (status.mustOpenSettings) {
+      return const Color(0xFFFFF0EF);
+    }
+
+    if (status ==
+        AppPermissionStatus.unavailable) {
+      return const Color(0xFFF0F2F1);
+    }
+
+    return const Color(0xFFFFF6E6);
+  }
 }
 
-class _AccionRow extends StatelessWidget {
-  final IconData icono;
-  final String titulo;
-  final String descripcion;
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
   final Color color;
-  final Color surface;
+  final Color background;
   final VoidCallback onTap;
 
-  const _AccionRow({
-    required this.icono,
-    required this.titulo,
-    required this.descripcion,
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
     required this.color,
-    required this.surface,
+    required this.background,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFF8F4EC),
-      borderRadius: BorderRadius.circular(18),
+      color: const Color(0xFFF7F8F7),
+      borderRadius:
+          BorderRadius.circular(18),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
-        child: Padding(
+        borderRadius:
+            BorderRadius.circular(18),
+        child: Container(
           padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(18),
+            border: Border.all(
+              color:
+                  const Color(0xFFE7E9E8),
+            ),
+          ),
           child: Row(
             children: [
               Container(
-                width: 43,
-                height: 43,
+                width: 45,
+                height: 45,
                 decoration: BoxDecoration(
-                  color: surface,
-                  borderRadius: BorderRadius.circular(13),
+                  color: background,
+                  borderRadius:
+                      BorderRadius.circular(
+                    14,
+                  ),
                 ),
-                child: Icon(icono, color: color, size: 22),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 23,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
                   children: [
                     Text(
-                      titulo,
-                      style: _ts(14, FontWeight.w900, _T.ink),
+                      title,
+                      style:
+                          const TextStyle(
+                        color:
+                            Color(0xFF20212D),
+                        fontSize: 13.5,
+                        fontWeight:
+                            FontWeight.w900,
+                      ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(
+                      height: 3,
+                    ),
                     Text(
-                      descripcion,
-                      style: _ts(11.5, FontWeight.w600, _T.inkSub),
+                      subtitle,
+                      style:
+                          const TextStyle(
+                        color:
+                            Color(0xFF73747D),
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
                     ),
                   ],
                 ),
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: Color(0xFFD1D5DB),
+                color: Color(0xFFB5B7BA),
               ),
             ],
           ),
@@ -807,84 +1284,18 @@ class _AccionRow extends StatelessWidget {
   }
 }
 
-class _BotonConfig extends StatelessWidget {
-  final String texto;
-  final IconData icono;
+class _InformationNote
+    extends StatelessWidget {
+  final IconData icon;
   final Color color;
-  final bool cargando;
-  final VoidCallback onTap;
-  final bool outlined;
+  final Color background;
+  final String text;
 
-  const _BotonConfig({
-    required this.texto,
-    required this.icono,
+  const _InformationNote({
+    required this.icon,
     required this.color,
-    required this.cargando,
-    required this.onTap,
-    this.outlined = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (outlined) {
-      return OutlinedButton.icon(
-        onPressed: cargando ? null : onTap,
-        icon: cargando
-            ? const SizedBox(
-                width: 17,
-                height: 17,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Icon(icono),
-        label: Text(texto),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: color,
-          side: BorderSide(color: color, width: 1.2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      );
-    }
-
-    return ElevatedButton.icon(
-      onPressed: cargando ? null : onTap,
-      icon: cargando
-          ? const SizedBox(
-              width: 17,
-              height: 17,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : Icon(icono),
-      label: Text(texto),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: Colors.grey.shade300,
-        disabledForegroundColor: Colors.grey.shade600,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-    );
-  }
-}
-
-class _Nota extends StatelessWidget {
-  final IconData icono;
-  final Color color;
-  final Color surface;
-  final String texto;
-
-  const _Nota({
-    required this.icono,
-    required this.color,
-    required this.surface,
-    required this.texto,
+    required this.background,
+    required this.text,
   });
 
   @override
@@ -892,25 +1303,81 @@ class _Nota extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(16),
+        color: background,
+        borderRadius:
+            BorderRadius.circular(16),
         border: Border.all(
-          color: color.withOpacity(.2),
+          color: color.withOpacity(0.18),
         ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
-          Icon(icono, color: color, size: 20),
+          Icon(
+            icon,
+            color: color,
+            size: 20,
+          ),
           const SizedBox(width: 9),
           Expanded(
             child: Text(
-              texto,
-              style: _ts(12, FontWeight.w700, _T.inkSub, height: 1.3),
+              text,
+              style: const TextStyle(
+                color: Color(0xFF64656D),
+                fontSize: 11.5,
+                height: 1.35,
+                fontWeight:
+                    FontWeight.w600,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SettingsLoading
+    extends StatelessWidget {
+  const _SettingsLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics:
+          const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      children: [
+        Container(
+          height: 132,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE5E9E7),
+            borderRadius:
+                BorderRadius.circular(26),
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...List.generate(
+          3,
+          (index) {
+            return Container(
+              height: index == 0
+                  ? 250
+                  : 190,
+              margin: const EdgeInsets.only(
+                bottom: 16,
+              ),
+              decoration: BoxDecoration(
+                color:
+                    const Color(0xFFE5E9E7),
+                borderRadius:
+                    BorderRadius.circular(23),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

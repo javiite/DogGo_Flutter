@@ -1,70 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 
-import '../services/background_tracking_service.dart';
-import '../services/location_service.dart';
-import '../services/storage_service.dart';
-import '../services/tracking_service.dart';
-
-class G {
-  static const brand = Color(0xFF0D9E7E);
-  static const brandPale = Color(0xFFE8F8F3);
-  static const brandDark = Color(0xFF0A7A62);
-  static const clay = Color(0xFFD4694A);
-  static const clayLight = Color(0xFFFAEDE8);
-  static const sage = Color(0xFF5B8C5A);
-  static const sagePale = Color(0xFFECF4EB);
-  static const gold = Color(0xFFCB9B3B);
-  static const goldPale = Color(0xFFFBF3E0);
-  static const ink0 = Color(0xFFFAF7F2);
-  static const ink1 = Color(0xFFF3EFE8);
-  static const ink2 = Color(0xFFE8E2D9);
-  static const ink4 = Color(0xFF8C8278);
-  static const ink5 = Color(0xFF4A4540);
-  static const ink6 = Color(0xFF1E1A16);
-  static const white = Color(0xFFFFFFFF);
-
-  static const r12 = BorderRadius.all(Radius.circular(12));
-  static const r16 = BorderRadius.all(Radius.circular(16));
-  static const r20 = BorderRadius.all(Radius.circular(20));
-  static const r24 = BorderRadius.all(Radius.circular(24));
-
-  static const shadow1 = [
-    BoxShadow(
-      color: Color(0x0C000000),
-      blurRadius: 16,
-      offset: Offset(0, 4),
-    ),
-  ];
-
-  static TextStyle h2(Color c) => TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        color: c,
-        letterSpacing: -.4,
-        height: 1.15,
-      );
-
-  static TextStyle h3(Color c) => TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: c,
-        letterSpacing: -.2,
-      );
-
-  static TextStyle body(Color c, {double size = 13.5}) => TextStyle(
-        fontSize: size,
-        fontWeight: FontWeight.w400,
-        color: c,
-      );
-
-  static TextStyle label(Color c, {double size = 12}) => TextStyle(
-        fontSize: size,
-        fontWeight: FontWeight.w700,
-        color: c,
-        letterSpacing: .3,
-      );
-}
+import '../shared/widgets/doggo_error_view.dart';
+import '../shared/widgets/doggo_loading_view.dart';
+import '../theme/doggo_radius.dart';
+import '../theme/doggo_spacing.dart';
+import '../theme/doggo_theme.dart';
+import 'tracking/live_tracking_controller.dart';
+import 'tracking/live_tracking_state.dart';
 
 class TrackingPaseoScreen extends StatefulWidget {
   final int paseoId;
@@ -79,726 +21,1069 @@ class TrackingPaseoScreen extends StatefulWidget {
   });
 
   @override
-  State<TrackingPaseoScreen> createState() => _TrackingPaseoScreenState();
+  State<TrackingPaseoScreen> createState() =>
+      _TrackingPaseoScreenState();
 }
 
-class _TrackingPaseoScreenState extends State<TrackingPaseoScreen> {
-  final LocationService _locationService = LocationService();
-  final TrackingService _trackingService = TrackingService();
-
-  Position? _ultimaPosicion;
-  DateTime? _ultimaActualizacion;
-
-  bool _trackingActivo = false;
-  bool _servicioCorriendo = false;
-  bool _enviando = false;
-  bool _huboCambios = false;
-  int _enviosCorrectos = 0;
-  String? _error;
+class _TrackingPaseoScreenState
+    extends State<TrackingPaseoScreen>
+    with WidgetsBindingObserver {
+  late final LiveTrackingController _controller;
 
   @override
   void initState() {
     super.initState();
-    _cargarEstado();
+
+    WidgetsBinding.instance.addObserver(this);
+
+    _controller = LiveTrackingController(
+      walkId: widget.paseoId,
+      petName: widget.nombrePerro,
+      walkerName: widget.nombrePaseador,
+    );
+
+    _controller.initialize();
   }
 
-  Future<void> _cargarEstado() async {
-    final tracking = await StorageService.obtenerTrackingActivo();
-    final corriendo = await BackgroundTrackingService.estaCorriendo();
-
-    if (!mounted) return;
-
-    DateTime? ultimaFecha;
-    Position? posicion;
-
-    if (tracking != null) {
-      final ultimoEnvio = tracking['ultimoEnvio'];
-
-      if (ultimoEnvio != null) {
-        ultimaFecha = DateTime.tryParse(ultimoEnvio.toString());
-      }
-
-      final lat = tracking['latitud'];
-      final lng = tracking['longitud'];
-
-      if (lat is double && lng is double) {
-        posicion = Position(
-          longitude: lng,
-          latitude: lat,
-          timestamp: ultimaFecha ?? DateTime.now(),
-          accuracy: 0,
-          altitude: 0,
-          altitudeAccuracy: 0,
-          heading: 0,
-          headingAccuracy: 0,
-          speed: 0,
-          speedAccuracy: 0,
-        );
-      }
-    }
-
-    final mismoPaseo = tracking != null &&
-        tracking['paseoId']?.toString() == widget.paseoId.toString();
-
-    setState(() {
-      _servicioCorriendo = corriendo;
-      _trackingActivo = corriendo && mismoPaseo;
-      _ultimaActualizacion = ultimaFecha;
-      _ultimaPosicion = posicion;
-    });
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _controller.dispose();
+    super.dispose();
   }
 
-  Future<void> _activarSegundoPlano() async {
-    if (_trackingActivo || _enviando) return;
-
-    setState(() {
-      _enviando = true;
-      _error = null;
-    });
-
-    try {
-      await _locationService.pedirPermisoUbicacion();
-
-      final iniciado = await BackgroundTrackingService.iniciarTracking(
-        paseoId: widget.paseoId,
-        nombrePerro: widget.nombrePerro,
-        nombrePaseador: widget.nombrePaseador,
-      );
-
-      if (!mounted) return;
-
-      if (iniciado) {
-        setState(() {
-          _trackingActivo = true;
-          _servicioCorriendo = true;
-          _huboCambios = true;
-        });
-
-        _snack('Ubicación en vivo activada en segundo plano.');
-
-        await Future.delayed(const Duration(seconds: 2));
-        await _cargarEstado();
-      } else {
-        setState(() {
-          _error = 'No se pudo iniciar el servicio de ubicación.';
-        });
-
-        _snack('No se pudo activar la ubicación en vivo.');
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _error = _limpiarError(e);
-      });
-
-      _snack('No se pudo activar la ubicación.');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _enviando = false;
-        });
-      }
+  @override
+  void didChangeAppLifecycleState(
+    AppLifecycleState state,
+  ) {
+    if (state == AppLifecycleState.resumed) {
+      _controller.syncStatus();
     }
   }
 
-  Future<void> _pausarSegundoPlano() async {
-    if (!_trackingActivo && !_servicioCorriendo) return;
+  void _close() {
+    Navigator.pop(
+      context,
+      _controller.shouldReturnUpdated,
+    );
+  }
 
-    final ok = await showDialog<bool>(
+  Future<void> _activate() async {
+    final result = await _controller
+        .activateBackgroundTracking();
+
+    if (!mounted) {
+      return;
+    }
+
+    _showMessage(
+      result.message,
+      success: result.success,
+    );
+  }
+
+  Future<void> _pause() async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) {
+      builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: G.white,
-          shape: const RoundedRectangleBorder(borderRadius: G.r20),
-          title: Text('Pausar ubicación', style: G.h3(G.ink6)),
-          content: Text(
-            'Se detendrá el envío de ubicación en segundo plano. La última ubicación enviada seguirá visible en el mapa.',
-            style: G.body(G.ink4),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.pause_circle_outline_rounded,
+                color: DogGoTheme.red,
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Pausar ubicación',
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Se detendrá el envío en segundo plano. '
+            'La última posición seguirá visible en el mapa.',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancelar', style: G.label(G.ink4)),
+              onPressed: () =>
+                  Navigator.pop(
+                dialogContext,
+                false,
+              ),
+              child: const Text('Volver'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: G.clay,
-                foregroundColor: G.white,
-                shape: const RoundedRectangleBorder(borderRadius: G.r12),
-                elevation: 0,
+              onPressed: () =>
+                  Navigator.pop(
+                dialogContext,
+                true,
               ),
-              child: Text('Pausar', style: G.label(G.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DogGoTheme.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text(
+                'Pausar ubicación',
+              ),
             ),
           ],
         );
       },
     );
 
-    if (ok != true) return;
-
-    setState(() {
-      _enviando = true;
-      _error = null;
-    });
-
-    try {
-      await BackgroundTrackingService.detenerTracking();
-
-      if (!mounted) return;
-
-      setState(() {
-        _trackingActivo = false;
-        _servicioCorriendo = false;
-        _huboCambios = true;
-      });
-
-      _snack('Ubicación en vivo pausada.');
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _error = _limpiarError(e);
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _enviando = false;
-        });
-      }
+    if (confirmed != true) {
+      return;
     }
-  }
 
-  Future<void> _actualizarUnaVez() async {
-    if (_enviando) return;
+    final result = await _controller
+        .pauseBackgroundTracking();
 
-    setState(() {
-      _enviando = true;
-      _error = null;
-    });
-
-    try {
-      await _locationService.pedirPermisoUbicacion();
-
-      final pos = await _locationService.obtenerUbicacionActual();
-
-      await _trackingService.enviarUbicacion(
-        paseoId: widget.paseoId,
-        latitud: pos.latitude,
-        longitud: pos.longitude,
-      );
-
-      final fecha = DateTime.now();
-
-      await StorageService.guardarUltimaUbicacionTracking(
-        latitud: pos.latitude,
-        longitud: pos.longitude,
-        fecha: fecha,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _ultimaPosicion = pos;
-        _ultimaActualizacion = fecha;
-        _enviosCorrectos++;
-        _huboCambios = true;
-      });
-
-      _snack('Ubicación actualizada correctamente.');
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _error = _limpiarError(e);
-      });
-
-      _snack('No se pudo actualizar la ubicación.');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _enviando = false;
-        });
-      }
+    if (!mounted) {
+      return;
     }
-  }
 
-  Future<void> _salir() async {
-    Navigator.pop(context, _huboCambios || _trackingActivo);
-  }
-
-  String _limpiarError(Object e) {
-    final texto = e.toString();
-
-    return texto
-        .replaceFirst('Exception: ', '')
-        .replaceFirst('Exception:', '')
-        .trim();
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: G.body(G.white).copyWith(fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: G.ink5,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: G.r12),
-      ),
+    _showMessage(
+      result.message,
+      success: result.success,
     );
   }
 
-  String _hora(DateTime? dt) {
-    if (dt == null) return 'Aún no enviada';
+  Future<void> _sendNow() async {
+    final result =
+        await _controller.sendCurrentLocation();
 
-    String d(int n) => n.toString().padLeft(2, '0');
-
-    return '${d(dt.hour)}:${d(dt.minute)}:${d(dt.second)}';
-  }
-
-  String get _coordenadas {
-    final p = _ultimaPosicion;
-
-    if (p == null) return 'Sin ubicación';
-
-    return _locationService.formatearCoordenadas(p);
-  }
-
-  String get _precision {
-    if (_ultimaPosicion == null) return 'N/D';
-
-    if (_ultimaPosicion!.accuracy <= 0) return 'N/D';
-
-    return '${_ultimaPosicion!.accuracy.toStringAsFixed(1)} m';
-  }
-
-  String get _velocidad {
-    final v = _ultimaPosicion?.speed ?? -1;
-
-    if (v < 0 || v.isNaN) return 'N/D';
-
-    return '${(v * 3.6).toStringAsFixed(1)} km/h';
-  }
-
-  String get _altura {
-    if (_ultimaPosicion == null) return 'N/D';
-
-    if (_ultimaPosicion!.altitude == 0) return 'N/D';
-
-    return '${_ultimaPosicion!.altitude.toStringAsFixed(1)} m';
-  }
-
-  Color get _color {
-    if (_trackingActivo) return G.sage;
-    if (_ultimaActualizacion != null || _enviosCorrectos > 0) return G.gold;
-    return Colors.grey;
-  }
-
-  String get _estadoTexto {
-    if (_trackingActivo) return 'Ubicación en vivo activa';
-    if (_ultimaActualizacion != null || _enviosCorrectos > 0) {
-      return 'Última ubicación registrada';
-    }
-    return 'Sin iniciar';
-  }
-
-  String get _estadoDesc {
-    if (_trackingActivo) {
-      return 'DogGo está enviando ubicación en segundo plano. Puedes volver al detalle o al inicio.';
+    if (!mounted) {
+      return;
     }
 
-    if (_ultimaActualizacion != null || _enviosCorrectos > 0) {
-      return 'La última ubicación enviada está disponible en el mapa del paseo.';
-    }
+    _showMessage(
+      result.message,
+      success: result.success,
+    );
+  }
 
-    return 'Activa la ubicación en vivo para que el dueño vea el avance del paseo.';
+  void _showMessage(
+    String message, {
+    bool success = false,
+  }) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: success
+              ? DogGoTheme.teal
+              : DogGoTheme.ink,
+        ),
+      );
   }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) async {
-        if (!didPop) {
-          await _salir();
-        }
-      },
-      child: Scaffold(
-        backgroundColor: G.ink0,
-        appBar: AppBar(
-          backgroundColor: G.ink0,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: G.ink6,
-              size: 20,
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
+
+        return Scaffold(
+          backgroundColor: DogGoTheme.cream,
+          appBar: AppBar(
+            leading: IconButton(
+              onPressed: _close,
+              tooltip: 'Regresar',
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+              ),
             ),
-            onPressed: _salir,
-          ),
-          title: Text('Ubicación en vivo', style: G.h2(G.ink6)),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              tooltip: 'Actualizar estado',
-              icon: const Icon(Icons.refresh_rounded, color: G.ink6),
-              onPressed: _enviando ? null : _cargarEstado,
+            title: const Text(
+              'Ubicación en vivo',
             ),
-            const SizedBox(width: 4),
-          ],
-        ),
-        body: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          children: [
-            _headerCard(),
-            const SizedBox(height: 16),
-            _estadoCard(),
-            const SizedBox(height: 16),
-            _ubicacionCard(),
-            const SizedBox(height: 16),
-            _enviosCard(),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              _errorCard(),
+            actions: [
+              IconButton(
+                onPressed: state.processing
+                    ? null
+                    : _controller.syncStatus,
+                tooltip: 'Actualizar estado',
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                ),
+              ),
+              const SizedBox(width: 6),
             ],
-            const SizedBox(height: 24),
-            _botones(),
-            const SizedBox(height: 16),
-            _nota(),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
+          ),
+          body: state.loading
+              ? const DogGoLoadingView(
+                  message:
+                      'Comprobando el servicio de ubicación...',
+                )
+              : RefreshIndicator(
+                  onRefresh:
+                      _controller.syncStatus,
+                  color: DogGoTheme.teal,
+                  child: ListView(
+                    physics:
+                        const AlwaysScrollableScrollPhysics(),
+                    padding:
+                        const EdgeInsets.fromLTRB(
+                      DogGoSpacing
+                          .screenHorizontal,
+                      18,
+                      DogGoSpacing
+                          .screenHorizontal,
+                      110,
+                    ),
+                    children: [
+                      _TrackingHero(
+                        state: state,
+                      ),
+                      if (state.error != null) ...[
+                        const SizedBox(height: 14),
+                        DogGoErrorView(
+                          title:
+                              'Problema con la ubicación',
+                          message: state.error!,
+                          icon:
+                              Icons.location_off_outlined,
+                          onRetry:
+                              _controller.syncStatus,
+                          compact: true,
+                        ),
+                      ],
+                      if (state
+                          .anotherWalkIsActive) ...[
+                        const SizedBox(height: 14),
+                        _AnotherWalkWarning(
+                          state: state,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      _TrackingStatistics(
+                        state: state,
+                      ),
+                      const SizedBox(height: 14),
+                      _CurrentLocationCard(
+                        state: state,
+                      ),
+                      const SizedBox(height: 14),
+                      _BackgroundServiceCard(
+                        state: state,
+                      ),
+                      const SizedBox(height: 14),
+                      const _TrackingSafetyCard(),
+                      const SizedBox(height: 22),
+                      _TrackingActions(
+                        state: state,
+                        onActivate: _activate,
+                        onPause: _pause,
+                        onSendNow: _sendNow,
+                      ),
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
+}
 
-  Widget _headerCard() {
-    return Container(
+class _TrackingHero extends StatelessWidget {
+  final LiveTrackingState state;
+
+  const _TrackingHero({
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = state.isCurrentWalkActive;
+
+    final color = active
+        ? DogGoTheme.green
+        : state.hasLocation
+            ? DogGoTheme.orange
+            : DogGoTheme.muted;
+
+    return AnimatedContainer(
+      duration:
+          const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _trackingActivo ? G.brandDark : G.ink5,
-            _trackingActivo ? G.brand : G.ink4,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: active
+            ? DogGoTheme.teal
+            : DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.extraLarge,
         ),
-        borderRadius: G.r24,
-        boxShadow: [
-          BoxShadow(
-            color: (_trackingActivo ? G.brand : G.ink5).withOpacity(.3),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.15),
-              borderRadius: G.r16,
-              border: Border.all(color: Colors.white.withOpacity(.22)),
-            ),
-            child: Icon(
-              _trackingActivo
-                  ? Icons.my_location_rounded
-                  : Icons.location_searching_rounded,
-              color: Colors.white,
-              size: 34,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('GPS del paseo', style: G.h2(Colors.white)),
-                const SizedBox(height: 5),
-                Text(
-                  'Perro: ${widget.nombrePerro}',
-                  style: G.label(Colors.white.withOpacity(.9)),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Paseador: ${widget.nombrePaseador}',
-                  style: G.body(Colors.white.withOpacity(.8), size: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _estadoCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: G.white,
-        borderRadius: G.r20,
-        boxShadow: G.shadow1,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: _color.withOpacity(.12),
-              borderRadius: G.r12,
-            ),
-            child: Icon(
-              _trackingActivo
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
-              color: _color,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_estadoTexto, style: G.h3(G.ink6)),
-                const SizedBox(height: 4),
-                Text(
-                  _estadoDesc,
-                  style: G.body(G.ink4),
-                  maxLines: 4,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _ubicacionCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: G.white,
-        borderRadius: G.r20,
-        boxShadow: G.shadow1,
+        border: Border.all(
+          color: active
+              ? DogGoTheme.teal
+              : DogGoTheme.border,
+        ),
+        boxShadow: active
+            ? DogGoTheme.elevatedShadow()
+            : DogGoTheme.softShadow(
+                opacity: .03,
+                blur: 20,
+                offset: const Offset(0, 8),
+              ),
       ),
       child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
-          _infoRow(Icons.pin_drop_rounded, 'Coordenadas', _coordenadas),
-          _infoRow(Icons.gps_fixed_rounded, 'Precisión', _precision),
-          _infoRow(Icons.speed_rounded, 'Velocidad', _velocidad),
-          _infoRow(Icons.terrain_rounded, 'Altura', _altura),
-          _infoRow(
-            Icons.access_time_rounded,
-            'Último envío',
-            _hora(_ultimaActualizacion),
-            isLast: true,
+          Row(
+            children: [
+              _LiveIndicator(
+                active: active,
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: active
+                      ? Colors.white.withValues(
+                          alpha: .13,
+                        )
+                      : DogGoTheme.tealLight,
+                  borderRadius:
+                      BorderRadius.circular(
+                    DogGoRadius.pill,
+                  ),
+                ),
+                child: Text(
+                  'Paseo #${state.walkId}',
+                  style: DogGoTheme.caption(
+                    size: 9,
+                    color: active
+                        ? Colors.white
+                        : DogGoTheme.teal,
+                    weight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
-          if (_enviando)
-            const Padding(
-              padding: EdgeInsets.only(top: 12),
-              child: LinearProgressIndicator(color: G.brand),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Container(
+                width: 61,
+                height: 61,
+                decoration: BoxDecoration(
+                  color: active
+                      ? Colors.white.withValues(
+                          alpha: .13,
+                        )
+                      : DogGoTheme.tealLight,
+                  borderRadius:
+                      BorderRadius.circular(
+                    DogGoRadius.large,
+                  ),
+                ),
+                child: Icon(
+                  active
+                      ? Icons
+                          .location_searching_rounded
+                      : Icons
+                          .location_on_outlined,
+                  color: active
+                      ? Colors.white
+                      : color,
+                  size: 29,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      state.petName,
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style: DogGoTheme.title(
+                        size: 23,
+                        color: active
+                            ? Colors.white
+                            : DogGoTheme.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      state.statusTitle,
+                      style: DogGoTheme.body(
+                        size: 11.5,
+                        color: active
+                            ? Colors.white
+                                .withValues(
+                                    alpha: .82)
+                            : color,
+                        weight:
+                            FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            state.statusDescription,
+            style: DogGoTheme.subtitle(
+              size: 11.5,
+              color: active
+                  ? Colors.white.withValues(
+                      alpha: .82,
+                    )
+                  : DogGoTheme.muted,
             ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _infoRow(
-    IconData icon,
-    String titulo,
-    String valor, {
-    bool isLast = false,
-  }) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-      child: Row(
-        children: [
-          Icon(icon, color: G.ink4, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(titulo, style: G.label(G.ink4).copyWith(fontSize: 11)),
-                const SizedBox(height: 2),
-                Text(valor, style: G.h3(G.ink6).copyWith(fontSize: 14)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class _LiveIndicator extends StatelessWidget {
+  final bool active;
 
-  Widget _enviosCard() {
+  const _LiveIndicator({
+    required this.active,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: G.white,
-        borderRadius: G.r20,
-        boxShadow: G.shadow1,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: active
+            ? Colors.white.withValues(alpha: .13)
+            : DogGoTheme.purpleLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.pill,
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(
-              color: G.brandPale,
-              borderRadius: G.r12,
-            ),
-            child: const Icon(
-              Icons.cloud_done_rounded,
-              color: G.brand,
-              size: 26,
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: active
+                  ? const Color(0xFF9BE4D2)
+                  : DogGoTheme.muted,
+              shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _trackingActivo
-                      ? 'Servicio activo en segundo plano'
-                      : 'Actualizaciones enviadas: $_enviosCorrectos',
-                  style: G.h3(G.ink6),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _trackingActivo
-                      ? 'Puedes salir de esta pantalla. Android mostrará una notificación de DogGo mientras se comparte ubicación.'
-                      : _enviosCorrectos == 0 && _ultimaActualizacion == null
-                          ? 'Todavía no se ha enviado ubicación al servidor.'
-                          : 'El dueño podrá ver la última ubicación en el mapa del paseo.',
-                  style: G.body(G.ink4),
-                  maxLines: 4,
-                ),
-              ],
+          const SizedBox(width: 6),
+          Text(
+            active ? 'EN VIVO' : 'PAUSADO',
+            style: DogGoTheme.label(
+              size: 8.5,
+              color: active
+                  ? Colors.white
+                  : DogGoTheme.muted,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _errorCard() {
+class _TrackingStatistics extends StatelessWidget {
+  final LiveTrackingState state;
+
+  const _TrackingStatistics({
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 7,
+        vertical: 17,
+      ),
       decoration: BoxDecoration(
-        color: G.clayLight,
-        borderRadius: G.r16,
-        border: Border.all(color: G.clay.withOpacity(.3)),
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded, color: G.clay, size: 22),
-          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              _error ?? '',
-              style: G.body(G.ink6).copyWith(fontWeight: FontWeight.w600),
+            child: _StatisticItem(
+              icon: Icons.update_rounded,
+              value: state.lastSentLabel,
+              label: 'Último envío',
+              color: DogGoTheme.teal,
+            ),
+          ),
+          const _StatisticDivider(),
+          Expanded(
+            child: _StatisticItem(
+              icon: Icons.gps_fixed_rounded,
+              value: state.accuracyLabel,
+              label: 'Precisión',
+              color: DogGoTheme.purple,
+            ),
+          ),
+          const _StatisticDivider(),
+          Expanded(
+            child: _StatisticItem(
+              icon: Icons.cloud_upload_outlined,
+              value:
+                  '${state.successfulUpdates}',
+              label: 'Actualizaciones',
+              color: DogGoTheme.orange,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _botones() {
+class _StatisticItem extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _StatisticItem({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: _trackingActivo || _enviando
-                ? null
-                : _activarSegundoPlano,
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: const Text('Activar ubicación en segundo plano'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: G.brand,
-              foregroundColor: G.white,
-              disabledBackgroundColor: G.ink2,
-              shape: const RoundedRectangleBorder(borderRadius: G.r16),
-            ),
+        Icon(
+          icon,
+          color: color,
+          size: 21,
+        ),
+        const SizedBox(height: 7),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: DogGoTheme.body(
+            size: 11,
+            weight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: OutlinedButton.icon(
-            onPressed: _trackingActivo || _servicioCorriendo
-                ? _pausarSegundoPlano
-                : null,
-            icon: const Icon(Icons.pause_rounded),
-            label: const Text('Pausar ubicación'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: G.clay,
-              side: BorderSide(
-                color: _trackingActivo || _servicioCorriendo ? G.clay : G.ink2,
-                width: 1.5,
+        const SizedBox(height: 3),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style:
+              DogGoTheme.caption(size: 8.8),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatisticDivider extends StatelessWidget {
+  const _StatisticDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 52,
+      color: DogGoTheme.divider,
+    );
+  }
+}
+
+class _CurrentLocationCard extends StatelessWidget {
+  final LiveTrackingState state;
+
+  const _CurrentLocationCard({
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _InformationCard(
+      icon: Icons.my_location_rounded,
+      title: 'Última ubicación',
+      subtitle: state.hasLocation
+          ? 'Posición enviada al dueño'
+          : 'Todavía no hay coordenadas',
+      child: Column(
+        children: [
+          _InformationRow(
+            icon: Icons.pin_drop_outlined,
+            label: 'Coordenadas',
+            value: state.coordinatesLabel,
+          ),
+          const Divider(height: 22),
+          _InformationRow(
+            icon: Icons.access_time_rounded,
+            label: 'Hora',
+            value: state.lastSentLabel,
+          ),
+          const Divider(height: 22),
+          _InformationRow(
+            icon: Icons.speed_rounded,
+            label: 'Velocidad',
+            value: state.speedLabel,
+          ),
+          const Divider(height: 22),
+          _InformationRow(
+            icon: Icons.height_rounded,
+            label: 'Altitud',
+            value: state.altitudeLabel,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackgroundServiceCard
+    extends StatelessWidget {
+  final LiveTrackingState state;
+
+  const _BackgroundServiceCard({
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _InformationCard(
+      icon: Icons.phone_android_rounded,
+      title: 'Servicio en segundo plano',
+      subtitle: state.serviceRunning
+          ? 'El servicio está ejecutándose'
+          : 'El servicio está detenido',
+      iconColor: state.serviceRunning
+          ? DogGoTheme.green
+          : DogGoTheme.muted,
+      iconBackground: state.serviceRunning
+          ? DogGoTheme.greenLight
+          : DogGoTheme.purpleLight,
+      child: Column(
+        children: [
+          _ServiceCheck(
+            completed:
+                state.serviceRunning,
+            title: 'Servicio de Android',
+            description: state.serviceRunning
+                ? 'Activo en primer plano'
+                : 'Sin ejecutar',
+          ),
+          const SizedBox(height: 13),
+          _ServiceCheck(
+            completed:
+                state.isCurrentWalkActive,
+            title:
+                'Paseo vinculado',
+            description:
+                state.isCurrentWalkActive
+                    ? 'Paseo #${state.walkId}'
+                    : 'Sin vínculo activo',
+          ),
+          const SizedBox(height: 13),
+          _ServiceCheck(
+            completed: state.hasLocation,
+            title: 'Primera ubicación',
+            description: state.hasLocation
+                ? 'Enviada correctamente'
+                : 'Pendiente',
+          ),
+          const SizedBox(height: 13),
+          const _ServiceCheck(
+            completed: true,
+            title: 'Frecuencia',
+            description:
+                'Aproximadamente cada 5 segundos',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ServiceCheck extends StatelessWidget {
+  final bool completed;
+  final String title;
+  final String description;
+
+  const _ServiceCheck({
+    required this.completed,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: completed
+                ? DogGoTheme.greenLight
+                : DogGoTheme.purpleLight,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            completed
+                ? Icons.check_rounded
+                : Icons.remove_rounded,
+            color: completed
+                ? DogGoTheme.green
+                : DogGoTheme.muted,
+            size: 17,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: DogGoTheme.body(
+                  size: 11.5,
+                  weight: FontWeight.w800,
+                ),
               ),
-              shape: const RoundedRectangleBorder(borderRadius: G.r16),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: OutlinedButton.icon(
-            onPressed: _enviando ? null : _actualizarUnaVez,
-            icon: const Icon(Icons.near_me_rounded),
-            label: const Text('Actualizar ubicación ahora'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: G.brandDark,
-              side: const BorderSide(color: G.brandDark, width: 1.5),
-              shape: const RoundedRectangleBorder(borderRadius: G.r16),
-            ),
+              Text(
+                description,
+                style:
+                    DogGoTheme.caption(size: 9.5),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _nota() {
+class _TrackingSafetyCard extends StatelessWidget {
+  const _TrackingSafetyCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _InformationCard(
+      icon: Icons.shield_outlined,
+      title: 'Privacidad y seguridad',
+      subtitle:
+          'La ubicación pertenece únicamente a este paseo',
+      iconColor: DogGoTheme.purple,
+      iconBackground: DogGoTheme.purpleLight,
+      child: Text(
+        'El seguimiento debe permanecer activo solamente durante el servicio. '
+        'Al finalizar o cancelar el paseo, DogGo detendrá el envío.',
+        style: DogGoTheme.subtitle(
+          size: 11.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _TrackingActions extends StatelessWidget {
+  final LiveTrackingState state;
+  final VoidCallback onActivate;
+  final VoidCallback onPause;
+  final VoidCallback onSendNow;
+
+  const _TrackingActions({
+    required this.state,
+    required this.onActivate,
+    required this.onPause,
+    required this.onSendNow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.anotherWalkIsActive) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        if (state.isCurrentWalkActive)
+          ElevatedButton.icon(
+            onPressed: state.processing
+                ? null
+                : onSendNow,
+            icon: state.processing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(
+                    Icons.gps_fixed_rounded,
+                  ),
+            label: Text(
+              state.processing
+                  ? 'Obteniendo ubicación...'
+                  : 'Enviar ubicación ahora',
+            ),
+          )
+        else
+          ElevatedButton.icon(
+            onPressed: state.processing
+                ? null
+                : onActivate,
+            icon: state.processing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(
+                    Icons.play_circle_outline_rounded,
+                  ),
+            label: Text(
+              state.processing
+                  ? 'Activando servicio...'
+                  : 'Activar ubicación en vivo',
+            ),
+          ),
+        if (state.isCurrentWalkActive) ...[
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: state.processing
+                ? null
+                : onPause,
+            icon: const Icon(
+              Icons.pause_circle_outline_rounded,
+            ),
+            label: const Text(
+              'Pausar ubicación',
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: DogGoTheme.red,
+              side: const BorderSide(
+                color: DogGoTheme.red,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _AnotherWalkWarning extends StatelessWidget {
+  final LiveTrackingState state;
+
+  const _AnotherWalkWarning({
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final otherWalk =
+        state.session?.walkId;
+
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: const BoxDecoration(
-        color: G.ink1,
-        borderRadius: G.r16,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: DogGoTheme.orangeLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.orange.withValues(
+            alpha: .2,
+          ),
+        ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded, color: G.ink4, size: 22),
-          const SizedBox(width: 10),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: DogGoTheme.orange,
+            size: 27,
+          ),
+          const SizedBox(width: 11),
           Expanded(
             child: Text(
-              _trackingActivo
-                  ? 'La ubicación seguirá enviándose aunque vuelvas al detalle o al inicio. Para detenerla, vuelve aquí y toca Pausar ubicación o finaliza el paseo.'
-                  : 'Activa la ubicación en segundo plano durante el paseo para actualizar el mapa del dueño.',
-              style: G.body(G.ink5).copyWith(fontWeight: FontWeight.w600),
+              otherWalk == null
+                  ? state.statusDescription
+                  : 'El paseo #$otherWalk está compartiendo ubicación. Detén ese seguimiento antes de activar este.',
+              style: DogGoTheme.body(
+                size: 11,
+                color: DogGoTheme.orange,
+                weight: FontWeight.w700,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _InformationCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget child;
+  final Color iconColor;
+  final Color iconBackground;
+
+  const _InformationCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    this.iconColor = DogGoTheme.teal,
+    this.iconBackground = DogGoTheme.tealLight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 43,
+                height: 43,
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius:
+                      BorderRadius.circular(
+                    DogGoRadius.medium,
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: DogGoTheme.title(
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: DogGoTheme.caption(
+                        size: 9.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _InformationRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _InformationRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          color: DogGoTheme.muted,
+          size: 18,
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            label,
+            style: DogGoTheme.body(
+              size: 10.5,
+              color: DogGoTheme.muted,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: DogGoTheme.body(
+              size: 10.5,
+              weight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

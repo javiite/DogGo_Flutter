@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../core/errors/api_exception.dart';
+import '../core/navigation/app_routes.dart';
 import '../services/auth_service.dart';
+import '../theme/doggo_radius.dart';
+import '../theme/doggo_spacing.dart';
+import '../theme/doggo_theme.dart';
+import '../widgets/doggo_logo.dart';
 
 class ConfirmarCorreoScreen extends StatefulWidget {
   final String? email;
@@ -11,282 +18,521 @@ class ConfirmarCorreoScreen extends StatefulWidget {
   });
 
   @override
-  State<ConfirmarCorreoScreen> createState() => _ConfirmarCorreoScreenState();
+  State<ConfirmarCorreoScreen> createState() {
+    return _ConfirmarCorreoScreenState();
+  }
 }
 
-class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _codigoController = TextEditingController();
+class _ConfirmarCorreoScreenState
+    extends State<ConfirmarCorreoScreen> {
+  final TextEditingController _emailController =
+      TextEditingController();
 
-  bool _confirmando = false;
+  final TextEditingController _codeController =
+      TextEditingController();
+
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _codeFocus = FocusNode();
+
+  bool _confirming = false;
+
+  String? _emailError;
+  String? _codeError;
+  String? _generalError;
 
   @override
   void initState() {
     super.initState();
 
-    if (widget.email != null && widget.email!.trim().isNotEmpty) {
-      _emailController.text = widget.email!.trim();
+    final initialEmail = widget.email?.trim() ?? '';
+
+    if (initialEmail.isNotEmpty) {
+      _emailController.text = initialEmail;
     }
   }
 
   @override
   void dispose() {
     _emailController.dispose();
-    _codigoController.dispose();
+    _codeController.dispose();
+    _emailFocus.dispose();
+    _codeFocus.dispose();
     super.dispose();
   }
 
-  void _mostrarMensaje(String texto) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(texto)),
-    );
-  }
-
-  bool _validar() {
+  bool _validate() {
     final email = _emailController.text.trim();
-    final codigo = _codigoController.text.trim();
+    final code = _codeController.text.trim();
 
-    if (email.isEmpty || !email.contains('@')) {
-      _mostrarMensaje('Escribe un correo válido.');
+    String? emailError;
+    String? codeError;
+
+    if (email.isEmpty) {
+      emailError = 'Escribe tu correo electrónico.';
+    } else if (!_isValidEmail(email)) {
+      emailError = 'Escribe un correo válido.';
+    }
+
+    if (code.isEmpty) {
+      codeError =
+          'Escribe el código de confirmación.';
+    } else if (code.length < 4) {
+      codeError = 'El código es demasiado corto.';
+    }
+
+    setState(() {
+      _emailError = emailError;
+      _codeError = codeError;
+      _generalError = null;
+    });
+
+    if (emailError != null) {
+      _emailFocus.requestFocus();
       return false;
     }
 
-    if (codigo.isEmpty) {
-      _mostrarMensaje('Escribe el código de confirmación.');
-      return false;
-    }
-
-    if (codigo.length < 4) {
-      _mostrarMensaje('El código no parece válido.');
+    if (codeError != null) {
+      _codeFocus.requestFocus();
       return false;
     }
 
     return true;
   }
 
-  Future<void> _confirmarCorreo() async {
-    if (_confirmando) return;
-    if (!_validar()) return;
+  bool _isValidEmail(String email) {
+    return RegExp(
+      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+    ).hasMatch(email);
+  }
+
+  Future<void> _confirmEmail() async {
+    if (_confirming || !_validate()) {
+      return;
+    }
+
+    FocusManager.instance.primaryFocus?.unfocus();
 
     setState(() {
-      _confirmando = true;
+      _confirming = true;
+      _generalError = null;
     });
 
     try {
       final result = await AuthService.confirmarCorreo(
         email: _emailController.text.trim(),
-        codigo: _codigoController.text.trim(),
+        codigo: _codeController.text.trim(),
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       if (result['success'] == true) {
-        _mostrarMensaje(
-          result['message']?.toString() ?? 'Correo confirmado correctamente.',
+        _showMessage(
+          result['message']?.toString() ??
+              'Correo confirmado correctamente.',
         );
 
-        await Future.delayed(const Duration(milliseconds: 700));
-
-        if (!mounted) return;
-
-        Navigator.pop(context, true);
-      } else {
-        _mostrarMensaje(
-          result['message']?.toString() ?? 'No se pudo confirmar el correo.',
+        await Future<void>.delayed(
+          const Duration(milliseconds: 500),
         );
+
+        if (!mounted) {
+          return;
+        }
+
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.login,
+          (_) => false,
+        );
+
+        return;
       }
-    } catch (e) {
-      if (!mounted) return;
-      _mostrarMensaje('Error de conexión: $e');
+
+      setState(() {
+        _generalError =
+            result['message']?.toString() ??
+                'No se pudo confirmar el correo.';
+      });
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _generalError = error.message;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _generalError = error
+            .toString()
+            .replaceFirst('Exception: ', '');
+      });
     } finally {
       if (mounted) {
         setState(() {
-          _confirmando = false;
+          _confirming = false;
         });
       }
     }
   }
 
-  InputDecoration _decoracionCampo({
-    required String label,
-    required IconData icon,
-    String? hint,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon),
-      filled: true,
-      fillColor: const Color(0xFFF8F4EC),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
+  void _clearEmailError(String value) {
+    if (_emailError == null &&
+        _generalError == null) {
+      return;
+    }
+
+    setState(() {
+      _emailError = null;
+      _generalError = null;
+    });
+  }
+
+  void _clearCodeError(String value) {
+    if (_codeError == null &&
+        _generalError == null) {
+      return;
+    }
+
+    setState(() {
+      _codeError = null;
+      _generalError = null;
+    });
+  }
+
+  void _goToLogin() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.login,
+      (_) => false,
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F6EF),
+      backgroundColor: DogGoTheme.cream,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: const Row(
-          children: [
-            Icon(Icons.pets, color: Color(0xFF14A89A)),
-            SizedBox(width: 8),
-            Text(
-              'Confirmar correo',
-              style: TextStyle(
-                color: Color(0xFF25324A),
-                fontWeight: FontWeight.bold,
+        toolbarHeight: 72,
+        leading: IconButton(
+          onPressed:
+              _confirming ? null : _goToLogin,
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+          ),
+        ),
+        title: const DogGoLogo(size: 48),
+      ),
+      body: SafeArea(
+        top: false,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            FocusManager.instance.primaryFocus?.unfocus();
+          },
+          child: SingleChildScrollView(
+            keyboardDismissBehavior:
+                ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              DogGoSpacing.screenHorizontal,
+              DogGoSpacing.md,
+              DogGoSpacing.screenHorizontal,
+              DogGoSpacing.xl,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 450,
+                ),
+                child: Column(
+                  children: [
+                    const _ConfirmationHeader(),
+                    const SizedBox(
+                      height: DogGoSpacing.md,
+                    ),
+                    _ConfirmationForm(
+                      emailController:
+                          _emailController,
+                      codeController:
+                          _codeController,
+                      emailFocus: _emailFocus,
+                      codeFocus: _codeFocus,
+                      confirming: _confirming,
+                      emailError: _emailError,
+                      codeError: _codeError,
+                      generalError: _generalError,
+                      onEmailChanged:
+                          _clearEmailError,
+                      onCodeChanged:
+                          _clearCodeError,
+                      onConfirm: _confirmEmail,
+                      onBackToLogin: _goToLogin,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
+    );
+  }
+}
+
+class _ConfirmationHeader extends StatelessWidget {
+  const _ConfirmationHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(
+        DogGoSpacing.lg,
+      ),
+      decoration: BoxDecoration(
+        color: DogGoTheme.teal,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.extraLarge,
+        ),
+        boxShadow: DogGoTheme.elevatedShadow(),
+      ),
+      child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            width: 68,
+            height: 68,
             decoration: BoxDecoration(
-              color: const Color(0xFFF4EDE3),
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: const Color(0xFFE7E0D5)),
+              color:
+                  Colors.white.withValues(alpha: .14),
+              shape: BoxShape.circle,
             ),
-            child: const Column(
-              children: [
-                CircleAvatar(
-                  radius: 34,
-                  backgroundColor: Colors.white,
-                  child: Icon(
-                    Icons.mark_email_read_rounded,
-                    size: 34,
-                    color: Color(0xFF14A89A),
-                  ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Verifica tu cuenta',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF14A89A),
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Confirma tu correo',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 29,
-                    color: Color(0xFF25324A),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Escribe el código que enviamos a tu correo electrónico.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+            child: const Icon(
+              Icons.mark_email_read_rounded,
+              color: Colors.white,
+              size: 34,
             ),
           ),
-          const SizedBox(height: 22),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.94),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFE7E2D9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          const SizedBox(height: DogGoSpacing.md),
+          Text(
+            'VERIFICA TU CUENTA',
+            style: DogGoTheme.label(
+              size: 10.5,
+              color: DogGoTheme.orange,
             ),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _emailController,
-                  enabled: !_confirmando,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: _decoracionCampo(
-                    label: 'Correo electrónico',
-                    icon: Icons.email_outlined,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _codigoController,
-                  enabled: !_confirmando,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  decoration: _decoracionCampo(
-                    label: 'Código de confirmación',
-                    icon: Icons.password_rounded,
-                    hint: 'Ej. 123456',
-                  ),
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _confirmando ? null : _confirmarCorreo,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF14A89A),
-                      disabledBackgroundColor:
-                          const Color(0xFF14A89A).withOpacity(0.45),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(26),
+          ),
+          const SizedBox(height: DogGoSpacing.sm),
+          Text(
+            'Confirma tu correo',
+            textAlign: TextAlign.center,
+            style: DogGoTheme.display(
+              size: 28,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: DogGoSpacing.sm),
+          Text(
+            'Escribe el código que enviamos a tu correo electrónico.',
+            textAlign: TextAlign.center,
+            style: DogGoTheme.body(
+              size: 13,
+              color:
+                  Colors.white.withValues(alpha: .80),
+              weight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfirmationForm extends StatelessWidget {
+  final TextEditingController emailController;
+  final TextEditingController codeController;
+  final FocusNode emailFocus;
+  final FocusNode codeFocus;
+
+  final bool confirming;
+
+  final String? emailError;
+  final String? codeError;
+  final String? generalError;
+
+  final ValueChanged<String> onEmailChanged;
+  final ValueChanged<String> onCodeChanged;
+  final VoidCallback onConfirm;
+  final VoidCallback onBackToLogin;
+
+  const _ConfirmationForm({
+    required this.emailController,
+    required this.codeController,
+    required this.emailFocus,
+    required this.codeFocus,
+    required this.confirming,
+    required this.emailError,
+    required this.codeError,
+    required this.generalError,
+    required this.onEmailChanged,
+    required this.onCodeChanged,
+    required this.onConfirm,
+    required this.onBackToLogin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(
+        DogGoSpacing.cardPadding,
+      ),
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(color: DogGoTheme.border),
+      ),
+      child: Column(
+        children: [
+          TextField(
+            controller: emailController,
+            focusNode: emailFocus,
+            enabled: !confirming,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            autofillHints: const [
+              AutofillHints.email,
+            ],
+            autocorrect: false,
+            enableSuggestions: false,
+            onChanged: onEmailChanged,
+            onSubmitted: (_) {
+              codeFocus.requestFocus();
+            },
+            decoration: InputDecoration(
+              labelText: 'Correo electrónico',
+              hintText: 'correo@ejemplo.com',
+              errorText: emailError,
+              prefixIcon:
+                  const Icon(Icons.email_outlined),
+            ),
+          ),
+          const SizedBox(
+            height: DogGoSpacing.fieldGap,
+          ),
+          TextField(
+            controller: codeController,
+            focusNode: codeFocus,
+            enabled: !confirming,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            autofillHints: const [
+              AutofillHints.oneTimeCode,
+            ],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(8),
+            ],
+            onChanged: onCodeChanged,
+            onSubmitted: (_) => onConfirm(),
+            decoration: InputDecoration(
+              labelText: 'Código de confirmación',
+              hintText: 'Ej. 123456',
+              errorText: codeError,
+              prefixIcon: const Icon(
+                Icons.password_rounded,
+              ),
+            ),
+          ),
+          if (generalError != null) ...[
+            const SizedBox(height: DogGoSpacing.md),
+            _ConfirmationError(
+              message: generalError!,
+            ),
+          ],
+          const SizedBox(height: DogGoSpacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed:
+                  confirming ? null : onConfirm,
+              child: confirming
+                  ? const SizedBox(
+                      width: 21,
+                      height: 21,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.3,
+                        color: Colors.white,
                       ),
-                      elevation: 0,
-                    ),
-                    child: _confirmando
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.3,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'Confirmar correo',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _confirmando
-                      ? null
-                      : () {
-                          Navigator.pop(context);
-                        },
-                  child: const Text(
-                    'Volver al login',
-                    style: TextStyle(
-                      color: Color(0xFF25324A),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
+                    )
+                  : const Text('Confirmar correo'),
+            ),
+          ),
+          const SizedBox(height: DogGoSpacing.sm),
+          TextButton(
+            onPressed:
+                confirming ? null : onBackToLogin,
+            child: const Text('Volver al login'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfirmationError extends StatelessWidget {
+  final String message;
+
+  const _ConfirmationError({
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(
+        DogGoSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: DogGoTheme.redLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.medium,
+        ),
+        border: Border.all(
+          color: DogGoTheme.red.withValues(alpha: .20),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: DogGoTheme.red,
+            size: 21,
+          ),
+          const SizedBox(width: DogGoSpacing.sm),
+          Expanded(
+            child: Text(
+              message,
+              style: DogGoTheme.body(
+                size: 12,
+                color: DogGoTheme.red,
+                weight: FontWeight.w700,
+              ),
             ),
           ),
         ],

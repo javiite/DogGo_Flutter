@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../services/api_service.dart';
-import '../services/storage_service.dart';
+import '../shared/widgets/doggo_error_view.dart';
+import '../shared/widgets/doggo_loading_view.dart';
+import '../theme/doggo_radius.dart';
+import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
 import '../widgets/doggo_logo.dart';
 import 'crear_paseo_screen.dart';
+import 'walkers/models/walker.dart';
+import 'walkers/models/walker_review.dart';
+import 'walkers/walker_detail_controller.dart';
+import 'walkers/walker_detail_state.dart';
 
 class DetallePaseadorScreen extends StatefulWidget {
   final Map<String, dynamic> paseador;
@@ -15,643 +21,162 @@ class DetallePaseadorScreen extends StatefulWidget {
   });
 
   @override
-  State<DetallePaseadorScreen> createState() => _DetallePaseadorScreenState();
+  State<DetallePaseadorScreen> createState() =>
+      _DetallePaseadorScreenState();
 }
 
-class _DetallePaseadorScreenState extends State<DetallePaseadorScreen> {
-  bool _cargandoReviews = false;
-  String? _baseUrl;
-  List<Map<String, dynamic>> _reviews = [];
+class _DetallePaseadorScreenState
+    extends State<DetallePaseadorScreen> {
+  late final WalkerDetailController _controller;
 
   @override
   void initState() {
     super.initState();
-    _inicializar();
+
+    _controller = WalkerDetailController(
+      walkerData: widget.paseador,
+    );
+
+    _controller.initialize();
   }
 
-  Future<void> _inicializar() async {
-    final url = await StorageService.obtenerBaseUrl();
-
-    if (!mounted) return;
-
-    setState(() {
-      _baseUrl = url;
-    });
-
-    await _cargarReviews();
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
-  Future<void> _cargarReviews() async {
-    final id = _paseadorId();
+  Future<void> _requestWalk() async {
+    final walker = _controller.state.walker;
 
-    if (id == null) return;
-
-    setState(() {
-      _cargandoReviews = true;
-    });
-
-    final endpoints = [
-      '/api/paseadores/$id/calificaciones',
-      '/api/Paseadores/$id/calificaciones',
-      '/api/calificaciones/paseador/$id',
-      '/api/Calificaciones/paseador/$id',
-      '/api/paseadores/$id/reviews',
-      '/api/Paseadores/$id/reviews',
-    ];
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.getAuth(endpoint);
-        final statusCode = respuesta['statusCode'];
-
-        if (statusCode is int && statusCode >= 200 && statusCode < 300) {
-          if (!mounted) return;
-
-          setState(() {
-            _reviews = _normalizarLista(respuesta);
-            _cargandoReviews = false;
-          });
-          return;
-        }
-      } catch (_) {
-        continue;
-      }
+    if (!walker.available) {
+      return;
     }
 
-    if (!mounted) return;
-
-    setState(() {
-      _cargandoReviews = false;
-    });
-  }
-
-  List<Map<String, dynamic>> _normalizarLista(dynamic respuesta) {
-    dynamic datos = respuesta;
-
-    if (respuesta is Map) {
-      final body = respuesta['body'];
-      datos = body ?? respuesta;
-
-      if (datos is Map) {
-        datos = datos['data'] ??
-            datos['calificaciones'] ??
-            datos['reviews'] ??
-            datos['resenas'] ??
-            datos['reseñas'] ??
-            datos['items'] ??
-            datos['resultado'] ??
-            datos['result'] ??
-            datos['value'];
-      }
-    }
-
-    if (datos is! List) return [];
-
-    return datos
-        .where((item) => item is Map)
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
-  }
-
-  Map<String, dynamic> _map(dynamic valor) {
-    if (valor is Map<String, dynamic>) return valor;
-    if (valor is Map) return Map<String, dynamic>.from(valor);
-    return {};
-  }
-
-  dynamic _val(Map<String, dynamic> mapa, List<String> keys) {
-    for (final key in keys) {
-      if (mapa.containsKey(key) && mapa[key] != null) return mapa[key];
-    }
-
-    return null;
-  }
-
-  String _texto(dynamic valor, {String fallback = 'Sin dato'}) {
-    if (valor == null) return fallback;
-
-    final texto = valor.toString().trim();
-
-    if (texto.isEmpty || texto.toLowerCase() == 'null') return fallback;
-
-    return texto;
-  }
-
-  int? _intValor(dynamic valor) {
-    if (valor is int) return valor;
-    return int.tryParse(valor?.toString() ?? '');
-  }
-
-  double _doubleValor(dynamic valor, {double fallback = 0}) {
-    if (valor is double) return valor;
-    if (valor is int) return valor.toDouble();
-    return double.tryParse(valor?.toString() ?? '') ?? fallback;
-  }
-
-  String _urlPublica(dynamic valor) {
-    final raw = valor?.toString().trim();
-
-    if (raw == null || raw.isEmpty || raw.toLowerCase() == 'null') return '';
-
-    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-
-    final base = _baseUrl?.trim() ?? '';
-
-    if (base.isEmpty) return '';
-
-    if (raw.startsWith('/')) return '$base$raw';
-
-    return '$base/$raw';
-  }
-
-  String _nombre() {
-    return _texto(
-      _val(
-        widget.paseador,
-        [
-          'nombreCompleto',
-          'NombreCompleto',
-          'nombre',
-          'Nombre',
-          'paseadorNombre',
-          'PaseadorNombre',
-        ],
-      ),
-      fallback: 'Paseador DogGo',
-    );
-  }
-
-  String _email() {
-    return _texto(
-      _val(
-        widget.paseador,
-        [
-          'email',
-          'Email',
-          'correo',
-          'Correo',
-          'paseadorEmail',
-          'PaseadorEmail',
-        ],
-      ),
-      fallback: '',
-    );
-  }
-
-  String _descripcion() {
-    return _texto(
-      _val(
-        widget.paseador,
-        [
-          'descripcion',
-          'Descripcion',
-          'bio',
-          'Bio',
-          'presentacion',
-          'Presentacion',
-        ],
-      ),
-      fallback: 'Sin descripción registrada.',
-    );
-  }
-
-  String _zona() {
-    return _texto(
-      _val(
-        widget.paseador,
-        [
-          'zonaServicio',
-          'ZonaServicio',
-          'zona',
-          'Zona',
-          'zonas',
-          'Zonas',
-        ],
-      ),
-      fallback: 'Sin zona',
-    );
-  }
-
-  List<String> _zonas() {
-    final zona = _zona();
-
-    if (zona == 'Sin zona') return [zona];
-
-    final lista = zona
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    return lista.isEmpty ? [zona] : lista;
-  }
-
-  String _foto() {
-    return _urlPublica(
-      _val(
-        widget.paseador,
-        [
-          'fotoUrl',
-          'FotoUrl',
-          'imagenUrl',
-          'ImagenUrl',
-          'fotoPerfilUrl',
-          'FotoPerfilUrl',
-        ],
-      ),
-    );
-  }
-
-  int? _paseadorId() {
-    return _intValor(
-      _val(
-        widget.paseador,
-        [
-          'id',
-          'Id',
-          'paseadorId',
-          'PaseadorId',
-          'idPaseador',
-          'IdPaseador',
-        ],
-      ),
-    );
-  }
-
-  double _tarifaNumero() {
-    return _doubleValor(
-      _val(
-        widget.paseador,
-        [
-          'tarifaPorHora',
-          'TarifaPorHora',
-          'tarifa',
-          'Tarifa',
-          'precioHora',
-          'PrecioHora',
-        ],
-      ),
-    );
-  }
-
-  String _tarifa() {
-    return '\$${_tarifaNumero().toStringAsFixed(2)}';
-  }
-
-  double _ratingNumero() {
-    return _doubleValor(
-      _val(
-        widget.paseador,
-        [
-          'calificacionPromedio',
-          'CalificacionPromedio',
-          'rating',
-          'Rating',
-          'calificacion',
-          'Calificacion',
-        ],
-      ),
-    );
-  }
-
-  String _rating() {
-    final value = _ratingNumero();
-
-    if (value <= 0) return '0.0';
-
-    return value.toStringAsFixed(1);
-  }
-
-  int _experienciaNumero() {
-    return _intValor(
-          _val(
-            widget.paseador,
-            [
-              'experienciaAnios',
-              'ExperienciaAnios',
-              'experienciaAños',
-              'ExperienciaAños',
-              'experiencia',
-              'Experiencia',
-            ],
-          ),
-        ) ??
-        0;
-  }
-
-  String _experiencia() {
-    final value = _experienciaNumero();
-
-    if (value <= 0) return 'Sin experiencia';
-    if (value == 1) return '1 año';
-
-    return '$value años';
-  }
-
-  bool _disponible() {
-    final valor = _val(
-      widget.paseador,
-      [
-        'disponible',
-        'Disponible',
-        'estaDisponible',
-        'EstaDisponible',
-        'activo',
-        'Activo',
-      ],
-    );
-
-    if (valor is bool) return valor;
-
-    final texto = valor?.toString().trim().toLowerCase();
-
-    if (texto == null || texto.isEmpty || texto == 'null') return true;
-
-    return texto == 'true' || texto == '1' || texto == 'si' || texto == 'sí';
-  }
-
-  Future<void> _solicitar() async {
-    final creado = await Navigator.push(
+    final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => CrearPaseoScreen(
-          paseador: widget.paseador,
+          paseador: walker.toNavigationMap(),
         ),
       ),
     );
 
-    if (!mounted) return;
-
-    if (creado == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Paseo creado correctamente.'),
-        ),
-      );
-
-      Navigator.pop(context, true);
+    if (!mounted || created != true) {
+      return;
     }
-  }
 
-  String _reviewAutor(Map<String, dynamic> review) {
-    final duenio = _map(
-      _val(
-        review,
-        [
-          'duenio',
-          'Dueño',
-          'dueno',
-          'Dueno',
-          'usuario',
-          'Usuario',
-          'cliente',
-          'Cliente',
-        ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Paseo creado correctamente.',
+        ),
       ),
     );
 
-    return _texto(
-      _val(
-            review,
-            [
-              'duenioNombre',
-              'DueñoNombre',
-              'duenoNombre',
-              'DuenoNombre',
-              'clienteNombre',
-              'ClienteNombre',
-              'autor',
-              'Autor',
-            ],
-          ) ??
-          _val(
-            duenio,
-            [
-              'nombre',
-              'Nombre',
-              'nombreCompleto',
-              'NombreCompleto',
-            ],
-          ),
-      fallback: 'Dueño DogGo',
-    );
-  }
-
-  String _reviewComentario(Map<String, dynamic> review) {
-    return _texto(
-      _val(
-        review,
-        [
-          'comentario',
-          'Comentario',
-          'resena',
-          'Resena',
-          'reseña',
-          'Reseña',
-          'mensaje',
-          'Mensaje',
-        ],
-      ),
-      fallback: 'Sin comentario escrito.',
-    );
-  }
-
-  String _reviewPuntaje(Map<String, dynamic> review) {
-    final value = _doubleValor(
-      _val(review, ['puntaje', 'Puntaje', 'rating', 'Rating', 'calificacion']),
-    );
-
-    if (value <= 0) return '0.0';
-
-    return value.toStringAsFixed(1);
+    Navigator.pop(context, true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final foto = _foto();
-    final tieneFoto = foto.startsWith('http://') || foto.startsWith('https://');
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
 
-    return Scaffold(
-      backgroundColor: DogGoTheme.cream,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-          decoration: BoxDecoration(
-            color: DogGoTheme.cream.withOpacity(.96),
-            border: Border(
-              top: BorderSide(color: DogGoTheme.border.withOpacity(.75)),
-            ),
+        return Scaffold(
+          backgroundColor: DogGoTheme.cream,
+          bottomNavigationBar: _RequestBottomBar(
+            walker: state.walker,
+            onRequest: _requestWalk,
           ),
-          child: SizedBox(
-            height: 56,
-            child: ElevatedButton.icon(
-              onPressed: _disponible() ? _solicitar : null,
-              icon: const Icon(Icons.directions_walk_rounded),
-              label: Text('Solicitar paseo con ${_nombre()}'),
-              style: DogGoTheme.primaryButton(),
-            ),
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _cargarReviews,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            padding: const EdgeInsets.fromLTRB(22, 0, 22, 108),
-            children: [
-              _TopBar(disponible: _disponible()),
-              const SizedBox(height: 18),
-              _HeroProfile(
-                nombre: _nombre(),
-                email: _email(),
-                fotoUrl: foto,
-                tieneFoto: tieneFoto,
-                rating: _rating(),
-                tarifa: _tarifa(),
-                experiencia: _experiencia(),
-                disponible: _disponible(),
-              ),
-              const SizedBox(height: 18),
-              Row(
+          body: SafeArea(
+            bottom: false,
+            child: RefreshIndicator(
+              onRefresh: _controller.refresh,
+              color: DogGoTheme.teal,
+              child: ListView(
+                physics:
+                    const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  DogGoSpacing.screenHorizontal,
+                  6,
+                  DogGoSpacing.screenHorizontal,
+                  126,
+                ),
                 children: [
-                  Expanded(
-                    child: _MetricCard(
-                      icon: Icons.payments_rounded,
-                      value: _tarifa(),
-                      label: 'por hora',
-                      color: DogGoTheme.teal,
-                    ),
+                  _DetailTopBar(
+                    available: state.walker.available,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _MetricCard(
-                      icon: Icons.star_rounded,
-                      value: _rating(),
-                      label: 'rating',
-                      color: DogGoTheme.orange,
-                    ),
+                  const SizedBox(height: 16),
+                  _ProfessionalHero(
+                    state: state,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _MetricCard(
-                      icon: Icons.workspace_premium_rounded,
-                      value: '${_experienciaNumero()}',
-                      label: 'años exp.',
-                      color: DogGoTheme.purple,
-                    ),
+                  const SizedBox(height: 16),
+                  _WalkerMetrics(
+                    state: state,
+                  ),
+                  const SizedBox(height: 24),
+                  _AboutSection(
+                    walker: state.walker,
+                  ),
+                  const SizedBox(height: 14),
+                  _ServiceZoneSection(
+                    walker: state.walker,
+                  ),
+                  const SizedBox(height: 14),
+                  _ServiceDetailsSection(
+                    walker: state.walker,
+                  ),
+                  const SizedBox(height: 14),
+                  const _SafetySection(),
+                  const SizedBox(height: 28),
+                  _ReviewsSection(
+                    state: state,
+                    onRetry: _controller.loadReviews,
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              _ReadyCard(disponible: _disponible()),
-              const SizedBox(height: 16),
-              _InfoCard(
-                icon: Icons.description_rounded,
-                title: 'Sobre el paseador',
-                subtitle: 'Presentación profesional',
-                child: Text(
-                  _descripcion(),
-                  style: DogGoTheme.body(
-                    size: 14.5,
-                    color: DogGoTheme.ink,
-                    weight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _InfoCard(
-                icon: Icons.location_on_rounded,
-                title: 'Zona de servicio',
-                subtitle: 'Áreas donde puede realizar paseos',
-                color: DogGoTheme.purple,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _zonas()
-                      .map(
-                        (zona) => _SmallChip(
-                          text: zona,
-                          icon: Icons.location_on_rounded,
-                          color: DogGoTheme.purple,
-                          surface: DogGoTheme.purpleLight,
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _ServiceDataCard(
-                tarifa: '${_tarifa()} / hora',
-                rating: _rating(),
-                experiencia: _experiencia(),
-                estado: _disponible() ? 'Disponible' : 'Ocupado',
-              ),
-              const SizedBox(height: 14),
-              _ReviewsCard(
-                cargando: _cargandoReviews,
-                reviews: _reviews,
-                autor: _reviewAutor,
-                comentario: _reviewComentario,
-                puntaje: _reviewPuntaje,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class _TopBar extends StatelessWidget {
-  final bool disponible;
+class _DetailTopBar extends StatelessWidget {
+  final bool available;
 
-  const _TopBar({
-    required this.disponible,
+  const _DetailTopBar({
+    required this.available,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 8),
+    return SizedBox(
+      height: 58,
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'Regresar',
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+            ),
+            color: DogGoTheme.ink,
+            style: IconButton.styleFrom(
+              backgroundColor: DogGoTheme.card,
+              side: const BorderSide(
+                color: DogGoTheme.border,
+              ),
+            ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 12),
           const DogGoLogo(size: 42),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: disponible ? DogGoTheme.greenLight : DogGoTheme.redLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  disponible
-                      ? Icons.check_circle_rounded
-                      : Icons.pause_circle_rounded,
-                  color: disponible ? DogGoTheme.green : DogGoTheme.red,
-                  size: 17,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  disponible ? 'Disponible' : 'Ocupado',
-                  style: DogGoTheme.body(
-                    size: 12,
-                    color: disponible ? DogGoTheme.green : DogGoTheme.red,
-                    weight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
+          _AvailabilityBadge(
+            available: available,
           ),
         ],
       ),
@@ -659,155 +184,232 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _HeroProfile extends StatelessWidget {
-  final String nombre;
-  final String email;
-  final String fotoUrl;
-  final bool tieneFoto;
-  final String rating;
-  final String tarifa;
-  final String experiencia;
-  final bool disponible;
+class _ProfessionalHero extends StatelessWidget {
+  final WalkerDetailState state;
 
-  const _HeroProfile({
-    required this.nombre,
-    required this.email,
-    required this.fotoUrl,
-    required this.tieneFoto,
-    required this.rating,
-    required this.tarifa,
-    required this.experiencia,
-    required this.disponible,
+  const _ProfessionalHero({
+    required this.state,
   });
 
   @override
   Widget build(BuildContext context) {
+    final walker = state.walker;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 26),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: DogGoTheme.teal,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: DogGoTheme.softShadow(),
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.extraLarge,
+        ),
+        boxShadow: DogGoTheme.elevatedShadow(),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
           Positioned(
-            right: -42,
-            top: -42,
+            top: -60,
+            right: -45,
             child: Container(
-              width: 148,
-              height: 148,
+              width: 170,
+              height: 170,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.08),
+                color: Colors.white.withValues(
+                  alpha: .06,
+                ),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -70,
+            left: -55,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(
+                  alpha: .04,
+                ),
                 shape: BoxShape.circle,
               ),
             ),
           ),
           Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'PERFIL DE PASEADOR',
-                  style: DogGoTheme.body(
-                    size: 12,
-                    color: Colors.white.withOpacity(.86),
-                    weight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Stack(
-                children: [
-                  Container(
-                    width: 112,
-                    height: 112,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(.16),
-                      borderRadius: BorderRadius.circular(34),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(.22),
-                      ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: tieneFoto
-                        ? Image.network(
-                            fotoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.person_rounded,
-                              color: Colors.white,
-                              size: 56,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.person_rounded,
-                            color: Colors.white,
-                            size: 56,
-                          ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: disponible ? DogGoTheme.green : DogGoTheme.red,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                      ),
-                      child: Icon(
-                        disponible ? Icons.check_rounded : Icons.close_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
               Text(
-                nombre,
-                textAlign: TextAlign.center,
-                style: DogGoTheme.title(
-                  size: 31,
-                  color: Colors.white,
+                'PERFIL PROFESIONAL',
+                style: DogGoTheme.label(
+                  size: 10.5,
+                  color: Colors.white.withValues(
+                    alpha: .78,
+                  ),
                 ),
               ),
-              if (email.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  email,
-                  textAlign: TextAlign.center,
-                  style: DogGoTheme.body(
-                    size: 13,
-                    color: Colors.white.withOpacity(.86),
-                    weight: FontWeight.w700,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 9,
-                runSpacing: 9,
-                alignment: WrapAlignment.center,
+              const SizedBox(height: 18),
+              Row(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
-                  _HeroPill(
-                    icon: Icons.star_rounded,
-                    text: '$rating rating',
+                  _WalkerProfilePhoto(
+                    walker: walker,
+                    photoUrl: state.photoUrl,
                   ),
-                  _HeroPill(
-                    icon: Icons.attach_money_rounded,
-                    text: '$tarifa / hora',
-                  ),
-                  _HeroPill(
-                    icon: Icons.workspace_premium_rounded,
-                    text: '$experiencia de experiencia',
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                walker.name,
+                                maxLines: 2,
+                                overflow:
+                                    TextOverflow.ellipsis,
+                                style: DogGoTheme.title(
+                                  size: 23,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            if (walker.verified) ...[
+                              const SizedBox(width: 7),
+                              const Icon(
+                                Icons.verified_rounded,
+                                color: Color(0xFF9BE4D2),
+                                size: 21,
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              color: DogGoTheme.orange,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              state.ratingLabel,
+                              style: DogGoTheme.body(
+                                size: 12.5,
+                                color: Colors.white,
+                                weight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                '· ${state.reviewCountLabel}',
+                                overflow:
+                                    TextOverflow.ellipsis,
+                                style: DogGoTheme.caption(
+                                  size: 10.5,
+                                  color: Colors.white
+                                      .withValues(alpha: .7),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              color: Colors.white.withValues(
+                                alpha: .7,
+                              ),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                walker.serviceZone,
+                                maxLines: 2,
+                                overflow:
+                                    TextOverflow.ellipsis,
+                                style: DogGoTheme.caption(
+                                  size: 10.5,
+                                  color: Colors.white
+                                      .withValues(alpha: .78),
+                                  weight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(
+                    alpha: .11,
+                  ),
+                  borderRadius: BorderRadius.circular(
+                    DogGoRadius.medium,
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(
+                      alpha: .12,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.payments_outlined,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        walker.rateLabel,
+                        style: DogGoTheme.body(
+                          size: 13,
+                          color: Colors.white,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      walker.available
+                          ? Icons.check_circle_rounded
+                          : Icons.schedule_rounded,
+                      color: walker.available
+                          ? const Color(0xFF9BE4D2)
+                          : DogGoTheme.orange,
+                      size: 19,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      walker.available
+                          ? 'Disponible'
+                          : 'No disponible',
+                      style: DogGoTheme.caption(
+                        size: 10,
+                        color: Colors.white,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -817,35 +419,156 @@ class _HeroProfile extends StatelessWidget {
   }
 }
 
-class _HeroPill extends StatelessWidget {
-  final IconData icon;
-  final String text;
+class _WalkerProfilePhoto extends StatelessWidget {
+  final Walker walker;
+  final String? photoUrl;
 
-  const _HeroPill({
-    required this.icon,
-    required this.text,
+  const _WalkerProfilePhoto({
+    required this.walker,
+    required this.photoUrl,
+  });
+
+  bool get _hasValidPhoto {
+    final value = photoUrl?.trim() ?? '';
+
+    return value.startsWith('http://') ||
+        value.startsWith('https://');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 96,
+          height: 96,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .14),
+            borderRadius: BorderRadius.circular(
+              DogGoRadius.large,
+            ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: .2),
+              width: 2,
+            ),
+          ),
+          child: _hasValidPhoto
+              ? Image.network(
+                  photoUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) {
+                    return _WalkerInitials(
+                      initials: walker.initials,
+                    );
+                  },
+                )
+              : _WalkerInitials(
+                  initials: walker.initials,
+                ),
+        ),
+        if (walker.verified)
+          Positioned(
+            right: -5,
+            bottom: -5,
+            child: Container(
+              width: 31,
+              height: 31,
+              decoration: BoxDecoration(
+                color: DogGoTheme.card,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: DogGoTheme.teal,
+                  width: 3,
+                ),
+              ),
+              child: const Icon(
+                Icons.verified_user_rounded,
+                color: DogGoTheme.teal,
+                size: 16,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _WalkerInitials extends StatelessWidget {
+  final String initials;
+
+  const _WalkerInitials({
+    required this.initials,
   });
 
   @override
   Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        initials,
+        style: DogGoTheme.title(
+          size: 27,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+class _WalkerMetrics extends StatelessWidget {
+  final WalkerDetailState state;
+
+  const _WalkerMetrics({
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final walker = state.walker;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 17,
+      ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.12),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(.14)),
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 16),
-          const SizedBox(width: 5),
-          Text(
-            text,
-            style: DogGoTheme.body(
-              size: 12,
-              color: Colors.white,
-              weight: FontWeight.w900,
+          Expanded(
+            child: _MetricItem(
+              icon: Icons.star_rounded,
+              value: state.ratingLabel,
+              label: 'Calificación',
+              color: DogGoTheme.orange,
+            ),
+          ),
+          const _VerticalDivider(),
+          Expanded(
+            child: _MetricItem(
+              icon: Icons.workspace_premium_outlined,
+              value: '${walker.experienceYears}',
+              label: walker.experienceYears == 1
+                  ? 'Año exp.'
+                  : 'Años exp.',
+              color: DogGoTheme.purple,
+            ),
+          ),
+          const _VerticalDivider(),
+          Expanded(
+            child: _MetricItem(
+              icon: Icons.directions_walk_rounded,
+              value: '${walker.completedWalks}',
+              label: 'Paseos',
+              color: DogGoTheme.teal,
             ),
           ),
         ],
@@ -854,13 +577,13 @@ class _HeroPill extends StatelessWidget {
   }
 }
 
-class _MetricCard extends StatelessWidget {
+class _MetricItem extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
   final Color color;
 
-  const _MetricCard({
+  const _MetricItem({
     required this.icon,
     required this.value,
     required this.label,
@@ -869,37 +592,502 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(
+          icon,
+          color: color,
+          size: 21,
+        ),
+        const SizedBox(height: 7),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: DogGoTheme.title(size: 16),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: DogGoTheme.caption(
+            size: 9.5,
+            weight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VerticalDivider extends StatelessWidget {
+  const _VerticalDivider();
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      height: 118,
-      padding: const EdgeInsets.all(13),
+      width: 1,
+      height: 54,
+      color: DogGoTheme.divider,
+    );
+  }
+}
+
+class _AboutSection extends StatelessWidget {
+  final Walker walker;
+
+  const _AboutSection({
+    required this.walker,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _InformationCard(
+      icon: Icons.person_outline_rounded,
+      title: 'Sobre ${_firstName(walker.name)}',
+      subtitle: 'Presentación profesional',
+      child: Text(
+        walker.description,
+        style: DogGoTheme.subtitle(
+          size: 13,
+          color: DogGoTheme.ink,
+        ),
+      ),
+    );
+  }
+}
+
+class _ServiceZoneSection extends StatelessWidget {
+  final Walker walker;
+
+  const _ServiceZoneSection({
+    required this.walker,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final zones = walker.zones.isEmpty
+        ? [walker.serviceZone]
+        : walker.zones;
+
+    return _InformationCard(
+      icon: Icons.location_on_outlined,
+      iconColor: DogGoTheme.purple,
+      iconBackground: DogGoTheme.purpleLight,
+      title: 'Zona de servicio',
+      subtitle: 'Áreas donde realiza paseos',
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: zones.map((zone) {
+          return Container(
+            constraints: const BoxConstraints(
+              maxWidth: 260,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 11,
+              vertical: 7,
+            ),
+            decoration: BoxDecoration(
+              color: DogGoTheme.purpleLight,
+              borderRadius: BorderRadius.circular(
+                DogGoRadius.pill,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.location_on_rounded,
+                  color: DogGoTheme.purple,
+                  size: 14,
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    zone,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DogGoTheme.caption(
+                      size: 10.5,
+                      color: DogGoTheme.purple,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _ServiceDetailsSection extends StatelessWidget {
+  final Walker walker;
+
+  const _ServiceDetailsSection({
+    required this.walker,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _InformationCard(
+      icon: Icons.fact_check_outlined,
+      iconColor: DogGoTheme.orange,
+      iconBackground: DogGoTheme.orangeLight,
+      title: 'Información del servicio',
+      subtitle: 'Datos para tu reservación',
+      child: Column(
+        children: [
+          _InformationRow(
+            icon: Icons.payments_outlined,
+            label: 'Tarifa',
+            value: walker.rateLabel,
+          ),
+          const Divider(height: 22),
+          _InformationRow(
+            icon: Icons.workspace_premium_outlined,
+            label: 'Experiencia',
+            value: walker.experienceLabel,
+          ),
+          const Divider(height: 22),
+          _InformationRow(
+            icon: Icons.directions_walk_outlined,
+            label: 'Paseos realizados',
+            value: walker.completedWalksLabel,
+          ),
+          const Divider(height: 22),
+          _InformationRow(
+            icon: Icons.schedule_rounded,
+            label: 'Estado',
+            value: walker.available
+                ? 'Disponible para solicitudes'
+                : 'No disponible por ahora',
+            valueColor: walker.available
+                ? DogGoTheme.green
+                : DogGoTheme.red,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InformationRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  const _InformationRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor = DogGoTheme.ink,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: DogGoTheme.muted,
+          size: 19,
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Text(
+            label,
+            style: DogGoTheme.body(
+              size: 11.5,
+              color: DogGoTheme.muted,
+              weight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: DogGoTheme.body(
+              size: 11.5,
+              color: valueColor,
+              weight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SafetySection extends StatelessWidget {
+  const _SafetySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return _InformationCard(
+      icon: Icons.shield_outlined,
+      iconColor: DogGoTheme.green,
+      iconBackground: DogGoTheme.greenLight,
+      title: 'Seguridad DogGo',
+      subtitle: 'Protección durante el servicio',
+      child: const Column(
+        children: [
+          _SafetyItem(
+            icon: Icons.location_searching_rounded,
+            title: 'Seguimiento del recorrido',
+            description:
+                'Consulta la ubicación durante un paseo activo.',
+          ),
+          SizedBox(height: 14),
+          _SafetyItem(
+            icon: Icons.photo_camera_outlined,
+            title: 'Evidencia del servicio',
+            description:
+                'El paseador puede registrar el inicio y el final.',
+          ),
+          SizedBox(height: 14),
+          _SafetyItem(
+            icon: Icons.chat_bubble_outline_rounded,
+            title: 'Comunicación directa',
+            description:
+                'Mantén el contacto desde el chat del paseo.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SafetyItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _SafetyItem({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: const BoxDecoration(
+            color: DogGoTheme.greenLight,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: DogGoTheme.green,
+            size: 19,
+          ),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: DogGoTheme.body(
+                  size: 12,
+                  weight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: DogGoTheme.caption(size: 10.5),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewsSection extends StatelessWidget {
+  final WalkerDetailState state;
+  final VoidCallback onRetry;
+
+  const _ReviewsSection({
+    required this.state,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Reseñas',
+                    style: DogGoTheme.title(size: 21),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    state.reviewCountLabel,
+                    style: DogGoTheme.subtitle(size: 12),
+                  ),
+                ],
+              ),
+            ),
+            if (state.displayedRating > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: DogGoTheme.orangeLight,
+                  borderRadius: BorderRadius.circular(
+                    DogGoRadius.pill,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      color: DogGoTheme.orange,
+                      size: 17,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      state.ratingLabel,
+                      style: DogGoTheme.body(
+                        size: 11.5,
+                        color: DogGoTheme.ink,
+                        weight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (state.loadingReviews)
+          const _ReviewsLoading()
+        else if (state.reviewsError != null)
+          DogGoErrorView(
+            title: 'No pudimos cargar las reseñas',
+            message: state.reviewsError!,
+            icon: Icons.rate_review_outlined,
+            onRetry: onRetry,
+            compact: true,
+          )
+        else if (state.reviews.isEmpty)
+          const _NoReviewsCard()
+        else
+          Column(
+            children: List.generate(
+              state.reviews.length,
+              (index) {
+                final review = state.reviews[index];
+
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index ==
+                            state.reviews.length - 1
+                        ? 0
+                        : 11,
+                  ),
+                  child: _ReviewCard(
+                    review: review,
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ReviewsLoading extends StatelessWidget {
+  const _ReviewsLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: DogGoTheme.border),
-        boxShadow: DogGoTheme.softShadow(),
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
+      ),
+      child: const DogGoLoadingView(
+        message: 'Cargando reseñas...',
+        compact: true,
+      ),
+    );
+  }
+}
+
+class _NoReviewsCard extends StatelessWidget {
+  const _NoReviewsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
       ),
       child: Column(
         children: [
           Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color.withOpacity(.15),
-              borderRadius: BorderRadius.circular(15),
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: DogGoTheme.orangeLight,
+              shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 23),
+            child: const Icon(
+              Icons.star_outline_rounded,
+              color: DogGoTheme.orange,
+              size: 26,
+            ),
           ),
-          const Spacer(),
+          const SizedBox(height: 11),
           Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: DogGoTheme.title(size: 20),
+            'Aún no hay reseñas',
+            style: DogGoTheme.title(size: 16),
           ),
+          const SizedBox(height: 4),
           Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            'Las opiniones de otros dueños aparecerán aquí.',
+            textAlign: TextAlign.center,
             style: DogGoTheme.subtitle(size: 11.5),
           ),
         ],
@@ -908,57 +1096,96 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _ReadyCard extends StatelessWidget {
-  final bool disponible;
+class _ReviewCard extends StatelessWidget {
+  final WalkerReview review;
 
-  const _ReadyCard({
-    required this.disponible,
+  const _ReviewCard({
+    required this.review,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(17),
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: disponible ? DogGoTheme.greenLight : DogGoTheme.redLight,
-        borderRadius: BorderRadius.circular(24),
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
         border: Border.all(
-          color: disponible
-              ? DogGoTheme.green.withOpacity(.18)
-              : DogGoTheme.red.withOpacity(.18),
+          color: DogGoTheme.border,
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: disponible ? DogGoTheme.green : DogGoTheme.red,
-              borderRadius: BorderRadius.circular(19),
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: DogGoTheme.tealLight,
+              shape: BoxShape.circle,
             ),
-            child: Icon(
-              disponible ? Icons.verified_user_rounded : Icons.block_rounded,
-              color: Colors.white,
+            child: Text(
+              review.authorInitials,
+              style: DogGoTheme.body(
+                size: 12,
+                color: DogGoTheme.teal,
+                weight: FontWeight.w900,
+              ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  disponible
-                      ? 'Listo para recibir solicitudes'
-                      : 'No disponible por ahora',
-                  style: DogGoTheme.title(size: 17),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        review.authorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: DogGoTheme.body(
+                          size: 12.5,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (review.rating > 0) ...[
+                      const Icon(
+                        Icons.star_rounded,
+                        color: DogGoTheme.orange,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        review.ratingLabel,
+                        style: DogGoTheme.body(
+                          size: 10.5,
+                          weight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 4),
+                if (review.dateLabel.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    review.dateLabel,
+                    style: DogGoTheme.caption(size: 9.5),
+                  ),
+                ],
+                const SizedBox(height: 7),
                 Text(
-                  disponible
-                      ? 'Puedes solicitar un paseo y revisar la información antes de confirmar.'
-                      : 'El paseador aparece como ocupado o no disponible.',
-                  style: DogGoTheme.subtitle(size: 12.8),
+                  review.comment,
+                  style: DogGoTheme.subtitle(
+                    size: 11.5,
+                    color: DogGoTheme.ink,
+                  ),
                 ),
               ],
             ),
@@ -969,31 +1196,41 @@ class _ReadyCard extends StatelessWidget {
   }
 }
 
-class _InfoCard extends StatelessWidget {
+class _InformationCard extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
+  final Color iconBackground;
   final String title;
   final String subtitle;
   final Widget child;
-  final Color color;
 
-  const _InfoCard({
+  const _InformationCard({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.child,
-    this.color = DogGoTheme.teal,
+    this.iconColor = DogGoTheme.teal,
+    this.iconBackground = DogGoTheme.tealLight,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: DogGoTheme.border),
-        boxShadow: DogGoTheme.softShadow(),
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
+        boxShadow: DogGoTheme.softShadow(
+          opacity: .02,
+          blur: 16,
+          offset: const Offset(0, 6),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1001,22 +1238,37 @@ class _InfoCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 49,
-                height: 49,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(.14),
-                  borderRadius: BorderRadius.circular(17),
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(
+                    DogGoRadius.medium,
+                  ),
                 ),
-                child: Icon(icon, color: color),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: 21,
+                ),
               ),
-              const SizedBox(width: 13),
+              const SizedBox(width: 11),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: DogGoTheme.title(size: 19)),
+                    Text(
+                      title,
+                      style: DogGoTheme.title(size: 16),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: DogGoTheme.subtitle(size: 12.5)),
+                    Text(
+                      subtitle,
+                      style: DogGoTheme.caption(
+                        size: 10.5,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1030,264 +1282,147 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-class _ServiceDataCard extends StatelessWidget {
-  final String tarifa;
-  final String rating;
-  final String experiencia;
-  final String estado;
+class _AvailabilityBadge extends StatelessWidget {
+  final bool available;
 
-  const _ServiceDataCard({
-    required this.tarifa,
-    required this.rating,
-    required this.experiencia,
-    required this.estado,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _InfoCard(
-      icon: Icons.fact_check_rounded,
-      title: 'Datos del servicio',
-      subtitle: 'Información clave antes de solicitar',
-      color: DogGoTheme.orange,
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 1.18,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        children: [
-          _ServiceMiniCard(
-            icon: Icons.payments_rounded,
-            label: 'Tarifa',
-            value: tarifa,
-            color: DogGoTheme.teal,
-          ),
-          _ServiceMiniCard(
-            icon: Icons.star_rounded,
-            label: 'Calificación',
-            value: rating,
-            color: DogGoTheme.orange,
-          ),
-          _ServiceMiniCard(
-            icon: Icons.work_rounded,
-            label: 'Experiencia',
-            value: experiencia,
-            color: DogGoTheme.purple,
-          ),
-          _ServiceMiniCard(
-            icon: Icons.check_circle_rounded,
-            label: 'Estado',
-            value: estado,
-            color: DogGoTheme.green,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ServiceMiniCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _ServiceMiniCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
+  const _AvailabilityBadge({
+    required this.available,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: DogGoTheme.cream2,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: DogGoTheme.border),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 11,
+        vertical: 7,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 25),
-          const Spacer(),
-          Text(
-            label,
-            style: DogGoTheme.subtitle(size: 12),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: DogGoTheme.body(
-              size: 14,
-              color: DogGoTheme.ink,
-              weight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReviewsCard extends StatelessWidget {
-  final bool cargando;
-  final List<Map<String, dynamic>> reviews;
-  final String Function(Map<String, dynamic>) autor;
-  final String Function(Map<String, dynamic>) comentario;
-  final String Function(Map<String, dynamic>) puntaje;
-
-  const _ReviewsCard({
-    required this.cargando,
-    required this.reviews,
-    required this.autor,
-    required this.comentario,
-    required this.puntaje,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _InfoCard(
-      icon: Icons.rate_review_rounded,
-      title: 'Opiniones y reseñas',
-      subtitle: 'Comentarios de otros dueños',
-      color: DogGoTheme.orange,
-      child: cargando
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(18),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          : reviews.isEmpty
-              ? Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: DogGoTheme.cream2,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: DogGoTheme.border),
-                  ),
-                  child: Text(
-                    'Todavía no hay reseñas visibles para este paseador.',
-                    textAlign: TextAlign.center,
-                    style: DogGoTheme.subtitle(size: 13),
-                  ),
-                )
-              : Column(
-                  children: reviews.take(5).map((review) {
-                    return Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: DogGoTheme.cream2,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: DogGoTheme.border),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: DogGoTheme.orangeLight,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(
-                              Icons.star_rounded,
-                              color: DogGoTheme.orange,
-                            ),
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        autor(review),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: DogGoTheme.body(
-                                          size: 13.5,
-                                          color: DogGoTheme.ink,
-                                          weight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      puntaje(review),
-                                      style: DogGoTheme.body(
-                                        size: 12.5,
-                                        color: DogGoTheme.orange,
-                                        weight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  comentario(review),
-                                  style: DogGoTheme.subtitle(size: 12.5),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-    );
-  }
-}
-
-class _SmallChip extends StatelessWidget {
-  final String text;
-  final IconData icon;
-  final Color color;
-  final Color surface;
-
-  const _SmallChip({
-    required this.text,
-    required this.icon,
-    required this.color,
-    required this.surface,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(18),
+        color: available
+            ? DogGoTheme.greenLight
+            : DogGoTheme.redLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.pill,
+        ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(width: 4),
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: available
+                  ? DogGoTheme.green
+                  : DogGoTheme.red,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
           Text(
-            text,
-            style: DogGoTheme.body(
-              size: 11,
-              color: color,
-              weight: FontWeight.w900,
+            available ? 'Disponible' : 'No disponible',
+            style: DogGoTheme.caption(
+              size: 10,
+              color: available
+                  ? DogGoTheme.green
+                  : DogGoTheme.red,
+              weight: FontWeight.w800,
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _RequestBottomBar extends StatelessWidget {
+  final Walker walker;
+  final VoidCallback onRequest;
+
+  const _RequestBottomBar({
+    required this.walker,
+    required this.onRequest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          DogGoSpacing.screenHorizontal,
+          10,
+          DogGoSpacing.screenHorizontal,
+          12,
+        ),
+        decoration: BoxDecoration(
+          color: DogGoTheme.card.withValues(
+            alpha: .98,
+          ),
+          border: const Border(
+            top: BorderSide(
+              color: DogGoTheme.border,
+            ),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .04),
+              blurRadius: 18,
+              offset: const Offset(0, -6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            if (walker.hourlyRate != null) ...[
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tarifa',
+                    style: DogGoTheme.caption(size: 9.5),
+                  ),
+                  Text(
+                    '\$${walker.hourlyRate!.toStringAsFixed(2)}',
+                    style: DogGoTheme.title(size: 17),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
+            ],
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: walker.available
+                      ? onRequest
+                      : null,
+                  icon: Icon(
+                    walker.available
+                        ? Icons.directions_walk_rounded
+                        : Icons.schedule_rounded,
+                  ),
+                  label: Text(
+                    walker.available
+                        ? 'Solicitar paseo'
+                        : 'No disponible',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _firstName(String fullName) {
+  final words = fullName
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList();
+
+  return words.isEmpty ? 'el paseador' : words.first;
 }

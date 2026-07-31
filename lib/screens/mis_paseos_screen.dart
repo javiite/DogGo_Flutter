@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../services/paseos_service.dart';
-import '../services/session_service.dart';
-import '../services/storage_service.dart';
+import '../shared/widgets/doggo_empty_view.dart';
+import '../shared/widgets/doggo_error_view.dart';
+import '../shared/widgets/doggo_loading_view.dart';
+import '../theme/doggo_radius.dart';
+import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
-import '../widgets/doggo_logo.dart';
 import 'calendario_paseos_screen.dart';
 import 'chat_paseo_screen.dart';
 import 'detalle_paseo_screen.dart';
+import 'home/models/home_walk.dart';
+import 'home/models/home_walk_status.dart';
 import 'mapa_paseo_screen.dart';
+import 'walks/walks_controller.dart';
+import 'walks/walks_state.dart';
 
 class MisPaseosScreen extends StatefulWidget {
   final int? usuarioId;
@@ -23,1063 +28,1379 @@ class MisPaseosScreen extends StatefulWidget {
   });
 
   @override
-  State<MisPaseosScreen> createState() => _MisPaseosScreenState();
+  State<MisPaseosScreen> createState() =>
+      _MisPaseosScreenState();
 }
 
-class _MisPaseosScreenState extends State<MisPaseosScreen> {
-  final TextEditingController _busquedaController = TextEditingController();
+class _MisPaseosScreenState
+    extends State<MisPaseosScreen> {
+  late final WalksController _controller;
 
-  List<Map<String, dynamic>> _paseos = [];
-  bool _cargando = true;
-  bool _accionando = false;
-  String? _error;
-  String? _rolReal;
-  String? _baseUrl;
-  String _filtroEstado = 'Todos';
-
-  final List<String> _filtros = const [
-    'Todos',
-    'Pendiente',
-    'Aceptado',
-    'EnCurso',
-    'Finalizado',
-    'Cancelado',
-  ];
+  final TextEditingController _searchController =
+      TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _filtroEstado = widget.filtroInicial ?? 'Todos';
-    _busquedaController.addListener(() {
-      if (mounted) setState(() {});
-    });
-    _inicializar();
+
+    _controller = WalksController(
+      initialRole: widget.rol,
+    );
+
+    final initialStatus = _statusFromFilter(
+      widget.filtroInicial,
+    );
+
+    if (initialStatus != null) {
+      _controller.selectStatus(initialStatus);
+    }
+
+    _controller.initialize();
   }
 
   @override
   void dispose() {
-    _busquedaController.dispose();
+    _searchController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  String get _rolUsuario => _rolReal ?? widget.rol ?? '';
-  bool get _esPaseador => SessionService.esPaseadorRol(_rolUsuario);
-  bool get _esDuenio => SessionService.esDuenioRol(_rolUsuario);
-
-  Future<void> _inicializar() async {
-    await _cargarBaseUrl();
-    await _cargarRol();
-    await _cargarPaseos();
-  }
-
-  Future<void> _cargarBaseUrl() async {
-    final url = await StorageService.obtenerBaseUrl();
-    if (!mounted) return;
-    setState(() => _baseUrl = url);
-  }
-
-  Future<void> _cargarRol() async {
-    try {
-      final rol = await SessionService.obtenerRol();
-      if (!mounted) return;
-      setState(() => _rolReal = rol ?? widget.rol);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _rolReal = widget.rol);
-    }
-  }
-
-  Future<void> _cargarPaseos() async {
-    if (!mounted) return;
-    setState(() {
-      _cargando = true;
-      _error = null;
-    });
-    try {
-      final result = await PaseosService.obtenerMisPaseos();
-      if (!mounted) return;
-      if (result['success'] == true) {
-        setState(() {
-          _paseos = _normalizarLista(result['data']);
-          _cargando = false;
-        });
-      } else {
-        setState(() {
-          _cargando = false;
-          _error = result['message']?.toString() ?? 'No se pudieron cargar.';
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _cargando = false;
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    }
-  }
-
-  List<Map<String, dynamic>> _normalizarLista(dynamic datos) {
-    if (datos is Map) {
-      final posibleLista =
-          datos['data'] ??
-          datos['paseos'] ??
-          datos['items'] ??
-          datos['resultado'] ??
-          datos['result'] ??
-          datos['value'];
-      return _normalizarLista(posibleLista);
-    }
-    if (datos is! List) return [];
-    return datos
-        .where((item) => item is Map)
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
-  }
-
-  int? _idPaseo(Map<String, dynamic> paseo) {
-    final valor =
-        paseo['id'] ?? paseo['Id'] ?? paseo['paseoId'] ?? paseo['PaseoId'];
-    if (valor is int) return valor;
-    return int.tryParse(valor?.toString() ?? '');
-  }
-
-  String _texto(dynamic valor, {String fallback = 'No disponible'}) =>
-      (valor == null ||
-          valor.toString().trim().isEmpty ||
-          valor.toString().toLowerCase() == 'null')
-      ? fallback
-      : valor.toString().trim();
-
-  double? _doubleSeguro(dynamic valor) {
-    if (valor == null) return null;
-    if (valor is double) return valor;
-    if (valor is num) return valor.toDouble();
-    return double.tryParse(valor.toString());
-  }
-
-  String _estado(Map<String, dynamic> paseo) =>
-      _texto(paseo['estado'] ?? paseo['Estado'], fallback: 'Pendiente');
-  String _normalizarEstado(String estado) =>
-      estado.replaceAll(' ', '').toLowerCase();
-
-  String _estadoLegible(String estado) {
-    switch (_normalizarEstado(estado)) {
-      case 'encurso':
-        return 'En curso';
-      case 'pendiente':
-        return 'Pendiente';
-      case 'aceptado':
-        return 'Aceptado';
-      case 'finalizado':
-        return 'Finalizado';
-      case 'cancelado':
-        return 'Cancelado';
-      default:
-        return estado;
-    }
-  }
-
-  Color _colorEstado(String estado) {
-    switch (_normalizarEstado(estado)) {
-      case 'pendiente':
-        return DogGoTheme.orange;
-      case 'aceptado':
-        return DogGoTheme.purple;
-      case 'encurso':
-        return DogGoTheme.green;
-      case 'finalizado':
-        return DogGoTheme.teal;
-      case 'cancelado':
-        return DogGoTheme.red;
-      default:
-        return DogGoTheme.muted;
-    }
-  }
-
-  Color _surfaceEstado(String estado) {
-    switch (_normalizarEstado(estado)) {
-      case 'pendiente':
-        return DogGoTheme.orangeLight;
-      case 'aceptado':
-        return DogGoTheme.purpleLight;
-      case 'encurso':
-        return DogGoTheme.greenLight;
-      case 'finalizado':
-        return DogGoTheme.tealLight;
-      case 'cancelado':
-        return DogGoTheme.redLight;
-      default:
-        return const Color(0xFFF3F4F6);
-    }
-  }
-
-  IconData _iconoEstado(String estado) {
-    switch (_normalizarEstado(estado)) {
-      case 'pendiente':
-        return Icons.schedule_rounded;
-      case 'aceptado':
-        return Icons.verified_rounded;
-      case 'encurso':
-        return Icons.directions_walk_rounded;
-      case 'finalizado':
-        return Icons.flag_rounded;
-      case 'cancelado':
-        return Icons.cancel_rounded;
-      default:
-        return Icons.info_outline_rounded;
-    }
-  }
-
-  bool _estaPendiente(Map<String, dynamic> paseo) =>
-      _normalizarEstado(_estado(paseo)) == 'pendiente';
-  bool _estaAceptado(Map<String, dynamic> paseo) =>
-      _normalizarEstado(_estado(paseo)) == 'aceptado';
-  bool _estaEnCurso(Map<String, dynamic> paseo) =>
-      _normalizarEstado(_estado(paseo)) == 'encurso';
-  bool _estaFinalizado(Map<String, dynamic> paseo) =>
-      _normalizarEstado(_estado(paseo)) == 'finalizado';
-  bool _estaCancelado(Map<String, dynamic> paseo) =>
-      _normalizarEstado(_estado(paseo)) == 'cancelado';
-
-  bool _puedeAceptar(Map<String, dynamic> paseo) =>
-      _esPaseador && _estaPendiente(paseo);
-  bool _puedeRechazar(Map<String, dynamic> paseo) =>
-      _esPaseador && _estaPendiente(paseo);
-  bool _puedeIniciar(Map<String, dynamic> paseo) =>
-      _esPaseador && _estaAceptado(paseo);
-  bool _puedeFinalizar(Map<String, dynamic> paseo) =>
-      _esPaseador && _estaEnCurso(paseo);
-  bool _puedeCancelar(Map<String, dynamic> paseo) =>
-      !(_estaFinalizado(paseo) || _estaCancelado(paseo)) &&
-      (_esPaseador || _esDuenio);
-  bool _tieneAccionesRapidas(Map<String, dynamic> paseo) =>
-      _puedeAceptar(paseo) ||
-      _puedeRechazar(paseo) ||
-      _puedeIniciar(paseo) ||
-      _puedeFinalizar(paseo) ||
-      _puedeCancelar(paseo);
-
-  String _nombrePerro(Map<String, dynamic> paseo) => _texto(
-    paseo['perroNombre'] ??
-        paseo['nombrePerro'] ??
-        paseo['perro']?['nombre'] ??
-        paseo['Perro']?['nombre'],
-    fallback: 'Perro',
-  );
-
-  String _nombrePaseador(Map<String, dynamic> paseo) {
-    final n = _texto(
-      paseo['nombrePaseador'] ?? paseo['paseador']?['usuario']?['nombre'],
-      fallback: '',
-    );
-    final a = _texto(
-      paseo['apellidoPaseador'] ?? paseo['paseador']?['usuario']?['apellido'],
-      fallback: '',
-    );
-    final c = '$n $a'.trim();
-    return c.isEmpty ? 'Paseador no asignado' : c;
-  }
-
-  String _nombreDuenio(Map<String, dynamic> paseo) {
-    final n = _texto(
-      paseo['nombreDuenio'] ?? paseo['perro']?['usuario']?['nombre'],
-      fallback: '',
-    );
-    final a = _texto(
-      paseo['apellidoDuenio'] ?? paseo['perro']?['usuario']?['apellido'],
-      fallback: '',
-    );
-    final c = '$n $a'.trim();
-    return c.isEmpty ? 'Dueño' : c;
-  }
-
-  DateTime? _fechaDate(Map<String, dynamic> paseo) {
-    final v =
-        paseo['fechaProgramada'] ?? paseo['fechaInicio'] ?? paseo['fecha'];
-    return DateTime.tryParse(v?.toString() ?? '')?.toLocal();
-  }
-
-  String _fechaCompacta(Map<String, dynamic> paseo) {
-    final fecha = _fechaDate(paseo);
-    if (fecha == null) return 'Sin fecha';
-    const meses = [
-      'ene',
-      'feb',
-      'mar',
-      'abr',
-      'may',
-      'jun',
-      'jul',
-      'ago',
-      'sep',
-      'oct',
-      'nov',
-      'dic',
-    ];
-    return '${fecha.day} ${meses[fecha.month - 1]}';
-  }
-
-  String _horaCompacta(Map<String, dynamic> paseo) {
-    final fecha = _fechaDate(paseo);
-    if (fecha == null) return '--:--';
-    return '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
-  }
-
-  String _precio(Map<String, dynamic> paseo) {
-    final v = paseo['precio'] ?? paseo['Precio'];
-    final n = double.tryParse(v?.toString() ?? '');
-    return n != null ? '\$${n.toStringAsFixed(2)}' : 'Sin precio';
-  }
-
-  String _duracion(Map<String, dynamic> paseo) =>
-      '${paseo['duracionMinutos'] ?? paseo['DuracionMinutos'] ?? '0'} min';
-
-  String? _fotoPerro(Map<String, dynamic> paseo) {
-    final texto = (paseo['perroFotoUrl'] ?? paseo['perro']?['fotoUrl'])
-        ?.toString()
-        .trim();
-    if (texto == null || texto.isEmpty || texto.toLowerCase() == 'null')
+  HomeWalkStatus? _statusFromFilter(
+    String? value,
+  ) {
+    if (value == null ||
+        value.trim().isEmpty ||
+        value.toLowerCase() == 'todos') {
       return null;
-    if (texto.startsWith('http')) return texto;
-    final base = _baseUrl?.trim() ?? '';
-    return base.isEmpty
-        ? null
-        : (texto.startsWith('/') ? '$base$texto' : '$base/$texto');
+    }
+
+    final status =
+        HomeWalkStatus.fromValue(value);
+
+    if (status == HomeWalkStatus.none ||
+        status == HomeWalkStatus.unknown) {
+      return null;
+    }
+
+    return status;
   }
 
-  String _direccionRecogida(Map<String, dynamic> paseo) => _texto(
-    paseo['ubicacionTexto'] ?? paseo['direccionRecogida'],
-    fallback: 'Sin ubicación',
-  );
-  String _zonaRecogida(Map<String, dynamic> paseo) =>
-      _texto(paseo['zonaRecogida'] ?? paseo['zona'], fallback: 'Sin zona');
-
-  List<Map<String, dynamic>> get _paseosFiltrados {
-    final busqueda = _busquedaController.text.trim().toLowerCase();
-    return _paseos.where((p) {
-      final coincideEstado =
-          _filtroEstado == 'Todos' ||
-          _normalizarEstado(_estado(p)) == _normalizarEstado(_filtroEstado);
-      final texto = [
-        _nombrePerro(p),
-        _nombrePaseador(p),
-        _estado(p),
-        _zonaRecogida(p),
-      ].join(' ').toLowerCase();
-      return coincideEstado && (busqueda.isEmpty || texto.contains(busqueda));
-    }).toList()..sort((a, b) {
-      final fa = _fechaDate(a);
-      final fb = _fechaDate(b);
-      if (fa == null || fb == null) return 0;
-      final aAct = _estaPendiente(a) || _estaAceptado(a) || _estaEnCurso(a);
-      final bAct = _estaPendiente(b) || _estaAceptado(b) || _estaEnCurso(b);
-      if (aAct != bAct) return aAct ? -1 : 1;
-      return aAct ? fa.compareTo(fb) : fb.compareTo(fa);
-    });
-  }
-
-  int _conteoPorEstado(String f) => f == 'Todos'
-      ? _paseos.length
-      : _paseos
-            .where((p) => _normalizarEstado(_estado(p)) == _normalizarEstado(f))
-            .length;
-
-  void _mostrarMensaje(String mensaje) {
+  void _showMessage(
+    String message, {
+    bool error = false,
+  }) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor:
+              error ? DogGoTheme.red : DogGoTheme.ink,
+          content: Row(
+            children: [
+              Icon(
+                error
+                    ? Icons.error_outline_rounded
+                    : Icons.check_circle_outline_rounded,
+                color: Colors.white,
+              ),
+              const SizedBox(
+                width: DogGoSpacing.compactGap,
+              ),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        ),
+      );
+  }
+
+  void _clearFilters() {
+    _searchController.clear();
+    _controller.clearFilters();
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  Future<void> _openCalendar() async {
+    final state = _controller.state;
+
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => CalendarioPaseosScreen(
+          paseos: state.walks
+              .map((walk) => walk.rawData)
+              .toList(growable: false),
+          rol: state.role,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      await _controller.refresh();
+    }
+  }
+
+  Future<void> _openDetail(
+    HomeWalk walk,
+  ) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => DetallePaseoScreen(
+          paseo: walk.rawData,
+          rol: _controller.state.role,
+          onPaseoActualizado:
+              _controller.refresh,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      await _controller.refresh();
+    }
+  }
+
+  Future<void> _openChat(
+    HomeWalk walk,
+  ) async {
+    final id = walk.id;
+
+    if (id == null) {
+      _showMessage(
+        'No se encontró el identificador del paseo.',
+        error: true,
+      );
+      return;
+    }
+
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ChatPaseoScreen(
+          paseoId: id,
+          nombrePerro: walk.petName,
+          nombreOtroUsuario:
+              _otherUserName(walk),
+        ),
       ),
     );
   }
 
-  Future<void> _ejecutarAccion({
-    required Future<Map<String, dynamic>> Function() accion,
-    required String mensajeExito,
-  }) async {
-    if (_accionando) return;
-    setState(() => _accionando = true);
-    try {
-      final result = await accion();
-      if (!mounted) return;
-      if (result['success'] == true) {
-        _mostrarMensaje(mensajeExito);
-        await _cargarPaseos();
-      } else {
-        _mostrarMensaje(
-          result['message']?.toString() ?? 'No se pudo completar la acción.',
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      _mostrarMensaje('Error: $e');
-    } finally {
-      if (mounted) setState(() => _accionando = false);
-    }
+  Future<void> _openMap(
+    HomeWalk walk,
+  ) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => MapaPaseoScreen(
+          paseo: walk.rawData,
+        ),
+      ),
+    );
   }
 
-  // --- FIX PARA CANCELAR PASEO (CONSERVANDO TU MODAL) ---
-  Future<void> _cancelar(int id) async {
-    final controller = TextEditingController();
-    final confirmar = await showDialog<bool>(
+  String _otherUserName(HomeWalk walk) {
+    if (_controller.state.isOwner) {
+      return walk.walkerName;
+    }
+
+    final raw = walk.rawData;
+
+    final directName = raw['nombreDuenio'] ??
+        raw['NombreDuenio'] ??
+        raw['nombreDueño'] ??
+        raw['NombreDueño'];
+
+    final directLastName =
+        raw['apellidoDuenio'] ??
+            raw['ApellidoDuenio'] ??
+            raw['apellidoDueño'] ??
+            raw['ApellidoDueño'];
+
+    final pet = raw['perro'] ?? raw['Perro'];
+
+    dynamic owner;
+
+    if (pet is Map) {
+      owner = pet['usuario'] ??
+          pet['Usuario'] ??
+          pet['duenio'] ??
+          pet['Duenio'] ??
+          pet['dueño'] ??
+          pet['Dueño'];
+    }
+
+    dynamic nestedName;
+    dynamic nestedLastName;
+
+    if (owner is Map) {
+      nestedName =
+          owner['nombre'] ?? owner['Nombre'];
+
+      nestedLastName =
+          owner['apellido'] ?? owner['Apellido'];
+    }
+
+    final name =
+        (directName ?? nestedName)?.toString().trim() ??
+            '';
+
+    final lastName =
+        (directLastName ?? nestedLastName)
+                ?.toString()
+                .trim() ??
+            '';
+
+    final fullName = '$name $lastName'.trim();
+
+    return fullName.isEmpty
+        ? 'Dueño de ${walk.petName}'
+        : fullName;
+  }
+
+  Future<void> _confirmCancel(
+    HomeWalk walk,
+  ) async {
+    final reasonController =
+        TextEditingController();
+
+    final reason = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: DogGoTheme.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: Text('Cancelar paseo', style: DogGoTheme.title(size: 22)),
-          content: TextField(
-            controller: controller,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: 'Motivo de cancelación',
-              hintText: 'Ej. Cambio de horario, emergencia...',
-              filled: true,
-              fillColor: DogGoTheme.cream,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+      builder: (dialogContext) {
+        String? validationError;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Cancelar paseo'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Cuéntanos por qué necesitas cancelar el paseo de ${walk.petName}.',
+                    style: DogGoTheme.subtitle(
+                      size: 13,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: DogGoSpacing.md,
+                  ),
+                  TextField(
+                    controller: reasonController,
+                    autofocus: true,
+                    minLines: 3,
+                    maxLines: 5,
+                    maxLength: 300,
+                    decoration: InputDecoration(
+                      labelText:
+                          'Motivo de cancelación',
+                      hintText:
+                          'Ejemplo: cambio de horario o emergencia',
+                      errorText: validationError,
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Volver'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context, true),
-              icon: const Icon(Icons.cancel_rounded),
-              label: const Text('Confirmar'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DogGoTheme.red,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Volver'),
                 ),
-              ),
-            ),
-          ],
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor:
+                        DogGoTheme.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    final value =
+                        reasonController.text.trim();
+
+                    if (value.isEmpty) {
+                      setDialogState(() {
+                        validationError =
+                            'Escribe el motivo.';
+                      });
+                      return;
+                    }
+
+                    Navigator.pop(
+                      dialogContext,
+                      value,
+                    );
+                  },
+                  child:
+                      const Text('Cancelar paseo'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
-    if (confirmar != true) return;
-    final motivo = controller.text.trim();
-    if (motivo.isEmpty) {
-      _mostrarMensaje('Escribe el motivo.');
-      return;
-    }
+    reasonController.dispose();
 
-    // EL FIX: Esperamos a que cierre el modal para ejecutar el snackbar/petición
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _ejecutarAccion(
-        accion: () => PaseosService.cancelarPaseo(id, motivo: motivo),
-        mensajeExito: 'Paseo cancelado correctamente.',
-      );
-    });
+    if (reason == null || !mounted) return;
+
+    final result = await _controller.cancel(
+      walk,
+      reason: reason,
+    );
+
+    _showMessage(
+      result.message,
+      error: !result.success,
+    );
   }
 
-  Future<void> _aceptar(int id) => _ejecutarAccion(
-    accion: () => PaseosService.aceptarPaseo(id),
-    mensajeExito: 'Paseo aceptado correctamente.',
-  );
-  Future<void> _rechazar(int id) => _ejecutarAccion(
-    accion: () => PaseosService.rechazarPaseo(id),
-    mensajeExito: 'Paseo rechazado correctamente.',
-  );
-  Future<void> _iniciar(int id) => _ejecutarAccion(
-    accion: () => PaseosService.iniciarPaseo(id),
-    mensajeExito: 'Paseo iniciado correctamente.',
-  );
-  Future<void> _finalizar(int id) => _ejecutarAccion(
-    accion: () => PaseosService.finalizarPaseo(id),
-    mensajeExito: 'Paseo finalizado correctamente.',
-  );
+  Future<void> _performAction(
+    Future<WalkActionResult> action,
+  ) async {
+    final result = await action;
 
-  Future<void> _abrirDetalle(Map<String, dynamic> paseo) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DetallePaseoScreen(
-          paseo: paseo,
-          rol: _rolUsuario,
-          onPaseoActualizado: _cargarPaseos,
-        ),
-      ),
+    if (!mounted) return;
+
+    _showMessage(
+      result.message,
+      error: !result.success,
     );
-    if (mounted) await _cargarPaseos();
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtrados = _paseosFiltrados;
-    final enCurso = _paseos.where(_estaEnCurso).firstOrNull;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
 
-    return Scaffold(
-      backgroundColor: DogGoTheme.cream,
-      body: SafeArea(
-        child: _cargando
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _cargarPaseos,
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverAppBar(
-                      pinned: true,
-                      backgroundColor: DogGoTheme.cream2,
-                      elevation: 0,
-                      toolbarHeight: 72,
-                      flexibleSpace: _buildTopBar(),
-                    ),
-                    SliverToBoxAdapter(child: _buildHeader()),
-                    SliverToBoxAdapter(child: _buildResumen()),
-                    if (enCurso != null)
-                      SliverToBoxAdapter(
-                        child: _buildPaseoEnCursoBanner(enCurso),
-                      ),
-                    SliverToBoxAdapter(child: _buildBuscador()),
-                    SliverToBoxAdapter(child: _buildFiltros()),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(24, 18, 24, 30),
-                      sliver: filtrados.isEmpty
-                          ? SliverToBoxAdapter(child: _buildVacio())
-                          : SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (_, i) => _buildPaseoCard(filtrados[i]),
-                                childCount: filtrados.length,
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Mis paseos'),
+            actions: [
+              IconButton(
+                tooltip: 'Abrir calendario',
+                onPressed: state.loading
+                    ? null
+                    : _openCalendar,
+                icon: const Icon(
+                  Icons.calendar_month_outlined,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Actualizar paseos',
+                onPressed: state.loading
+                    ? null
+                    : _controller.refresh,
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                ),
+              ),
+              const SizedBox(
+                width: DogGoSpacing.sm,
+              ),
+            ],
+          ),
+          body: _buildBody(state),
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(WalksState state) {
+    if (state.loading && state.walks.isEmpty) {
+      return const DogGoLoadingView(
+        message: 'Cargando tus paseos...',
+      );
+    }
+
+    if (state.error != null &&
+        state.walks.isEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(
+            DogGoSpacing.screenHorizontal,
+          ),
+          child: DogGoErrorView(
+            title: 'No pudimos cargar tus paseos',
+            message: state.error!,
+            onRetry: _controller.refresh,
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _controller.refresh,
+      child: CustomScrollView(
+        keyboardDismissBehavior:
+            ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              DogGoSpacing.screenHorizontal,
+              DogGoSpacing.md,
+              DogGoSpacing.screenHorizontal,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: _WalksHeader(
+                state: state,
+              ),
+            ),
+          ),
+          if (state.activeWalk != null)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                DogGoSpacing.screenHorizontal,
+                DogGoSpacing.md,
+                DogGoSpacing.screenHorizontal,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: _ActiveWalkBanner(
+                  walk: state.activeWalk!,
+                  onMap: () {
+                    _openMap(state.activeWalk!);
+                  },
+                  onDetail: () {
+                    _openDetail(
+                      state.activeWalk!,
+                    );
+                  },
+                ),
+              ),
+            ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              DogGoSpacing.screenHorizontal,
+              DogGoSpacing.md,
+              DogGoSpacing.screenHorizontal,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: TextField(
+                controller: _searchController,
+                textInputAction:
+                    TextInputAction.search,
+                onChanged: _controller.search,
+                decoration: InputDecoration(
+                  hintText:
+                      'Buscar mascota, paseador o estado',
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                  ),
+                  suffixIcon:
+                      state.searchQuery.isNotEmpty
+                          ? IconButton(
+                              tooltip:
+                                  'Limpiar búsqueda',
+                              onPressed: () {
+                                _searchController
+                                    .clear();
+                                _controller.search('');
+                              },
+                              icon: const Icon(
+                                Icons.close_rounded,
                               ),
-                            ),
+                            )
+                          : null,
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: _StatusFilters(
+              state: state,
+              onSelected:
+                  _controller.selectStatus,
+            ),
+          ),
+          if (state.error != null &&
+              state.walks.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                DogGoSpacing.screenHorizontal,
+                0,
+                DogGoSpacing.screenHorizontal,
+                DogGoSpacing.md,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: DogGoErrorView(
+                  message: state.error!,
+                  onRetry: _controller.refresh,
+                  compact: true,
+                ),
+              ),
+            ),
+          if (state.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.all(
+                  DogGoSpacing.screenHorizontal,
+                ),
+                child: Center(
+                  child: DogGoEmptyView(
+                    title: 'Aún no tienes paseos',
+                    message: state.isWalker
+                        ? 'Cuando recibas una solicitud aparecerá en esta pantalla.'
+                        : 'Solicita un paseo con un paseador disponible para comenzar.',
+                    icon: Icons.route_outlined,
+                    actionText: 'Actualizar',
+                    onAction: _controller.refresh,
+                  ),
+                ),
+              ),
+            )
+          else if (state.filteredWalks.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.all(
+                  DogGoSpacing.screenHorizontal,
+                ),
+                child: Center(
+                  child: DogGoEmptyView(
+                    title: 'Sin coincidencias',
+                    message:
+                        'No encontramos paseos con los filtros seleccionados.',
+                    icon:
+                        Icons.filter_alt_off_outlined,
+                    actionText: 'Limpiar filtros',
+                    onAction: _clearFilters,
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                DogGoSpacing.screenHorizontal,
+                0,
+                DogGoSpacing.screenHorizontal,
+                DogGoSpacing.xxl,
+              ),
+              sliver: SliverList.separated(
+                itemCount:
+                    state.filteredWalks.length,
+                separatorBuilder: (_, __) {
+                  return const SizedBox(
+                    height: DogGoSpacing.md,
+                  );
+                },
+                itemBuilder: (context, index) {
+                  final walk =
+                      state.filteredWalks[index];
+
+                  return _WalkCard(
+                    walk: walk,
+                    state: state,
+                    otherUserName:
+                        _otherUserName(walk),
+                    onDetail: () {
+                      _openDetail(walk);
+                    },
+                    onChat: () {
+                      _openChat(walk);
+                    },
+                    onMap: () {
+                      _openMap(walk);
+                    },
+                    onAccept: () {
+                      _performAction(
+                        _controller.accept(walk),
+                      );
+                    },
+                    onReject: () {
+                      _performAction(
+                        _controller.reject(walk),
+                      );
+                    },
+                    onStart: () {
+                      _performAction(
+                        _controller.start(walk),
+                      );
+                    },
+                    onFinish: () {
+                      _performAction(
+                        _controller.finish(walk),
+                      );
+                    },
+                    onCancel: () {
+                      _confirmCancel(walk);
+                    },
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WalksHeader extends StatelessWidget {
+  final WalksState state;
+
+  const _WalksHeader({
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(
+        DogGoSpacing.cardPadding,
+      ),
+      decoration: BoxDecoration(
+        color: DogGoTheme.tealLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.teal.withValues(
+            alpha: 0.13,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: DogGoTheme.card,
+                  borderRadius: BorderRadius.circular(
+                    DogGoRadius.medium,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.route_outlined,
+                  color: DogGoTheme.teal,
+                  size: 27,
+                ),
+              ),
+              const SizedBox(width: DogGoSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      state.isWalker
+                          ? 'Panel de paseos'
+                          : 'Tus paseos',
+                      style: DogGoTheme.title(
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: DogGoSpacing.xs,
+                    ),
+                    Text(
+                      state.isWalker
+                          ? 'Administra solicitudes y servicios activos.'
+                          : 'Consulta reservas y seguimiento de tus mascotas.',
+                      style: DogGoTheme.subtitle(
+                        size: 12.5,
+                      ),
                     ),
                   ],
                 ),
               ),
-      ),
-    );
-  }
-
-  // --- TODOS TUS WIDGETS ORIGINALES "BONITOS" ---
-
-  Widget _buildTopBar() => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14),
-    decoration: BoxDecoration(
-      color: DogGoTheme.cream2,
-      border: Border(
-        bottom: BorderSide(color: DogGoTheme.border.withOpacity(.72)),
-      ),
-    ),
-    child: Row(
-      children: [
-        _TopIconButton(
-          icon: Icons.arrow_back_rounded,
-          onTap: () => Navigator.pop(context),
-        ),
-        const SizedBox(width: 10),
-        const DogGoLogo(size: 38),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+            ],
+          ),
+          const SizedBox(height: DogGoSpacing.md),
+          Row(
             children: [
-              Text(
-                'Mis paseos',
-                style: DogGoTheme.body(size: 15, weight: FontWeight.w900),
+              Expanded(
+                child: _HeaderCount(
+                  value: state
+                      .countByStatus(
+                        HomeWalkStatus.pending,
+                      )
+                      .toString(),
+                  label: 'Pendientes',
+                  color: DogGoTheme.orange,
+                ),
               ),
-              Text(
-                SessionService.normalizarRol(_rolUsuario),
-                style: DogGoTheme.subtitle(size: 11.5),
+              Expanded(
+                child: _HeaderCount(
+                  value: state
+                      .countByStatus(
+                        HomeWalkStatus.accepted,
+                      )
+                      .toString(),
+                  label: 'Aceptados',
+                  color: DogGoTheme.purple,
+                ),
+              ),
+              Expanded(
+                child: _HeaderCount(
+                  value: state
+                      .countByStatus(
+                        HomeWalkStatus.inProgress,
+                      )
+                      .toString(),
+                  label: 'En curso',
+                  color: DogGoTheme.green,
+                ),
+              ),
+              Expanded(
+                child: _HeaderCount(
+                  value: state
+                      .countByStatus(
+                        HomeWalkStatus.completed,
+                      )
+                      .toString(),
+                  label: 'Finalizados',
+                  color: DogGoTheme.teal,
+                ),
               ),
             ],
           ),
-        ),
-        _TopIconButton(
-          icon: Icons.calendar_month_rounded,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  CalendarioPaseosScreen(paseos: _paseos, rol: _rolUsuario),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        _TopIconButton(icon: Icons.refresh_rounded, onTap: _cargarPaseos),
-      ],
-    ),
-  );
-
-  Widget _buildHeader() => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-    child: Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: DogGoTheme.border.withOpacity(.78)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.045),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
         ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _esPaseador ? 'Panel de paseos' : 'Tus paseos',
-            style: DogGoTheme.title(size: 31),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _esPaseador
-                ? 'Solicitudes y servicios activos.'
-                : 'Reservas y seguimiento de tus perros.',
-            style: DogGoTheme.subtitle(size: 14.5),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _buildResumen() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: DogGoTheme.ink,
-          borderRadius: BorderRadius.circular(26),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _ResumenItem(
-              value: _conteoPorEstado('Pendiente').toString(),
-              label: 'Pend.',
-              color: DogGoTheme.orange,
-            ),
-            _ResumenItem(
-              value: _conteoPorEstado('Aceptado').toString(),
-              label: 'Acept.',
-              color: DogGoTheme.purple,
-            ),
-            _ResumenItem(
-              value: _conteoPorEstado('EnCurso').toString(),
-              label: 'Curso',
-              color: DogGoTheme.green,
-            ),
-            _ResumenItem(
-              value: _conteoPorEstado('Finalizado').toString(),
-              label: 'Listos',
-              color: DogGoTheme.teal,
-            ),
-          ],
-        ),
       ),
     );
   }
+}
 
-  Widget _buildPaseoEnCursoBanner(Map<String, dynamic> paseo) => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
-    child: Container(
-      padding: const EdgeInsets.all(16),
+class _HeaderCount extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color color;
+
+  const _HeaderCount({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: DogGoTheme.title(
+            size: 19,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: DogGoTheme.caption(
+            size: 9,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusFilters extends StatelessWidget {
+  final WalksState state;
+  final ValueChanged<HomeWalkStatus?> onSelected;
+
+  const _StatusFilters({
+    required this.state,
+    required this.onSelected,
+  });
+
+  static const statuses = [
+    HomeWalkStatus.pending,
+    HomeWalkStatus.accepted,
+    HomeWalkStatus.inProgress,
+    HomeWalkStatus.completed,
+    HomeWalkStatus.cancelled,
+    HomeWalkStatus.rejected,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 68,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(
+          horizontal:
+              DogGoSpacing.screenHorizontal,
+          vertical: DogGoSpacing.compactGap,
+        ),
+        scrollDirection: Axis.horizontal,
+        children: [
+          ChoiceChip(
+            label: Text(
+              'Todos (${state.walks.length})',
+            ),
+            selected:
+                state.selectedStatus == null,
+            onSelected: (_) {
+              onSelected(null);
+            },
+          ),
+          const SizedBox(width: DogGoSpacing.sm),
+          for (final status in statuses) ...[
+            ChoiceChip(
+              label: Text(
+                '${status.label} '
+                '(${state.countByStatus(status)})',
+              ),
+              selected:
+                  state.selectedStatus == status,
+              onSelected: (_) {
+                onSelected(status);
+              },
+            ),
+            const SizedBox(
+              width: DogGoSpacing.sm,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ActiveWalkBanner extends StatelessWidget {
+  final HomeWalk walk;
+  final VoidCallback onMap;
+  final VoidCallback onDetail;
+
+  const _ActiveWalkBanner({
+    required this.walk,
+    required this.onMap,
+    required this.onDetail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(
+        DogGoSpacing.cardPadding,
+      ),
       decoration: BoxDecoration(
-        color: DogGoTheme.green.withOpacity(.1),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: DogGoTheme.green.withOpacity(.22)),
+        color: DogGoTheme.greenLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.green.withValues(
+            alpha: 0.2,
+          ),
+        ),
       ),
       child: Row(
         children: [
-          _buildFotoPerro(
-            _fotoPerro(paseo),
-            DogGoTheme.green,
-            Colors.white,
-            size: 50,
+          const Icon(
+            Icons.directions_walk_rounded,
+            color: DogGoTheme.green,
+            size: 30,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: DogGoSpacing.md),
           Expanded(
-            child: Text(
-              'En curso: ${_nombrePerro(paseo)}',
-              style: DogGoTheme.title(size: 18),
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Paseo en curso',
+                  style: DogGoTheme.title(
+                    size: 17,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  walk.petName,
+                  style: DogGoTheme.subtitle(
+                    size: 12.5,
+                  ),
+                ),
+              ],
             ),
           ),
-          _TopIconButton(
-            icon: Icons.my_location_rounded,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => MapaPaseoScreen(paseo: paseo)),
+          IconButton(
+            tooltip: 'Ver detalle',
+            onPressed: onDetail,
+            icon: const Icon(
+              Icons.visibility_outlined,
+            ),
+          ),
+          IconButton.filled(
+            tooltip: 'Abrir mapa',
+            onPressed: onMap,
+            icon: const Icon(
+              Icons.my_location_rounded,
             ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
 
-  Widget _buildBuscador() => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-    child: Container(
+class _WalkCard extends StatelessWidget {
+  final HomeWalk walk;
+  final WalksState state;
+  final String otherUserName;
+  final VoidCallback onDetail;
+  final VoidCallback onChat;
+  final VoidCallback onMap;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+  final VoidCallback onStart;
+  final VoidCallback onFinish;
+  final VoidCallback onCancel;
+
+  const _WalkCard({
+    required this.walk,
+    required this.state,
+    required this.otherUserName,
+    required this.onDetail,
+    required this.onChat,
+    required this.onMap,
+    required this.onAccept,
+    required this.onReject,
+    required this.onStart,
+    required this.onFinish,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        _statusColor(walk.status);
+
+    final running =
+        state.isActionRunningFor(walk);
+
+    return Container(
+      padding: const EdgeInsets.all(
+        DogGoSpacing.cardPadding,
+      ),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: DogGoTheme.border.withOpacity(.82)),
-      ),
-      child: TextField(
-        controller: _busquedaController,
-        decoration: const InputDecoration(
-          hintText: 'Buscar...',
-          prefixIcon: Icon(Icons.search_rounded),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 15),
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
         ),
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
+        boxShadow: DogGoTheme.softShadow(),
       ),
-    ),
-  );
-
-  Widget _buildFiltros() => SizedBox(
-    height: 58,
-    child: ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-      scrollDirection: Axis.horizontal,
-      itemCount: _filtros.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 8),
-      itemBuilder: (context, i) {
-        final f = _filtros[i];
-        final sel = f == _filtroEstado;
-        return ActionChip(
-          label: Text(f),
-          onPressed: () => setState(() => _filtroEstado = f),
-          backgroundColor: sel ? DogGoTheme.teal : DogGoTheme.card,
-          labelStyle: TextStyle(color: sel ? Colors.white : DogGoTheme.ink),
-        );
-      },
-    ),
-  );
-
-  Widget _buildPaseoCard(Map<String, dynamic> paseo) {
-    final est = _estado(paseo);
-    final col = _colorEstado(est);
-    final id = _idPaseo(paseo);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: DogGoTheme.border.withOpacity(.8)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _buildFotoPerro(
-                  _fotoPerro(paseo),
-                  col,
-                  col.withOpacity(.1),
-                  size: 60,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _nombrePerro(paseo),
-                        style: DogGoTheme.title(size: 19),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              _WalkPhoto(
+                imageUrl: walk.imageUrl,
+                color: color,
+              ),
+              const SizedBox(width: DogGoSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      walk.petName,
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style: DogGoTheme.title(
+                        size: 19,
                       ),
-                      Text(
-                        '${_fechaCompacta(paseo)} • ${_horaCompacta(paseo)}',
-                        style: DogGoTheme.subtitle(size: 12),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      state.isWalker
+                          ? otherUserName
+                          : walk.walkerName,
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style: DogGoTheme.subtitle(
+                        size: 12.5,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(
+                      height:
+                          DogGoSpacing.compactGap,
+                    ),
+                    _StatusLabel(
+                      status: walk.status,
+                      color: color,
+                    ),
+                  ],
                 ),
-                _EstadoBadge(
-                  estado: _estadoLegible(est),
-                  color: col,
-                  surface: col.withOpacity(.1),
-                  icono: _iconoEstado(est),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: DogGoSpacing.md),
+          Wrap(
+            spacing: DogGoSpacing.sm,
+            runSpacing: DogGoSpacing.sm,
+            children: [
+              _WalkAttribute(
+                icon:
+                    Icons.calendar_today_outlined,
+                text: walk.formattedSchedule,
+              ),
+              _WalkAttribute(
+                icon: Icons.timer_outlined,
+                text:
+                    '${walk.durationMinutes} min',
+              ),
+              _WalkAttribute(
+                icon: Icons.payments_outlined,
+                text: walk.price == null
+                    ? 'Sin precio'
+                    : '\$${walk.price!.toStringAsFixed(2)}',
+              ),
+            ],
+          ),
+          if (walk.pickupAddress.isNotEmpty) ...[
+            const SizedBox(
+              height: DogGoSpacing.compactGap,
             ),
-            const SizedBox(height: 12),
             Row(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  color: DogGoTheme.teal,
+                  size: 19,
+                ),
+                const SizedBox(
+                  width: DogGoSpacing.sm,
+                ),
                 Expanded(
-                  child: _InfoBlock(
-                    icono: Icons.timer,
-                    label: 'Duración',
-                    value: _duracion(paseo),
-                    color: DogGoTheme.purple,
+                  child: Text(
+                    walk.pickupAddress,
+                    maxLines: 2,
+                    overflow:
+                        TextOverflow.ellipsis,
+                    style: DogGoTheme.subtitle(
+                      size: 12,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _InfoBlock(
-                    icono: Icons.attach_money,
-                    label: 'Precio',
-                    value: _precio(paseo),
-                    color: DogGoTheme.green,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _BotonPaseo(
-                  texto: 'Chat',
-                  icono: Icons.chat,
-                  primary: false,
-                  onPressed: () {
-                    final id = _idPaseo(paseo);
-                    if (id != null)
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatPaseoScreen(
-                            paseoId: id,
-                            nombrePerro: _nombrePerro(paseo),
-                            nombreOtroUsuario: _esPaseador
-                                ? _nombreDuenio(paseo)
-                                : _nombrePaseador(paseo),
-                          ),
-                        ),
-                      );
-                  },
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _BotonPaseo(
-                    texto: 'Ver Detalle',
-                    icono: Icons.visibility,
-                    primary: true,
-                    onPressed: () => _abrirDetalle(paseo),
-                  ),
-                ),
-                if (id != null && _puedeCancelar(paseo)) ...[
-                  const SizedBox(width: 8),
-                  _BotonAccionChico(
-                    texto: 'X',
-                    icono: Icons.cancel,
-                    color: DogGoTheme.red,
-                    onPressed: () => _cancelar(id),
-                    outlined: true,
-                  ),
-                ],
               ],
             ),
           ],
-        ),
+          const SizedBox(height: DogGoSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed:
+                      running ? null : onChat,
+                  icon: const Icon(
+                    Icons.chat_outlined,
+                    size: 18,
+                  ),
+                  label: const Text('Chat'),
+                ),
+              ),
+              const SizedBox(
+                width: DogGoSpacing.compactGap,
+              ),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed:
+                      running ? null : onDetail,
+                  icon: const Icon(
+                    Icons.visibility_outlined,
+                    size: 18,
+                  ),
+                  label: const Text('Detalle'),
+                ),
+              ),
+              if (walk.status ==
+                  HomeWalkStatus.inProgress) ...[
+                const SizedBox(
+                  width:
+                      DogGoSpacing.compactGap,
+                ),
+                IconButton.filled(
+                  tooltip: 'Abrir mapa',
+                  onPressed:
+                      running ? null : onMap,
+                  icon: const Icon(
+                    Icons.map_outlined,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (_hasActions(state, walk)) ...[
+            const SizedBox(height: DogGoSpacing.md),
+            const Divider(),
+            const SizedBox(height: DogGoSpacing.md),
+            if (running)
+              const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child:
+                      CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                  ),
+                ),
+              )
+            else
+              Wrap(
+                spacing: DogGoSpacing.sm,
+                runSpacing: DogGoSpacing.sm,
+                children: [
+                  if (state.canAccept(walk))
+                    _ActionButton(
+                      label: 'Aceptar',
+                      icon:
+                          Icons.check_rounded,
+                      color: DogGoTheme.green,
+                      onPressed: onAccept,
+                    ),
+                  if (state.canReject(walk))
+                    _ActionButton(
+                      label: 'Rechazar',
+                      icon:
+                          Icons.close_rounded,
+                      color: DogGoTheme.red,
+                      onPressed: onReject,
+                    ),
+                  if (state.canStart(walk))
+                    _ActionButton(
+                      label: 'Iniciar',
+                      icon: Icons
+                          .directions_walk_rounded,
+                      color: DogGoTheme.teal,
+                      onPressed: onStart,
+                    ),
+                  if (state.canFinish(walk))
+                    _ActionButton(
+                      label: 'Finalizar',
+                      icon: Icons.flag_outlined,
+                      color: DogGoTheme.green,
+                      onPressed: onFinish,
+                    ),
+                  if (state.canCancel(walk))
+                    _ActionButton(
+                      label: 'Cancelar',
+                      icon: Icons
+                          .cancel_outlined,
+                      color: DogGoTheme.red,
+                      onPressed: onCancel,
+                    ),
+                ],
+              ),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildFotoPerro(String? f, Color c, Color s, {double size = 60}) =>
-      Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: s,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: f != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.network(
-                  f,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Icon(Icons.pets, color: c),
-                ),
-              )
-            : Icon(Icons.pets, color: c),
-      );
+  static bool _hasActions(
+    WalksState state,
+    HomeWalk walk,
+  ) {
+    return state.canAccept(walk) ||
+        state.canReject(walk) ||
+        state.canStart(walk) ||
+        state.canFinish(walk) ||
+        state.canCancel(walk);
+  }
 
-  Widget _buildVacio() => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(40),
-      child: Column(
+  static Color _statusColor(
+    HomeWalkStatus status,
+  ) {
+    switch (status) {
+      case HomeWalkStatus.pending:
+        return DogGoTheme.orange;
+      case HomeWalkStatus.accepted:
+        return DogGoTheme.purple;
+      case HomeWalkStatus.inProgress:
+        return DogGoTheme.green;
+      case HomeWalkStatus.completed:
+        return DogGoTheme.teal;
+      case HomeWalkStatus.cancelled:
+      case HomeWalkStatus.rejected:
+        return DogGoTheme.red;
+      case HomeWalkStatus.none:
+      case HomeWalkStatus.unknown:
+        return DogGoTheme.muted;
+    }
+  }
+}
+
+class _WalkPhoto extends StatelessWidget {
+  final String imageUrl;
+  final Color color;
+
+  const _WalkPhoto({
+    required this.imageUrl,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 76,
+      height: 76,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.medium,
+        ),
+      ),
+      child: imageUrl.isEmpty
+          ? Icon(
+              Icons.pets_rounded,
+              color: color,
+              size: 30,
+            )
+          : Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Icon(
+                  Icons.pets_rounded,
+                  color: color,
+                  size: 30,
+                );
+              },
+            ),
+    );
+  }
+}
+
+class _StatusLabel extends StatelessWidget {
+  final HomeWalkStatus status;
+  final Color color;
+
+  const _StatusLabel({
+    required this.status,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.pill,
+        ),
+      ),
+      child: Text(
+        status.label,
+        style: DogGoTheme.caption(
+          size: 10,
+          color: color,
+          weight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _WalkAttribute extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _WalkAttribute({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: DogGoTheme.cream,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.pill,
+        ),
+        border: Border.all(
+          color: DogGoTheme.border,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.search_off, size: 60, color: DogGoTheme.muted),
-          const SizedBox(height: 10),
-          Text('No hay paseos', style: DogGoTheme.subtitle()),
+          Icon(
+            icon,
+            color: DogGoTheme.teal,
+            size: 15,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: DogGoTheme.caption(
+              size: 10.5,
+              color: DogGoTheme.ink,
+              weight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
-// --- COMPONENTES AUXILIARES ORIGINALES ---
-
-class _TopIconButton extends StatelessWidget {
+class _ActionButton extends StatelessWidget {
+  final String label;
   final IconData icon;
-  final VoidCallback onTap;
-  const _TopIconButton({required this.icon, required this.onTap});
-  @override
-  Widget build(BuildContext context) => Material(
-    color: DogGoTheme.card,
-    borderRadius: BorderRadius.circular(12),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          border: Border.all(color: DogGoTheme.border),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, size: 20),
-      ),
-    ),
-  );
-}
-
-class _ResumenItem extends StatelessWidget {
-  final String value, label;
-  final Color color;
-  const _ResumenItem({
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Text(value, style: DogGoTheme.title(size: 20, color: Colors.white)),
-      Text(
-        label,
-        style: DogGoTheme.subtitle(
-          size: 10,
-          color: Colors.white.withOpacity(.7),
-        ),
-      ),
-    ],
-  );
-}
-
-class _EstadoBadge extends StatelessWidget {
-  final String estado;
-  final Color color, surface;
-  final IconData icono;
-  const _EstadoBadge({
-    required this.estado,
-    required this.color,
-    required this.surface,
-    required this.icono,
-  });
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    decoration: BoxDecoration(
-      color: surface,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      children: [
-        Icon(icono, size: 12, color: color),
-        const SizedBox(width: 4),
-        Text(
-          estado,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _InfoBlock extends StatelessWidget {
-  final IconData icono;
-  final String label, value;
-  final Color color;
-  const _InfoBlock({
-    required this.icono,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: DogGoTheme.cream2,
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icono, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(label, style: DogGoTheme.subtitle(size: 10)),
-          ],
-        ),
-        Text(value, style: DogGoTheme.body(size: 12, weight: FontWeight.w900)),
-      ],
-    ),
-  );
-}
-
-class _BotonPaseo extends StatelessWidget {
-  final String texto;
-  final IconData icono;
-  final bool primary;
-  final VoidCallback onPressed;
-  const _BotonPaseo({
-    required this.texto,
-    required this.icono,
-    required this.primary,
-    required this.onPressed,
-  });
-  @override
-  Widget build(BuildContext context) => ElevatedButton.icon(
-    onPressed: onPressed,
-    icon: Icon(icono, size: 16),
-    label: Text(texto, style: const TextStyle(fontSize: 12)),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: primary ? DogGoTheme.teal : Colors.white,
-      foregroundColor: primary ? Colors.white : DogGoTheme.ink,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: DogGoTheme.border),
-      ),
-    ),
-  );
-}
-
-class _BotonAccionChico extends StatelessWidget {
-  final String texto;
-  final IconData icono;
   final Color color;
   final VoidCallback onPressed;
-  final bool outlined;
-  const _BotonAccionChico({
-    required this.texto,
-    required this.icono,
+
+  const _ActionButton({
+    required this.label,
+    required this.icon,
     required this.color,
     required this.onPressed,
-    this.outlined = false,
   });
+
   @override
-  Widget build(BuildContext context) => IconButton(
-    onPressed: onPressed,
-    icon: Icon(icono, color: color),
-    style: IconButton.styleFrom(
-      backgroundColor: outlined ? color.withOpacity(.1) : color,
-      foregroundColor: outlined ? color : Colors.white,
-    ),
-  );
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color),
+      ),
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+    );
+  }
 }

@@ -1,180 +1,241 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../core/errors/api_exception.dart';
 import '../services/usuario_service.dart';
-
-class _T {
-  static const teal = Color(0xFF0EC9A0);
-  static const tealDeep = Color(0xFF089B7A);
-  static const tealSurface = Color(0xFFE4FAF4);
-
-  static const emerald = Color(0xFF22C55E);
-  static const emeraldSurf = Color(0xFFE6FAF0);
-
-  static const amber = Color(0xFFFFAB2E);
-  static const amberSurf = Color(0xFFFFF4E0);
-
-  static const rose = Color(0xFFEF4444);
-  static const roseSurf = Color(0xFFFEEEEE);
-
-  static const bg = Color(0xFFF4F0E8);
-  static const surface = Colors.white;
-  static const ink = Color(0xFF111827);
-  static const inkSub = Color(0xFF6B7280);
-  static const stroke = Color(0xFFE5E7EB);
-
-  static List<BoxShadow> shadow() {
-    return [
-      BoxShadow(
-        color: Colors.black.withOpacity(.055),
-        blurRadius: 16,
-        offset: const Offset(0, 5),
-      ),
-    ];
-  }
-}
-
-TextStyle _ts(
-  double size,
-  FontWeight weight,
-  Color color, {
-  double height = 1.2,
-}) {
-  return TextStyle(
-    fontSize: size,
-    fontWeight: weight,
-    color: color,
-    height: height,
-  );
-}
+import '../theme/doggo_radius.dart';
+import '../theme/doggo_spacing.dart';
+import '../theme/doggo_theme.dart';
 
 class CambiarPasswordScreen extends StatefulWidget {
   const CambiarPasswordScreen({super.key});
 
   @override
-  State<CambiarPasswordScreen> createState() => _CambiarPasswordScreenState();
+  State<CambiarPasswordScreen> createState() =>
+      _CambiarPasswordScreenState();
 }
 
-class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
+class _CambiarPasswordScreenState
+    extends State<CambiarPasswordScreen> {
   final UsuarioService _usuarioService = UsuarioService();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _actualController = TextEditingController();
-  final TextEditingController _nuevaController = TextEditingController();
-  final TextEditingController _confirmarController = TextEditingController();
+  final TextEditingController _actualController =
+      TextEditingController();
+  final TextEditingController _nuevaController =
+      TextEditingController();
+  final TextEditingController _confirmarController =
+      TextEditingController();
 
   bool _guardando = false;
-  bool _verActual = false;
-  bool _verNueva = false;
-  bool _verConfirmar = false;
+  bool _mostrarActual = false;
+  bool _mostrarNueva = false;
+  bool _mostrarConfirmacion = false;
+  bool _intentoGuardar = false;
 
   @override
   void initState() {
     super.initState();
+
+    _actualController.addListener(_actualizar);
     _nuevaController.addListener(_actualizar);
     _confirmarController.addListener(_actualizar);
   }
 
   @override
   void dispose() {
-    _actualController.dispose();
-    _nuevaController.dispose();
-    _confirmarController.dispose();
+    _actualController
+      ..removeListener(_actualizar)
+      ..dispose();
+
+    _nuevaController
+      ..removeListener(_actualizar)
+      ..dispose();
+
+    _confirmarController
+      ..removeListener(_actualizar)
+      ..dispose();
+
     super.dispose();
   }
 
   void _actualizar() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
-  String get _actual => _actualController.text.trim();
-  String get _nueva => _nuevaController.text.trim();
-  String get _confirmar => _confirmarController.text.trim();
+  String get _actual => _actualController.text;
+  String get _nueva => _nuevaController.text;
+  String get _confirmacion => _confirmarController.text;
 
-  bool get _largoOk => _nueva.length >= 6;
-  bool get _diferenteOk => _nueva.isNotEmpty && _nueva != _actual;
-  bool get _coincidenOk => _nueva.isNotEmpty && _nueva == _confirmar;
-  bool get _tieneNumero => RegExp(r'\d').hasMatch(_nueva);
-  bool get _tieneLetra => RegExp(r'[A-Za-zÁÉÍÓÚáéíóúÑñ]').hasMatch(_nueva);
+  bool get _longitudCorrecta => _nueva.length >= 8;
 
-  int get _puntaje {
-    var puntos = 0;
+  bool get _tieneMayuscula =>
+      RegExp(r'[A-ZÁÉÍÓÚÑ]').hasMatch(_nueva);
 
-    if (_largoOk) puntos++;
-    if (_diferenteOk) puntos++;
-    if (_coincidenOk) puntos++;
-    if (_tieneNumero) puntos++;
-    if (_tieneLetra) puntos++;
+  bool get _tieneMinuscula =>
+      RegExp(r'[a-záéíóúñ]').hasMatch(_nueva);
 
-    return puntos;
+  bool get _tieneNumero =>
+      RegExp(r'[0-9]').hasMatch(_nueva);
+
+  bool get _esDiferente =>
+      _nueva.isNotEmpty && _nueva != _actual;
+
+  bool get _coinciden =>
+      _nueva.isNotEmpty && _nueva == _confirmacion;
+
+  int get _securityScore {
+    var score = 0;
+
+    if (_longitudCorrecta) score++;
+    if (_tieneMayuscula) score++;
+    if (_tieneMinuscula) score++;
+    if (_tieneNumero) score++;
+    if (_nueva.length >= 12) score++;
+
+    return score;
   }
 
-  String get _nivelTexto {
+  String get _securityLabel {
     if (_nueva.isEmpty) return 'Sin evaluar';
-    if (_puntaje <= 2) return 'Débil';
-    if (_puntaje <= 4) return 'Aceptable';
-    return 'Segura';
+    if (_securityScore <= 2) return 'Débil';
+    if (_securityScore <= 4) return 'Buena';
+    return 'Muy segura';
   }
 
-  Color get _nivelColor {
-    if (_nueva.isEmpty) return _T.inkSub;
-    if (_puntaje <= 2) return _T.rose;
-    if (_puntaje <= 4) return _T.amber;
-    return _T.emerald;
+  Color get _securityColor {
+    if (_nueva.isEmpty) return DogGoTheme.muted;
+    if (_securityScore <= 2) return DogGoTheme.red;
+    if (_securityScore <= 4) return DogGoTheme.orange;
+    return DogGoTheme.green;
   }
 
-  Color get _nivelSurface {
-    if (_nueva.isEmpty) return const Color(0xFFF3F4F6);
-    if (_puntaje <= 2) return _T.roseSurf;
-    if (_puntaje <= 4) return _T.amberSurf;
-    return _T.emeraldSurf;
+  Color get _securityBackground {
+    if (_nueva.isEmpty) return DogGoTheme.purpleLight;
+    if (_securityScore <= 2) return DogGoTheme.redLight;
+    if (_securityScore <= 4) return DogGoTheme.orangeLight;
+    return DogGoTheme.greenLight;
   }
 
-  String? _validarActual(String? valor) {
-    final texto = valor?.trim() ?? '';
+  bool get _puedeGuardar {
+    return !_guardando &&
+        _actual.isNotEmpty &&
+        _longitudCorrecta &&
+        _tieneMayuscula &&
+        _tieneMinuscula &&
+        _tieneNumero &&
+        _esDiferente &&
+        _coinciden;
+  }
 
-    if (texto.isEmpty) {
+  String? _validarActual(String? value) {
+    if ((value ?? '').isEmpty) {
       return 'Escribe tu contraseña actual.';
     }
 
     return null;
   }
 
-  String? _validarNueva(String? valor) {
-    final texto = valor?.trim() ?? '';
+  String? _validarNueva(String? value) {
+    final password = value ?? '';
 
-    if (texto.isEmpty) {
+    if (password.isEmpty) {
       return 'Escribe la nueva contraseña.';
     }
 
-    if (texto.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres.';
+    if (password.length < 8) {
+      return 'Debe tener al menos 8 caracteres.';
     }
 
-    if (texto == _actualController.text.trim()) {
-      return 'La nueva contraseña debe ser diferente.';
+    if (!RegExp(r'[A-ZÁÉÍÓÚÑ]').hasMatch(password)) {
+      return 'Agrega al menos una letra mayúscula.';
+    }
+
+    if (!RegExp(r'[a-záéíóúñ]').hasMatch(password)) {
+      return 'Agrega al menos una letra minúscula.';
+    }
+
+    if (!RegExp(r'[0-9]').hasMatch(password)) {
+      return 'Agrega al menos un número.';
+    }
+
+    if (password == _actual) {
+      return 'Debe ser diferente a la contraseña actual.';
     }
 
     return null;
   }
 
-  String? _validarConfirmacion(String? valor) {
-    final texto = valor?.trim() ?? '';
+  String? _validarConfirmacion(String? value) {
+    final password = value ?? '';
 
-    if (texto.isEmpty) {
+    if (password.isEmpty) {
       return 'Confirma la nueva contraseña.';
     }
 
-    if (texto != _nuevaController.text.trim()) {
+    if (password != _nueva) {
       return 'Las contraseñas no coinciden.';
     }
 
     return null;
   }
 
-  Future<void> _guardar() async {
-    FocusScope.of(context).unfocus();
+  String _cleanError(Object error) {
+    if (error is ApiException) {
+      return error.message;
+    }
 
-    if (!_formKey.currentState!.validate()) return;
+    final message = error
+        .toString()
+        .replaceFirst('Exception: ', '')
+        .replaceFirst('ApiException: ', '')
+        .trim();
+
+    return message.isEmpty
+        ? 'No se pudo actualizar la contraseña.'
+        : message;
+  }
+
+  void _showMessage(
+    String message, {
+    bool error = false,
+  }) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor:
+              error ? DogGoTheme.red : DogGoTheme.ink,
+          content: Row(
+            children: [
+              Icon(
+                error
+                    ? Icons.error_outline_rounded
+                    : Icons.check_circle_outline_rounded,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        ),
+      );
+  }
+
+  Future<void> _save() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    setState(() {
+      _intentoGuardar = true;
+    });
+
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
 
     setState(() {
       _guardando = true;
@@ -182,28 +243,31 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
 
     try {
       await _usuarioService.cambiarPassword(
-        passwordActual: _actualController.text.trim(),
-        passwordNueva: _nuevaController.text.trim(),
+        passwordActual: _actual,
+        passwordNueva: _nueva,
       );
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Contraseña actualizada correctamente.'),
-        ),
+      TextInput.finishAutofillContext(
+        shouldSave: true,
       );
 
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (!mounted) return;
+      _showMessage(
+        'Tu contraseña se actualizó correctamente.',
+      );
 
-      final mensaje = e.toString().replaceFirst('Exception: ', '');
+      await Future<void>.delayed(
+        const Duration(milliseconds: 600),
+      );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se pudo cambiar la contraseña: $mensaje'),
-        ),
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (error) {
+      _showMessage(
+        _cleanError(error),
+        error: true,
       );
     } finally {
       if (mounted) {
@@ -217,48 +281,120 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _T.bg,
       appBar: AppBar(
-        backgroundColor: _T.tealDeep,
-        foregroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        title: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text('🔐', style: TextStyle(fontSize: 17)),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Cambiar contraseña',
-              style: _ts(20, FontWeight.w900, Colors.white),
-            ),
-          ],
-        ),
+        title: const Text('Cambiar contraseña'),
       ),
       body: SafeArea(
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 16),
-            _buildFormulario(),
-            const SizedBox(height: 14),
-            _buildSeguridadCard(),
-            const SizedBox(height: 18),
-            _buildBoton(),
-            const SizedBox(height: 14),
-            _buildNota(),
-          ],
+        child: AutofillGroup(
+          child: Form(
+            key: _formKey,
+            autovalidateMode: _intentoGuardar
+                ? AutovalidateMode.onUserInteraction
+                : AutovalidateMode.disabled,
+            child: ListView(
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(
+                DogGoSpacing.screenHorizontal,
+                DogGoSpacing.md,
+                DogGoSpacing.screenHorizontal,
+                DogGoSpacing.xl,
+              ),
+              children: [
+                _buildHeader(),
+                const SizedBox(
+                  height: DogGoSpacing.largeGap,
+                ),
+                _PasswordField(
+                  controller: _actualController,
+                  label: 'Contraseña actual',
+                  hint: 'Escribe tu contraseña actual',
+                  visible: _mostrarActual,
+                  autofillHints: const [
+                    AutofillHints.password,
+                  ],
+                  textInputAction: TextInputAction.next,
+                  validator: _validarActual,
+                  onToggleVisibility: () {
+                    setState(() {
+                      _mostrarActual = !_mostrarActual;
+                    });
+                  },
+                ),
+                const SizedBox(height: DogGoSpacing.md),
+                _PasswordField(
+                  controller: _nuevaController,
+                  label: 'Nueva contraseña',
+                  hint: 'Crea una contraseña segura',
+                  visible: _mostrarNueva,
+                  autofillHints: const [
+                    AutofillHints.newPassword,
+                  ],
+                  textInputAction: TextInputAction.next,
+                  validator: _validarNueva,
+                  onToggleVisibility: () {
+                    setState(() {
+                      _mostrarNueva = !_mostrarNueva;
+                    });
+                  },
+                ),
+                const SizedBox(height: DogGoSpacing.md),
+                _PasswordField(
+                  controller: _confirmarController,
+                  label: 'Confirmar contraseña',
+                  hint: 'Escríbela nuevamente',
+                  visible: _mostrarConfirmacion,
+                  autofillHints: const [
+                    AutofillHints.newPassword,
+                  ],
+                  textInputAction: TextInputAction.done,
+                  validator: _validarConfirmacion,
+                  onFieldSubmitted: (_) {
+                    if (_puedeGuardar) {
+                      _save();
+                    }
+                  },
+                  onToggleVisibility: () {
+                    setState(() {
+                      _mostrarConfirmacion =
+                          !_mostrarConfirmacion;
+                    });
+                  },
+                ),
+                const SizedBox(
+                  height: DogGoSpacing.largeGap,
+                ),
+                _buildSecurityCard(),
+                const SizedBox(height: DogGoSpacing.lg),
+                SizedBox(
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed:
+                        _puedeGuardar ? _save : null,
+                    icon: _guardando
+                        ? const SizedBox(
+                            width: 19,
+                            height: 19,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.lock_reset_rounded,
+                          ),
+                    label: Text(
+                      _guardando
+                          ? 'Actualizando...'
+                          : 'Actualizar contraseña',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: DogGoSpacing.md),
+                _buildInformation(),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -266,59 +402,49 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(
+        DogGoSpacing.cardPadding,
+      ),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF0EC9A0),
-            Color(0xFF057A5F),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: DogGoTheme.tealLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
         ),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: _T.teal.withOpacity(.25),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        border: Border.all(
+          color: DogGoTheme.teal.withValues(alpha: 0.12),
+        ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.16),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withOpacity(.22)),
+              color: DogGoTheme.card,
+              borderRadius: BorderRadius.circular(
+                DogGoRadius.medium,
+              ),
             ),
             child: const Icon(
-              Icons.lock_reset_rounded,
-              color: Colors.white,
-              size: 32,
+              Icons.shield_outlined,
+              color: DogGoTheme.teal,
+              size: 28,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: DogGoSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Seguridad de la cuenta',
-                  style: _ts(20, FontWeight.w900, Colors.white),
+                  'Protege tu cuenta',
+                  style: DogGoTheme.title(size: 20),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: DogGoSpacing.xs),
                 Text(
-                  'Cambia tu contraseña usando tu clave actual.',
-                  style: _ts(
-                    13,
-                    FontWeight.w600,
-                    Colors.white.withOpacity(.88),
-                    height: 1.3,
-                  ),
+                  'Usa una contraseña distinta a las que utilizas en otros servicios.',
+                  style: DogGoTheme.subtitle(size: 13.5),
                 ),
               ],
             ),
@@ -328,77 +454,24 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
     );
   }
 
-  Widget _buildFormulario() {
+  Widget _buildSecurityCard() {
+    final progress =
+        (_securityScore / 5).clamp(0.0, 1.0);
+
     return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: _T.surface,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: _T.shadow(),
+      padding: const EdgeInsets.all(
+        DogGoSpacing.cardPadding,
       ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            _CampoPassword(
-              controller: _actualController,
-              label: 'Contraseña actual',
-              visible: _verActual,
-              color: _T.teal,
-              surface: _T.tealSurface,
-              onToggleVisible: () {
-                setState(() {
-                  _verActual = !_verActual;
-                });
-              },
-              validator: _validarActual,
-            ),
-            const SizedBox(height: 14),
-            _CampoPassword(
-              controller: _nuevaController,
-              label: 'Nueva contraseña',
-              visible: _verNueva,
-              color: _T.teal,
-              surface: _T.tealSurface,
-              onToggleVisible: () {
-                setState(() {
-                  _verNueva = !_verNueva;
-                });
-              },
-              validator: _validarNueva,
-            ),
-            const SizedBox(height: 14),
-            _CampoPassword(
-              controller: _confirmarController,
-              label: 'Confirmar nueva contraseña',
-              visible: _verConfirmar,
-              color: _T.teal,
-              surface: _T.tealSurface,
-              onToggleVisible: () {
-                setState(() {
-                  _verConfirmar = !_verConfirmar;
-                });
-              },
-              validator: _validarConfirmacion,
-            ),
-          ],
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.large,
+        ),
+        border: Border.all(
+          color: DogGoTheme.border,
         ),
       ),
-    );
-  }
-
-  Widget _buildSeguridadCard() {
-    final progress = (_puntaje / 5).clamp(0.0, 1.0);
-
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: _T.surface,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: _T.shadow(),
-      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -406,108 +479,83 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: _nivelSurface,
-                  borderRadius: BorderRadius.circular(13),
+                  color: _securityBackground,
+                  borderRadius: BorderRadius.circular(
+                    DogGoRadius.medium,
+                  ),
                 ),
                 child: Icon(
-                  Icons.shield_rounded,
-                  color: _nivelColor,
+                  Icons.security_rounded,
+                  color: _securityColor,
                 ),
               ),
-              const SizedBox(width: 11),
+              const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Nivel de seguridad',
-                      style: _ts(15, FontWeight.w900, _T.ink),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _nivelTexto,
-                      style: _ts(12.5, FontWeight.w800, _nivelColor),
-                    ),
-                  ],
+                child: Text(
+                  'Seguridad',
+                  style: DogGoTheme.title(size: 16),
+                ),
+              ),
+              Text(
+                _securityLabel,
+                style: DogGoTheme.body(
+                  size: 12.5,
+                  weight: FontWeight.w800,
+                  color: _securityColor,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 13),
+          const SizedBox(height: DogGoSpacing.md),
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(
+              DogGoRadius.pill,
+            ),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 9,
-              backgroundColor: const Color(0xFFF3F4F6),
-              color: _nivelColor,
+              minHeight: 8,
+              color: _securityColor,
+              backgroundColor: DogGoTheme.divider,
             ),
           ),
-          const SizedBox(height: 14),
-          _ReglaPassword(
-            texto: 'Mínimo 6 caracteres',
-            completa: _largoOk,
+          const SizedBox(height: DogGoSpacing.md),
+          _PasswordRule(
+            text: 'Al menos 8 caracteres',
+            completed: _longitudCorrecta,
           ),
-          _ReglaPassword(
-            texto: 'Diferente a la contraseña actual',
-            completa: _diferenteOk,
+          _PasswordRule(
+            text: 'Una letra mayúscula',
+            completed: _tieneMayuscula,
           ),
-          _ReglaPassword(
-            texto: 'Confirmación coincide',
-            completa: _coincidenOk,
+          _PasswordRule(
+            text: 'Una letra minúscula',
+            completed: _tieneMinuscula,
           ),
-          _ReglaPassword(
-            texto: 'Incluye letras',
-            completa: _tieneLetra,
+          _PasswordRule(
+            text: 'Al menos un número',
+            completed: _tieneNumero,
           ),
-          _ReglaPassword(
-            texto: 'Incluye números',
-            completa: _tieneNumero,
+          _PasswordRule(
+            text: 'Diferente a la contraseña actual',
+            completed: _esDiferente,
+          ),
+          _PasswordRule(
+            text: 'Las contraseñas coinciden',
+            completed: _coinciden,
+            last: true,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBoton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: ElevatedButton.icon(
-        onPressed: _guardando ? null : _guardar,
-        icon: _guardando
-            ? const SizedBox(
-                width: 19,
-                height: 19,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.save_rounded),
-        label: Text(_guardando ? 'Actualizando...' : 'Actualizar contraseña'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _T.teal,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.grey.shade300,
-          disabledForegroundColor: Colors.grey.shade600,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(17),
-          ),
-          elevation: 0,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNota() {
+  Widget _buildInformation() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(DogGoSpacing.md),
       decoration: BoxDecoration(
-        color: _T.amberSurf,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _T.amber.withOpacity(.25),
+        color: DogGoTheme.orangeLight,
+        borderRadius: BorderRadius.circular(
+          DogGoRadius.medium,
         ),
       ),
       child: Row(
@@ -515,18 +563,15 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
         children: [
           const Icon(
             Icons.info_outline_rounded,
-            color: _T.amber,
-            size: 22,
+            color: DogGoTheme.orange,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: DogGoSpacing.compactGap),
           Expanded(
             child: Text(
-              'Después de cambiar tu contraseña, úsala en tu siguiente inicio de sesión.',
-              style: _ts(
-                12.5,
-                FontWeight.w700,
-                _T.inkSub,
-                height: 1.3,
+              'Después de actualizarla, utiliza la nueva contraseña en tus próximos inicios de sesión.',
+              style: DogGoTheme.body(
+                size: 12.5,
+                color: DogGoTheme.muted,
               ),
             ),
           ),
@@ -536,23 +581,27 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   }
 }
 
-class _CampoPassword extends StatelessWidget {
+class _PasswordField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final String hint;
   final bool visible;
-  final Color color;
-  final Color surface;
-  final VoidCallback onToggleVisible;
-  final String? Function(String?)? validator;
+  final Iterable<String>? autofillHints;
+  final TextInputAction textInputAction;
+  final String? Function(String?) validator;
+  final ValueChanged<String>? onFieldSubmitted;
+  final VoidCallback onToggleVisibility;
 
-  const _CampoPassword({
+  const _PasswordField({
     required this.controller,
     required this.label,
+    required this.hint,
     required this.visible,
-    required this.color,
-    required this.surface,
-    required this.onToggleVisible,
-    this.validator,
+    required this.autofillHints,
+    required this.textInputAction,
+    required this.validator,
+    required this.onToggleVisibility,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -560,42 +609,27 @@ class _CampoPassword extends StatelessWidget {
     return TextFormField(
       controller: controller,
       obscureText: !visible,
+      enableSuggestions: false,
+      autocorrect: false,
+      autofillHints: autofillHints,
+      textInputAction: textInputAction,
       validator: validator,
+      onFieldSubmitted: onFieldSubmitted,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: surface,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.lock_rounded,
-              color: color,
-              size: 20,
-            ),
-          ),
+        hintText: hint,
+        prefixIcon: const Icon(
+          Icons.lock_outline_rounded,
         ),
         suffixIcon: IconButton(
-          onPressed: onToggleVisible,
+          tooltip: visible
+              ? 'Ocultar contraseña'
+              : 'Mostrar contraseña',
+          onPressed: onToggleVisibility,
           icon: Icon(
-            visible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-          ),
-        ),
-        filled: true,
-        fillColor: const Color(0xFFF8F4EC),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(17),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(17),
-          borderSide: BorderSide(
-            color: color,
-            width: 1.4,
+            visible
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
           ),
         ),
       ),
@@ -603,34 +637,46 @@ class _CampoPassword extends StatelessWidget {
   }
 }
 
-class _ReglaPassword extends StatelessWidget {
-  final String texto;
-  final bool completa;
+class _PasswordRule extends StatelessWidget {
+  final String text;
+  final bool completed;
+  final bool last;
 
-  const _ReglaPassword({
-    required this.texto,
-    required this.completa,
+  const _PasswordRule({
+    required this.text,
+    required this.completed,
+    this.last = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
+      padding: EdgeInsets.only(
+        bottom: last ? 0 : DogGoSpacing.sm,
+      ),
       child: Row(
         children: [
           Icon(
-            completa ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
-            color: completa ? _T.emerald : _T.inkSub,
+            completed
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            color: completed
+                ? DogGoTheme.green
+                : DogGoTheme.muted,
             size: 19,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: DogGoSpacing.sm),
           Expanded(
             child: Text(
-              texto,
-              style: _ts(
-                12.5,
-                FontWeight.w700,
-                completa ? _T.ink : _T.inkSub,
+              text,
+              style: DogGoTheme.body(
+                size: 12.5,
+                color: completed
+                    ? DogGoTheme.ink
+                    : DogGoTheme.muted,
+                weight: completed
+                    ? FontWeight.w700
+                    : FontWeight.w500,
               ),
             ),
           ),
