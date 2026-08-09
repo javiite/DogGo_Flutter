@@ -64,7 +64,9 @@ enum HomeWalkStatus {
   }
 
   static HomeWalkStatus fromValue(dynamic value) {
-    final normalized = _normalize(value?.toString() ?? '');
+    final normalized = _normalize(
+      value?.toString() ?? '',
+    );
 
     switch (normalized) {
       case '':
@@ -74,6 +76,14 @@ enum HomeWalkStatus {
       case 'pending':
       case 'solicitado':
       case 'solicitudpendiente':
+
+      // Mientras el dueño responde, el paseo continúa
+      // siendo una solicitud pendiente y no se puede iniciar.
+      case 'cambiopropuesto':
+      case 'cambiodemascotaspropuesto':
+      case 'petchangeproposed':
+      case 'changeproposed':
+      case 'propuestapendiente':
         return HomeWalkStatus.pending;
 
       case 'aceptado':

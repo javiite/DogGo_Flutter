@@ -1,3 +1,5 @@
+import 'pet_photo.dart';
+
 class Pet {
   final int id;
   final String name;
@@ -6,6 +8,7 @@ class Pet {
   final String size;
   final String notes;
   final String? photoPath;
+  final List<PetPhoto> photos;
   final Map<String, dynamic> rawData;
 
   const Pet({
@@ -16,10 +19,52 @@ class Pet {
     required this.size,
     required this.notes,
     required this.photoPath,
+    this.photos = const [],
     required this.rawData,
   });
 
-  factory Pet.fromMap(Map<String, dynamic> map) {
+  factory Pet.fromMap(
+    Map<String, dynamic> map,
+  ) {
+    final parsedPhotos = PetPhoto.listFrom(
+      _value(
+        map,
+        const [
+          'fotos',
+          'Fotos',
+          'photos',
+          'Photos',
+          'galeria',
+          'Galeria',
+        ],
+      ),
+    );
+
+    final legacyPhoto = _safeNullableText(
+      _value(
+        map,
+        const [
+          'fotoUrl',
+          'FotoUrl',
+          'foto',
+          'Foto',
+          'imagenUrl',
+          'ImagenUrl',
+          'urlFoto',
+          'UrlFoto',
+          'fotoPerroUrl',
+          'FotoPerroUrl',
+          'photoUrl',
+          'PhotoUrl',
+        ],
+      ),
+    );
+
+    final primaryGalleryPhoto =
+        parsedPhotos
+            .where((photo) => photo.isPrimary)
+            .firstOrNull;
+
     return Pet(
       id: _safeInt(
             _value(
@@ -101,26 +146,15 @@ class Pet {
           ],
         ),
       ),
-      photoPath: _safeNullableText(
-        _value(
-          map,
-          const [
-            'fotoUrl',
-            'FotoUrl',
-            'foto',
-            'Foto',
-            'imagenUrl',
-            'ImagenUrl',
-            'urlFoto',
-            'UrlFoto',
-            'fotoPerroUrl',
-            'FotoPerroUrl',
-            'photoUrl',
-            'PhotoUrl',
-          ],
-        ),
-      ),
-      rawData: Map<String, dynamic>.unmodifiable(
+      photoPath:
+          primaryGalleryPhoto?.url ??
+              legacyPhoto ??
+              (parsedPhotos.isEmpty
+                  ? null
+                  : parsedPhotos.first.url),
+      photos: parsedPhotos,
+      rawData:
+          Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(map),
       ),
     );
@@ -130,15 +164,40 @@ class Pet {
 
   bool get hasPhoto {
     final value = photoPath?.trim();
+
     return value != null && value.isNotEmpty;
+  }
+
+  bool get hasGallery => photos.isNotEmpty;
+
+  bool get canAddPhoto => photos.length < 8;
+
+  int get photoCount => photos.length;
+
+  PetPhoto? get primaryPhoto {
+    for (final photo in photos) {
+      if (photo.isPrimary) {
+        return photo;
+      }
+    }
+
+    return photos.isEmpty ? null : photos.first;
   }
 
   String get ageLabel {
     final value = age;
 
-    if (value == null) return 'Edad no registrada';
-    if (value == 0) return 'Menos de 1 año';
-    if (value == 1) return '1 año';
+    if (value == null) {
+      return 'Edad no registrada';
+    }
+
+    if (value == 0) {
+      return 'Menos de 1 año';
+    }
+
+    if (value == 1) {
+      return '1 año';
+    }
 
     return '$value años';
   }
@@ -150,14 +209,18 @@ class Pet {
   String get initials {
     final cleanName = name.trim();
 
-    if (cleanName.isEmpty) return 'DG';
+    if (cleanName.isEmpty) {
+      return 'DG';
+    }
 
     final words = cleanName
         .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty)
         .toList();
 
-    if (words.isEmpty) return 'DG';
+    if (words.isEmpty) {
+      return 'DG';
+    }
 
     if (words.length == 1) {
       return words.first
@@ -186,16 +249,43 @@ class Pet {
 
     final server = baseUrl?.trim() ?? '';
 
-    if (server.isEmpty) return path;
+    if (server.isEmpty) {
+      return path;
+    }
 
     final cleanServer = server.endsWith('/')
-        ? server.substring(0, server.length - 1)
+        ? server.substring(
+            0,
+            server.length - 1,
+          )
         : server;
 
     final cleanPath =
         path.startsWith('/') ? path : '/$path';
 
     return '$cleanServer$cleanPath';
+  }
+
+  List<String> publicPhotoUrls(
+    String? baseUrl,
+  ) {
+    final urls = photos
+        .map((photo) => photo.publicUrl(baseUrl))
+        .whereType<String>()
+        .where((url) => url.isNotEmpty)
+        .toSet()
+        .toList(growable: true);
+
+    final principal =
+        publicPhotoUrl(baseUrl);
+
+    if (principal != null &&
+        principal.isNotEmpty &&
+        !urls.contains(principal)) {
+      urls.insert(0, principal);
+    }
+
+    return List<String>.unmodifiable(urls);
   }
 
   Pet copyWith({
@@ -208,6 +298,7 @@ class Pet {
     String? notes,
     String? photoPath,
     bool clearPhoto = false,
+    List<PetPhoto>? photos,
     Map<String, dynamic>? rawData,
   }) {
     return Pet(
@@ -217,14 +308,18 @@ class Pet {
       age: clearAge ? null : age ?? this.age,
       size: size ?? this.size,
       notes: notes ?? this.notes,
-      photoPath:
-          clearPhoto ? null : photoPath ?? this.photoPath,
+      photoPath: clearPhoto
+          ? null
+          : photoPath ?? this.photoPath,
+      photos: photos ?? this.photos,
       rawData: rawData ?? this.rawData,
     );
   }
 
   static List<Pet> listFrom(dynamic value) {
-    if (value is! List) return const [];
+    if (value is! List) {
+      return const [];
+    }
 
     return value
         .whereType<Map>()
@@ -255,16 +350,20 @@ class Pet {
     dynamic value, {
     String fallback = '',
   }) {
-    final text = value?.toString().trim() ?? '';
+    final text =
+        value?.toString().trim() ?? '';
 
-    if (text.isEmpty || text.toLowerCase() == 'null') {
+    if (text.isEmpty ||
+        text.toLowerCase() == 'null') {
       return fallback;
     }
 
     return text;
   }
 
-  static String? _safeNullableText(dynamic value) {
+  static String? _safeNullableText(
+    dynamic value,
+  ) {
     final text = value?.toString().trim();
 
     if (text == null ||
@@ -279,8 +378,10 @@ class Pet {
   static int? _safeInt(dynamic value) {
     if (value == null) return null;
     if (value is int) return value;
-    if (value is double) return value.round();
+    if (value is num) return value.toInt();
 
-    return int.tryParse(value.toString().trim());
+    return int.tryParse(
+      value.toString().trim(),
+    );
   }
 }

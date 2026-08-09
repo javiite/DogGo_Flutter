@@ -10,6 +10,8 @@ class WalkRequestState {
     90,
   ];
 
+  static const int maxSelectedPets = 5;
+
   final Walker walker;
   final bool loading;
   final bool saving;
@@ -17,7 +19,7 @@ class WalkRequestState {
   final String? error;
   final String? baseUrl;
   final List<Pet> pets;
-  final int? selectedPetId;
+  final List<int> selectedPetIds;
   final int durationMinutes;
   final DateTime? scheduledAt;
   final PickupLocation? pickupLocation;
@@ -31,31 +33,53 @@ class WalkRequestState {
     this.error,
     this.baseUrl,
     this.pets = const [],
-    this.selectedPetId,
+    this.selectedPetIds = const [],
     this.durationMinutes = 30,
     this.scheduledAt,
     this.pickupLocation,
     this.defaultLocation,
   });
 
+  List<Pet> get selectedPets {
+    return pets
+        .where(
+          (pet) => selectedPetIds.contains(pet.id),
+        )
+        .toList(growable: false);
+  }
+
+  // Compatibilidad con los widgets actuales.
   Pet? get selectedPet {
-    final id = selectedPetId;
+    final selected = selectedPets;
 
-    if (id == null) {
-      return null;
-    }
+    return selected.isEmpty ? null : selected.first;
+  }
 
-    for (final pet in pets) {
-      if (pet.id == id) {
-        return pet;
-      }
-    }
+  // Compatibilidad temporal con el selector anterior.
+  int? get selectedPetId {
+    return selectedPetIds.isEmpty
+        ? null
+        : selectedPetIds.first;
+  }
 
-    return null;
+  int get selectedPetCount {
+    return selectedPets.length;
+  }
+
+  bool isPetSelected(int petId) {
+    return selectedPetIds.contains(petId);
   }
 
   bool get hasPets {
     return pets.isNotEmpty;
+  }
+
+  bool get hasSelectedPets {
+    return selectedPets.isNotEmpty;
+  }
+
+  bool get hasMultiplePets {
+    return selectedPetCount > 1;
   }
 
   bool get hasPickupLocation {
@@ -70,7 +94,8 @@ class WalkRequestState {
     return !loading &&
         !saving &&
         walker.hasValidId &&
-        selectedPet != null &&
+        hasSelectedPets &&
+        selectedPetCount <= maxSelectedPets &&
         scheduledAt != null &&
         pickupLocation != null;
   }
@@ -79,9 +104,51 @@ class WalkRequestState {
     return walker.hourlyRate ?? 0;
   }
 
-  double get estimatedTotal {
+  double get basePrice {
     return hourlyRate *
         (durationMinutes / 60);
+  }
+
+  double get additionalPetsPrice {
+    if (selectedPetCount <= 1) {
+      return 0;
+    }
+
+    return basePrice *
+        0.50 *
+        (selectedPetCount - 1);
+  }
+
+  double get estimatedTotal {
+    if (!hasSelectedPets) {
+      return 0;
+    }
+
+    return basePrice + additionalPetsPrice;
+  }
+
+  String get selectedPetsLabel {
+    if (selectedPets.isEmpty) {
+      return 'Selecciona tus mascotas';
+    }
+
+    if (selectedPets.length == 1) {
+      return selectedPets.first.name;
+    }
+
+    return '${selectedPets.length} mascotas';
+  }
+
+  String get pricingExplanation {
+    if (selectedPetCount <= 1) {
+      return 'Tarifa para una mascota';
+    }
+
+    final additional = selectedPetCount - 1;
+
+    return additional == 1
+        ? 'Incluye 1 mascota adicional al 50%'
+        : 'Incluye $additional mascotas adicionales al 50%';
   }
 
   String get durationLabel {
@@ -121,11 +188,14 @@ class WalkRequestState {
       'dic',
     ];
 
-    final hour = date.hour.toString().padLeft(2, '0');
+    final hour =
+        date.hour.toString().padLeft(2, '0');
+
     final minute =
         date.minute.toString().padLeft(2, '0');
 
-    return '${date.day} ${months[date.month - 1]} '
+    return '${date.day} '
+        '${months[date.month - 1]} '
         '${date.year} · $hour:$minute';
   }
 
@@ -146,8 +216,8 @@ class WalkRequestState {
     bool clearError = false,
     String? baseUrl,
     List<Pet>? pets,
-    int? selectedPetId,
-    bool clearSelectedPet = false,
+    List<int>? selectedPetIds,
+    bool clearSelectedPets = false,
     int? durationMinutes,
     DateTime? scheduledAt,
     bool clearScheduledAt = false,
@@ -167,9 +237,10 @@ class WalkRequestState {
           : error ?? this.error,
       baseUrl: baseUrl ?? this.baseUrl,
       pets: pets ?? this.pets,
-      selectedPetId: clearSelectedPet
-          ? null
-          : selectedPetId ?? this.selectedPetId,
+      selectedPetIds: clearSelectedPets
+          ? const []
+          : selectedPetIds ??
+              this.selectedPetIds,
       durationMinutes:
           durationMinutes ?? this.durationMinutes,
       scheduledAt: clearScheduledAt
@@ -177,10 +248,12 @@ class WalkRequestState {
           : scheduledAt ?? this.scheduledAt,
       pickupLocation: clearPickupLocation
           ? null
-          : pickupLocation ?? this.pickupLocation,
+          : pickupLocation ??
+              this.pickupLocation,
       defaultLocation: clearDefaultLocation
           ? null
-          : defaultLocation ?? this.defaultLocation,
+          : defaultLocation ??
+              this.defaultLocation,
     );
   }
 }

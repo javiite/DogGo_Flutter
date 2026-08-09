@@ -50,6 +50,7 @@ class WalkDetailState {
     final value = _normalizeRole(role);
 
     return value == 'duenio' ||
+        value == 'dueno' ||
         value == 'owner' ||
         value == 'cliente';
   }
@@ -71,21 +72,55 @@ class WalkDetailState {
     return requestedId;
   }
 
+  bool get hasPendingPetProposal {
+    return walk?.hasPendingPetProposal == true;
+  }
+
   bool get canAccept {
     return !acting &&
         isWalker &&
+        !hasPendingPetProposal &&
         walk?.isPending == true;
   }
 
   bool get canReject {
     return !acting &&
         isWalker &&
+        !hasPendingPetProposal &&
         walk?.isPending == true;
+  }
+
+  bool get canProposePetChange {
+    final current = walk;
+
+    return !acting &&
+        isWalker &&
+        current != null &&
+        current.isPending &&
+        !current.hasPendingPetProposal &&
+        current.requestedPets.length > 1;
+  }
+
+  bool get canEditRequestedPets {
+  final current = walk;
+
+  return !acting &&
+      isOwner &&
+      current != null &&
+      current.isPending &&
+      !current.hasPendingPetProposal;
+  }
+
+  bool get canRespondPetChange {
+    return !acting &&
+        isOwner &&
+        hasPendingPetProposal;
   }
 
   bool get canStart {
     return !acting &&
         isWalker &&
+        !hasPendingPetProposal &&
         walk?.isAccepted == true;
   }
 
@@ -173,6 +208,22 @@ class WalkDetailState {
       return 'No hay información disponible.';
     }
 
+    if (current.hasPendingPetProposal) {
+      if (isOwner) {
+        return 'El paseador propuso realizar el paseo con '
+            '${current.proposedPetCount} '
+            '${current.proposedPetCount == 1 ? "mascota" : "mascotas"}. '
+            'Revisa la propuesta antes de continuar.';
+      }
+
+      if (isWalker) {
+        return 'Tu propuesta fue enviada. El dueño debe '
+            'aceptarla o rechazarla antes de continuar.';
+      }
+
+      return 'Existe una propuesta de cambio pendiente.';
+    }
+
     switch (current.status) {
       case HomeWalkStatus.pending:
         return isWalker
@@ -181,7 +232,7 @@ class WalkDetailState {
 
       case HomeWalkStatus.accepted:
         return isWalker
-            ? 'El servicio está confirmado. Inícialo cuando llegues con la mascota.'
+            ? 'El servicio está confirmado. Inícialo cuando llegues con las mascotas.'
             : 'El paseador aceptó la solicitud y el servicio está confirmado.';
 
       case HomeWalkStatus.inProgress:
@@ -223,13 +274,24 @@ class WalkDetailState {
     final current = walk;
 
     if (current == null) {
-      return WalkDetailRecommendedAction.unavailable;
+      return WalkDetailRecommendedAction
+          .unavailable;
+    }
+
+    if (current.hasPendingPetProposal) {
+      return isOwner
+          ? WalkDetailRecommendedAction
+              .reviewRequest
+          : WalkDetailRecommendedAction
+              .waitForWalker;
     }
 
     if (current.isPending) {
       return isWalker
-          ? WalkDetailRecommendedAction.reviewRequest
-          : WalkDetailRecommendedAction.waitForWalker;
+          ? WalkDetailRecommendedAction
+              .reviewRequest
+          : WalkDetailRecommendedAction
+              .waitForWalker;
     }
 
     if (current.isAccepted) {
@@ -239,7 +301,8 @@ class WalkDetailState {
     }
 
     if (current.isInProgress) {
-      if (!current.hasStartEvidence && isWalker) {
+      if (!current.hasStartEvidence &&
+          isWalker) {
         return WalkDetailRecommendedAction
             .uploadStartEvidence;
       }
@@ -248,12 +311,15 @@ class WalkDetailState {
         return isWalker
             ? WalkDetailRecommendedAction
                 .activateTracking
-            : WalkDetailRecommendedAction.followRoute;
+            : WalkDetailRecommendedAction
+                .followRoute;
       }
 
       return isWalker
-          ? WalkDetailRecommendedAction.finishWalk
-          : WalkDetailRecommendedAction.followRoute;
+          ? WalkDetailRecommendedAction
+              .finishWalk
+          : WalkDetailRecommendedAction
+              .followRoute;
     }
 
     if (current.isCompleted) {
@@ -274,24 +340,30 @@ class WalkDetailState {
   }
 
   String get recommendedTitle {
+    final current = walk;
+
+    if (current?.hasPendingPetProposal == true) {
+      return isOwner
+          ? 'Revisa la propuesta'
+          : 'Esperando respuesta';
+    }
+
     switch (recommendedAction) {
       case WalkDetailRecommendedAction.waitForWalker:
         return 'Esperando confirmación';
       case WalkDetailRecommendedAction.reviewRequest:
         return 'Revisa la solicitud';
       case WalkDetailRecommendedAction.preparePet:
-        return 'Prepara a tu mascota';
+        return 'Prepara a tus mascotas';
       case WalkDetailRecommendedAction.startWalk:
         return 'Listo para iniciar';
-      case WalkDetailRecommendedAction
-            .uploadStartEvidence:
+      case WalkDetailRecommendedAction.uploadStartEvidence:
         return 'Registra la entrega';
       case WalkDetailRecommendedAction.activateTracking:
         return 'Mantén activo el seguimiento';
       case WalkDetailRecommendedAction.followRoute:
         return 'Consulta el recorrido';
-      case WalkDetailRecommendedAction
-            .uploadEndEvidence:
+      case WalkDetailRecommendedAction.uploadEndEvidence:
         return 'Registra el final';
       case WalkDetailRecommendedAction.finishWalk:
         return 'Finaliza el servicio';
@@ -307,24 +379,32 @@ class WalkDetailState {
   }
 
   String get recommendedDescription {
+    final current = walk;
+
+    if (current?.hasPendingPetProposal == true) {
+      if (isOwner) {
+        return 'Elige si aceptas las mascotas y el precio propuestos por el paseador.';
+      }
+
+      return 'No podrás iniciar el paseo hasta que el dueño responda.';
+    }
+
     switch (recommendedAction) {
       case WalkDetailRecommendedAction.waitForWalker:
         return 'Te avisaremos cuando el paseador responda a la solicitud.';
       case WalkDetailRecommendedAction.reviewRequest:
-        return 'Confirma que el horario, mascota, precio y punto de recogida sean correctos.';
+        return 'Confirma que horario, mascotas, precio y recogida sean correctos.';
       case WalkDetailRecommendedAction.preparePet:
-        return 'Ten listo su collar, correa y cualquier indicación importante.';
+        return 'Ten listos sus collares, correas e indicaciones importantes.';
       case WalkDetailRecommendedAction.startWalk:
-        return 'Inicia el paseo al encontrarte con la mascota y registra la evidencia.';
-      case WalkDetailRecommendedAction
-            .uploadStartEvidence:
-        return 'Sube una fotografía que confirme la recepción de la mascota.';
+        return 'Inicia el paseo al encontrarte con las mascotas.';
+      case WalkDetailRecommendedAction.uploadStartEvidence:
+        return 'Sube una fotografía que confirme la recepción.';
       case WalkDetailRecommendedAction.activateTracking:
-        return 'Comparte la ubicación durante el recorrido y registra la evidencia final.';
+        return 'Comparte tu ubicación durante el recorrido.';
       case WalkDetailRecommendedAction.followRoute:
-        return 'Revisa la ubicación y utiliza el chat si necesitas comunicarte.';
-      case WalkDetailRecommendedAction
-            .uploadEndEvidence:
+        return 'Revisa la ubicación y utiliza el chat si lo necesitas.';
+      case WalkDetailRecommendedAction.uploadEndEvidence:
         return 'Sube una fotografía antes de cerrar el servicio.';
       case WalkDetailRecommendedAction.finishWalk:
         return 'La evidencia está completa y el paseo puede finalizar.';
@@ -372,11 +452,15 @@ class WalkDetailState {
       role: role ?? this.role,
       requestedId:
           requestedId ?? this.requestedId,
-      walk: clearWalk ? null : walk ?? this.walk,
+      walk: clearWalk
+          ? null
+          : walk ?? this.walk,
     );
   }
 
-  static String _normalizeRole(String value) {
+  static String _normalizeRole(
+    String value,
+  ) {
     return value
         .trim()
         .toLowerCase()
@@ -387,6 +471,9 @@ class WalkDetailState {
         .replaceAll('ú', 'u')
         .replaceAll('ü', 'u')
         .replaceAll('ñ', 'n')
-        .replaceAll(RegExp(r'[\s_\-]'), '');
+        .replaceAll(
+          RegExp(r'[\s_\-]'),
+          '',
+        );
   }
 }

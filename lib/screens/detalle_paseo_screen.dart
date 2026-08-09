@@ -14,6 +14,9 @@ import 'tracking_paseo_screen.dart';
 import 'walks/models/walk_detail.dart';
 import 'walks/walk_detail_controller.dart';
 import 'walks/walk_detail_state.dart';
+import 'walks/widgets/walk_pets_section.dart';
+import 'package:latlong2/latlong.dart';
+import 'walks/widgets/walk_route_management_card.dart';
 
 class DetallePaseoScreen extends StatefulWidget {
   final int? id;
@@ -21,6 +24,7 @@ class DetallePaseoScreen extends StatefulWidget {
   final Map<String, dynamic>? paseo;
   final String? rol;
   final VoidCallback? onPaseoActualizado;
+  final bool openMapOnLoad;
 
   const DetallePaseoScreen({
     super.key,
@@ -29,6 +33,7 @@ class DetallePaseoScreen extends StatefulWidget {
     this.paseo,
     this.rol,
     this.onPaseoActualizado,
+    this.openMapOnLoad = false,
   });
 
   @override
@@ -39,6 +44,7 @@ class DetallePaseoScreen extends StatefulWidget {
 class _DetallePaseoScreenState
     extends State<DetallePaseoScreen> {
   late final WalkDetailController _controller;
+  bool _automaticMapOpened = false;
 
   @override
   void initState() {
@@ -388,6 +394,29 @@ class _DetallePaseoScreenState
     );
   }
 
+    void _scheduleAutomaticMap(
+    WalkDetailState state,
+  ) {
+    if (!widget.openMapOnLoad ||
+        _automaticMapOpened ||
+        state.walk == null ||
+        !state.canOpenMap) {
+      return;
+    }
+
+    _automaticMapOpened = true;
+
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) async {
+        if (!mounted) {
+          return;
+        }
+
+        await _openMap();
+      },
+    );
+  }
+
   Future<void> _openTracking() async {
     final state = _controller.state;
     final walk = state.walk;
@@ -518,6 +547,7 @@ class _DetallePaseoScreenState
       animation: _controller,
       builder: (context, _) {
         final state = _controller.state;
+            _scheduleAutomaticMap(state);
 
         return Scaffold(
           backgroundColor: DogGoTheme.cream,
@@ -625,6 +655,11 @@ class _DetallePaseoScreenState
             walk: walk,
           ),
           const SizedBox(height: 14),
+          WalkPetsSection(
+            state: state,
+            controller: _controller,
+          ),
+          const SizedBox(height: 14),
           _ParticipantsCard(
             walk: walk,
             isWalker: state.isWalker,
@@ -635,6 +670,27 @@ class _DetallePaseoScreenState
             onOpenMap:
                 state.canOpenMap ? _openMap : null,
           ),
+
+          const SizedBox(height: 14),
+
+          WalkRouteManagementCard(
+            walkId: walk.id,
+            initialCenter:
+                walk.hasPickupCoordinates
+                    ? LatLng(
+                        walk.pickupLatitude!,
+                        walk.pickupLongitude!,
+                      )
+                    : const LatLng(
+                        25.6866,
+                        -100.3161,
+                      ),
+            canManage: state.isOwner &&
+                (walk.isPending ||
+                    walk.isAccepted),
+            onOpenMap: _openMap,
+          ),
+
           const SizedBox(height: 22),
           _EvidenceSection(
             state: state,
@@ -755,7 +811,7 @@ class _StatusHero extends StatelessWidget {
                       CrossAxisAlignment.start,
                   children: [
                     Text(
-                      walk.petName,
+                      walk.petsLabel,
                       maxLines: 1,
                       overflow:
                           TextOverflow.ellipsis,

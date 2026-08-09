@@ -1,5 +1,6 @@
 import 'package:latlong2/latlong.dart';
 
+import '../routes/models/doggo_route.dart';
 import '../walks/models/walk_detail.dart';
 import 'models/tracking_point.dart';
 
@@ -9,8 +10,13 @@ class WalkMapState {
   final bool loading;
   final bool refreshing;
   final String? error;
+
+  // Ruta realmente recorrida por GPS.
   final List<TrackingPoint> route;
   final TrackingPoint? latestPoint;
+
+  // Ruta planeada por el dueño.
+  final PlannedDoggoRoute? plannedRoute;
 
   const WalkMapState({
     required this.walk,
@@ -20,6 +26,7 @@ class WalkMapState {
     this.error,
     this.route = const [],
     this.latestPoint,
+    this.plannedRoute,
   });
 
   bool get isWalker {
@@ -43,6 +50,20 @@ class WalkMapState {
 
   bool get hasRoute {
     return route.isNotEmpty;
+  }
+
+  bool get hasPlannedRoute {
+    return plannedRoute != null &&
+        plannedPathLatLng.isNotEmpty;
+  }
+
+  bool get hasAnyRoute {
+    return hasRoute || hasPlannedRoute;
+  }
+
+  bool get outsidePlannedRoute {
+    return plannedRoute?.outsideRoute ??
+        false;
   }
 
   bool get hasCurrentPosition {
@@ -96,13 +117,53 @@ class WalkMapState {
         .toList(growable: false);
   }
 
+  List<LatLng> get plannedPathLatLng {
+    final planned = plannedRoute;
+
+    if (planned == null) {
+      return const [];
+    }
+
+    return planned.pathPoints
+        .map((point) => point.position)
+        .toList(growable: false);
+  }
+
+  List<DoggoRoutePoint>
+      get plannedCheckpoints {
+    return plannedRoute?.checkpoints ??
+        const [];
+  }
+
+  bool get plannedRouteIsArea {
+    return plannedRoute?.isArea ?? false;
+  }
+
+  int get plannedAllowedRadius {
+    return plannedRoute
+            ?.allowedRadiusMeters ??
+        0;
+  }
+
+  String get plannedRouteName {
+    return plannedRoute?.name ??
+        'Ruta planificada';
+  }
+
   LatLng get initialCenter {
     final current = currentLatLng;
-    final pickup = pickupPoint;
 
     if (current != null) {
       return current;
     }
+
+    final planned = plannedPathLatLng;
+
+    if (planned.isNotEmpty) {
+      return planned.first;
+    }
+
+    final pickup = pickupPoint;
 
     if (pickup != null) {
       return pickup;
@@ -166,14 +227,31 @@ class WalkMapState {
 
   String get routePointsLabel {
     if (route.isEmpty) {
-      return 'Sin puntos';
+      return 'Sin GPS';
     }
 
     if (route.length == 1) {
-      return '1 punto';
+      return '1 punto GPS';
     }
 
-    return '${route.length} puntos';
+    return '${route.length} puntos GPS';
+  }
+
+  String get plannedRouteLabel {
+    final planned = plannedRoute;
+
+    if (planned == null) {
+      return 'Sin ruta planeada';
+    }
+
+    final pathCount =
+        planned.pathPoints.length;
+
+    final checkpointCount =
+        planned.checkpoints.length;
+
+    return '$pathCount puntos · '
+        '$checkpointCount avisos';
   }
 
   String get lastUpdateLabel {
@@ -221,33 +299,55 @@ class WalkMapState {
   }
 
   String get statusMessage {
+    if (outsidePlannedRoute) {
+      return 'El paseador se encuentra fuera '
+          'del recorrido permitido.';
+    }
+
     if (walk.isPending) {
-      return 'El mapa estará disponible cuando el paseo sea aceptado e iniciado.';
+      return hasPlannedRoute
+          ? 'La ruta está lista. El GPS se '
+              'activará cuando comience el paseo.'
+          : 'El mapa estará disponible cuando '
+              'el paseo sea aceptado e iniciado.';
     }
 
     if (walk.isAccepted) {
-      return 'La ubicación en vivo se activará cuando el paseador inicie el servicio.';
+      return hasPlannedRoute
+          ? 'Recorrido preparado. La ubicación '
+              'en vivo aparecerá al iniciar.'
+          : 'La ubicación en vivo se activará '
+              'cuando el paseador inicie el servicio.';
     }
 
     if (walk.isCancelled ||
         walk.isRejected) {
-      return 'El seguimiento no está disponible porque el paseo fue cerrado.';
+      return 'El seguimiento no está disponible '
+          'porque el paseo fue cerrado.';
     }
 
     if (walk.isCompleted) {
       return hasRoute
-          ? 'Se muestra la ruta registrada durante el paseo.'
-          : 'El paseo finalizó sin una ruta GPS disponible.';
+          ? 'Se muestra el recorrido GPS '
+              'realizado durante el paseo.'
+          : 'El paseo finalizó sin una ruta '
+              'GPS disponible.';
     }
 
     if (walk.isInProgress) {
       if (!hasCurrentPosition) {
-        return 'El paseo está activo, pero todavía no se ha recibido una ubicación.';
+        return hasPlannedRoute
+            ? 'La ruta está preparada, pero '
+                'todavía no se recibe ubicación GPS.'
+            : 'El paseo está activo, pero todavía '
+                'no se ha recibido una ubicación.';
       }
 
       return locationIsRecent
-          ? 'La posición se está actualizando en tiempo real.'
-          : 'La última posición puede estar desactualizada.';
+          ? 'La posición se está actualizando '
+              'en tiempo real.'
+          : 'La última posición puede estar '
+              'desactualizada.';
     }
 
     return 'Seguimiento no disponible.';
@@ -263,6 +363,8 @@ class WalkMapState {
     List<TrackingPoint>? route,
     TrackingPoint? latestPoint,
     bool clearLatestPoint = false,
+    PlannedDoggoRoute? plannedRoute,
+    bool clearPlannedRoute = false,
   }) {
     return WalkMapState(
       walk: walk ?? this.walk,
@@ -270,16 +372,24 @@ class WalkMapState {
       loading: loading ?? this.loading,
       refreshing:
           refreshing ?? this.refreshing,
-      error:
-          clearError ? null : error ?? this.error,
+      error: clearError
+          ? null
+          : error ?? this.error,
       route: route ?? this.route,
       latestPoint: clearLatestPoint
           ? null
-          : latestPoint ?? this.latestPoint,
+          : latestPoint ??
+              this.latestPoint,
+      plannedRoute: clearPlannedRoute
+          ? null
+          : plannedRoute ??
+              this.plannedRoute,
     );
   }
 
-  static String _normalizeRole(String value) {
+  static String _normalizeRole(
+    String value,
+  ) {
     return value
         .trim()
         .toLowerCase()
@@ -290,6 +400,9 @@ class WalkMapState {
         .replaceAll('ú', 'u')
         .replaceAll('ü', 'u')
         .replaceAll('ñ', 'n')
-        .replaceAll(RegExp(r'[\s_\-]'), '');
+        .replaceAll(
+          RegExp(r'[\s_\-]'),
+          '',
+        );
   }
 }

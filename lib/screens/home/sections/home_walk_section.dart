@@ -4,6 +4,7 @@ import '../../../shared/widgets/doggo_error_view.dart';
 import '../../../shared/widgets/doggo_skeleton_card.dart';
 import '../../../theme/doggo_radius.dart';
 import '../../../theme/doggo_theme.dart';
+import '../widgets/home_walk_pet_images.dart';
 
 class HomeWalkSection extends StatelessWidget {
   final bool loading;
@@ -13,7 +14,14 @@ class HomeWalkSection extends StatelessWidget {
   final String subtitle;
   final String statusText;
   final Color statusColor;
+
+  // Se conserva para llamadas anteriores.
   final String imageUrl;
+
+  // Nuevos datos para múltiples mascotas.
+  final List<String> imageUrls;
+  final int petCount;
+
   final String primaryLabel;
   final String secondaryLabel;
   final VoidCallback onPrimary;
@@ -29,6 +37,8 @@ class HomeWalkSection extends StatelessWidget {
     required this.statusText,
     required this.statusColor,
     required this.imageUrl,
+    this.imageUrls = const [],
+    this.petCount = 1,
     required this.primaryLabel,
     required this.secondaryLabel,
     required this.onPrimary,
@@ -37,10 +47,25 @@ class HomeWalkSection extends StatelessWidget {
     this.errorMessage,
   });
 
+  List<String> get _effectiveImages {
+    if (imageUrls.isNotEmpty) {
+      return imageUrls;
+    }
+
+    return imageUrl.trim().isEmpty
+        ? const []
+        : [imageUrl];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+      padding: const EdgeInsets.fromLTRB(
+        24,
+        18,
+        24,
+        0,
+      ),
       child: _buildContent(),
     );
   }
@@ -48,14 +73,16 @@ class HomeWalkSection extends StatelessWidget {
   Widget _buildContent() {
     if (loading) {
       return const DogGoSkeletonCard(
-        height: 292,
-        borderRadius: DogGoRadius.extraLarge,
+        height: 304,
+        borderRadius:
+            DogGoRadius.extraLarge,
       );
     }
 
     if (errorMessage != null) {
       return DogGoErrorView(
-        title: 'No pudimos cargar tus paseos',
+        title:
+            'No pudimos cargar tus paseos',
         message: errorMessage!,
         icon: Icons.route_outlined,
         onRetry: onRetry,
@@ -68,7 +95,8 @@ class HomeWalkSection extends StatelessWidget {
       subtitle: subtitle,
       statusText: statusText,
       statusColor: statusColor,
-      imageUrl: imageUrl,
+      imageUrls: _effectiveImages,
+      petCount: petCount,
       primaryLabel: primaryLabel,
       secondaryLabel: secondaryLabel,
       onPrimary: onPrimary,
@@ -83,7 +111,8 @@ class _WalkCard extends StatelessWidget {
   final String subtitle;
   final String statusText;
   final Color statusColor;
-  final String imageUrl;
+  final List<String> imageUrls;
+  final int petCount;
   final String primaryLabel;
   final String secondaryLabel;
   final VoidCallback onPrimary;
@@ -95,107 +124,119 @@ class _WalkCard extends StatelessWidget {
     required this.subtitle,
     required this.statusText,
     required this.statusColor,
-    required this.imageUrl,
+    required this.imageUrls,
+    required this.petCount,
     required this.primaryLabel,
     required this.secondaryLabel,
     required this.onPrimary,
     required this.onSecondary,
   });
 
-  bool get _hasImage {
-    return imageUrl.startsWith('http://') ||
-        imageUrl.startsWith('https://');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Semantics(
       container: true,
-      label: '$eyebrow. $title. $subtitle. $statusText',
+      label:
+          '$eyebrow. $title. $subtitle. $statusText',
       child: Container(
-        height: 292,
+        height: 304,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: DogGoTheme.teal,
           borderRadius: BorderRadius.circular(
             DogGoRadius.extraLarge,
           ),
-          boxShadow: DogGoTheme.elevatedShadow(),
+          boxShadow:
+              DogGoTheme.elevatedShadow(),
         ),
-        clipBehavior: Clip.antiAlias,
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            Positioned(
-              right: -6,
-              top: 16,
-              bottom: 62,
-              width: 178,
-              child: _buildImage(),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FractionallySizedBox(
+                widthFactor: .67,
+                heightFactor: 1,
+                alignment:
+                    Alignment.centerRight,
+                child: HomeWalkPetImages(
+                  imageUrls: imageUrls,
+                  petCount: petCount,
+                ),
+              ),
             ),
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  22,
-                  22,
-                  20,
-                  18,
-                ),
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 215,
-                      child: Text(
-                        eyebrow,
-                        style: DogGoTheme.label(
-                          size: 10.5,
-                          color: DogGoTheme.orange,
-                        ),
+            const _WalkGradient(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                22,
+                22,
+                20,
+                18,
+              ),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 215,
+                    child: Text(
+                      eyebrow,
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style: DogGoTheme.label(
+                        size: 10.5,
+                        color: DogGoTheme.orange,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: 220,
-                      child: Text(
-                        title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: DogGoTheme.title(
-                          size: 25,
-                          color: Colors.white,
-                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: 220,
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style: DogGoTheme.title(
+                        size: 25,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: 220,
-                      child: Text(
-                        subtitle,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: DogGoTheme.body(
-                          size: 12.7,
-                          color: Colors.white.withValues(
-                            alpha: .82,
-                          ),
-                          weight: FontWeight.w600,
+                  ),
+                  const SizedBox(height: 9),
+                  SizedBox(
+                    width: 225,
+                    child: Text(
+                      subtitle,
+                      maxLines: 3,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style: DogGoTheme.body(
+                        size: 12.7,
+                        color: Colors.white
+                            .withValues(
+                          alpha: .86,
                         ),
+                        weight: FontWeight.w600,
                       ),
                     ),
-                    const Spacer(),
-                    _WalkStatus(
-                      text: statusText,
-                      color: statusColor,
-                    ),
-                    const SizedBox(height: 13),
-                    _WalkActions(
-                      primaryLabel: primaryLabel,
-                      secondaryLabel: secondaryLabel,
-                      onPrimary: onPrimary,
-                      onSecondary: onSecondary,
-                    ),
-                  ],
-                ),
+                  ),
+                  const Spacer(),
+                  _StatusBadge(
+                    text: statusText,
+                    color: statusColor,
+                  ),
+                  const SizedBox(height: 13),
+                  _Actions(
+                    primaryLabel:
+                        primaryLabel,
+                    secondaryLabel:
+                        secondaryLabel,
+                    onPrimary: onPrimary,
+                    onSecondary: onSecondary,
+                  ),
+                ],
               ),
             ),
           ],
@@ -203,47 +244,43 @@ class _WalkCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildImage() {
-    if (!_hasImage) {
-      return const _WalkPlaceholder();
-    }
+class _WalkGradient extends StatelessWidget {
+  const _WalkGradient();
 
-    return ShaderMask(
-      shaderCallback: (rect) {
-        return const LinearGradient(
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [
-            Colors.transparent,
-            Colors.white,
-            Colors.white,
+            DogGoTheme.teal,
+            DogGoTheme.teal,
+            Color(0xEA087D68),
+            Color(0x66087D68),
+            Color(0x22087D68),
           ],
-          stops: [0, .32, 1],
-        ).createShader(rect);
-      },
-      blendMode: BlendMode.dstIn,
-      child: Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        errorBuilder: (
-          context,
-          error,
-          stackTrace,
-        ) {
-          return const _WalkPlaceholder();
-        },
+          stops: [
+            0,
+            .38,
+            .56,
+            .78,
+            1,
+          ],
+        ),
       ),
     );
   }
 }
 
-class _WalkStatus extends StatelessWidget {
+class _StatusBadge extends StatelessWidget {
   final String text;
   final Color color;
 
-  const _WalkStatus({
+  const _StatusBadge({
     required this.text,
     required this.color,
   });
@@ -256,12 +293,12 @@ class _WalkStatus extends StatelessWidget {
         vertical: 7,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: .20),
+        color: color.withValues(alpha: .23),
         borderRadius: BorderRadius.circular(
           DogGoRadius.pill,
         ),
         border: Border.all(
-          color: color.withValues(alpha: .62),
+          color: color.withValues(alpha: .68),
         ),
       ),
       child: Text(
@@ -276,13 +313,13 @@ class _WalkStatus extends StatelessWidget {
   }
 }
 
-class _WalkActions extends StatelessWidget {
+class _Actions extends StatelessWidget {
   final String primaryLabel;
   final String secondaryLabel;
   final VoidCallback onPrimary;
   final VoidCallback onSecondary;
 
-  const _WalkActions({
+  const _Actions({
     required this.primaryLabel,
     required this.secondaryLabel,
     required this.onPrimary,
@@ -300,14 +337,14 @@ class _WalkActions extends StatelessWidget {
               onPressed: onPrimary,
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
-                minimumSize: const Size(0, 47),
                 side: BorderSide(
                   color: Colors.white.withValues(
-                    alpha: .78,
+                    alpha: .82,
                   ),
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
+                  borderRadius:
+                      BorderRadius.circular(
                     DogGoRadius.button,
                   ),
                 ),
@@ -315,7 +352,8 @@ class _WalkActions extends StatelessWidget {
               child: Text(
                 primaryLabel,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                overflow:
+                    TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -328,11 +366,12 @@ class _WalkActions extends StatelessWidget {
               onPressed: onSecondary,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: DogGoTheme.teal,
-                minimumSize: const Size(0, 47),
+                foregroundColor:
+                    DogGoTheme.teal,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
+                  borderRadius:
+                      BorderRadius.circular(
                     DogGoRadius.button,
                   ),
                 ),
@@ -340,27 +379,13 @@ class _WalkActions extends StatelessWidget {
               child: Text(
                 secondaryLabel,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                overflow:
+                    TextOverflow.ellipsis,
               ),
             ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _WalkPlaceholder extends StatelessWidget {
-  const _WalkPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Icon(
-        Icons.pets_rounded,
-        size: 150,
-        color: Colors.white.withValues(alpha: .10),
-      ),
     );
   }
 }

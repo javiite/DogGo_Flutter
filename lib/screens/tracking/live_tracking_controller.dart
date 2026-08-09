@@ -338,6 +338,10 @@ class LiveTrackingController
         paseoId: _state.walkId,
         latitud: position.latitude,
         longitud: position.longitude,
+        precisionGpsMetros:
+            position.accuracy,
+        fechaLectura:
+            position.timestamp,
       );
 
       final sentAt = DateTime.now();

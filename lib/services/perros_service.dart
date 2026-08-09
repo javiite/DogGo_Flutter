@@ -1,51 +1,71 @@
 import 'api_service.dart';
 
 class PerrosService {
-  static Future<Map<String, dynamic>> obtenerMisPerros() async {
-    final response = await ApiService.getAuth('/api/perros');
+  static Future<Map<String, dynamic>>
+      obtenerMisPerros() async {
+    final response = await ApiService.getAuth(
+      '/api/perros',
+    );
 
-    final statusCode = response['statusCode'];
-    final body = response['body'];
+    final result = _normalizeResponse(
+      response,
+      fallback:
+          'No se pudieron obtener los perros.',
+    );
 
-    if (statusCode == 200 && body is Map && body['success'] == true) {
-      return {
-        'success': true,
-        'data': _normalizarLista(body['data']),
-      };
+    if (result['success'] == true) {
+      result['data'] = _normalizarLista(
+        result['data'],
+      );
     }
 
-    return {
-      'success': false,
-      'message': body is Map
-          ? body['message'] ?? 'No se pudieron obtener los perros.'
-          : 'No se pudieron obtener los perros.',
-      'statusCode': statusCode,
-    };
+    return result;
   }
 
-  static Future<Map<String, dynamic>> obtenerPerroPorId(int id) async {
-    final response = await ApiService.getAuth('/api/perros/$id');
+  static Future<Map<String, dynamic>>
+      obtenerPerroPorId(int id) async {
+    final response = await ApiService.getAuth(
+      '/api/perros/$id',
+    );
 
-    final statusCode = response['statusCode'];
-    final body = response['body'];
+    final result = _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo obtener el perro.',
+    );
 
-    if (statusCode == 200 && body is Map && body['success'] == true) {
-      return {
-        'success': true,
-        'data': _normalizarMapa(body['data']),
-      };
+    if (result['success'] == true) {
+      result['data'] = _normalizarMapa(
+        result['data'],
+      );
     }
 
-    return {
-      'success': false,
-      'message': body is Map
-          ? body['message'] ?? 'No se pudo obtener el perro.'
-          : 'No se pudo obtener el perro.',
-      'statusCode': statusCode,
-    };
+    return result;
   }
 
-  static Future<Map<String, dynamic>> registrarPerro({
+  static Future<Map<String, dynamic>>
+      obtenerFotos(int id) async {
+    final response = await ApiService.getAuth(
+      '/api/perros/$id/fotos',
+    );
+
+    final result = _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo obtener la galería.',
+    );
+
+    if (result['success'] == true) {
+      result['data'] = _normalizarLista(
+        result['data'],
+      );
+    }
+
+    return result;
+  }
+
+  static Future<Map<String, dynamic>>
+      registrarPerro({
     required String nombre,
     required String raza,
     required int edad,
@@ -53,67 +73,29 @@ class PerrosService {
     required String notas,
     String? fotoUrl,
   }) async {
-    final Map<String, dynamic> data = {
-      'nombre': nombre.trim(),
-      'Nombre': nombre.trim(),
-      'raza': raza.trim(),
-      'Raza': raza.trim(),
-      'edad': edad,
-      'Edad': edad,
-      'tamano': tamano.trim(),
-      'Tamano': tamano.trim(),
-      'tamanio': tamano.trim(),
-      'Tamanio': tamano.trim(),
-      'tamaño': tamano.trim(),
-      'Tamaño': tamano.trim(),
-      'notas': notas.trim(),
-      'Notas': notas.trim(),
-      'observaciones': notas.trim(),
-      'Observaciones': notas.trim(),
-    };
-
-    final foto = fotoUrl?.trim() ?? '';
-
-    if (foto.isNotEmpty) {
-      data['fotoUrl'] = foto;
-      data['FotoUrl'] = foto;
-      data['imagenUrl'] = foto;
-      data['ImagenUrl'] = foto;
-      data['urlFoto'] = foto;
-      data['UrlFoto'] = foto;
-      data['fotoPerroUrl'] = foto;
-      data['FotoPerroUrl'] = foto;
-    }
+    final data = _petBody(
+      nombre: nombre,
+      raza: raza,
+      edad: edad,
+      tamano: tamano,
+      notas: notas,
+      fotoUrl: fotoUrl,
+    );
 
     final response = await ApiService.postAuth(
       '/api/perros',
       data,
     );
 
-    final statusCode = response['statusCode'];
-    final body = response['body'];
-
-    if ((statusCode == 200 || statusCode == 201) &&
-        body is Map &&
-        body['success'] == true) {
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Perro registrado correctamente.',
-        'data': body['data'],
-      };
-    }
-
-    return {
-      'success': false,
-      'message': body is Map
-          ? body['message'] ??
-              'No se pudo registrar el perro. Verifica que hayas iniciado sesión.'
-          : 'No se pudo registrar el perro. Verifica que hayas iniciado sesión.',
-      'statusCode': statusCode,
-    };
+    return _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo registrar el perro.',
+    );
   }
 
-  static Future<Map<String, dynamic>> editarPerro({
+  static Future<Map<String, dynamic>>
+      editarPerro({
     required int id,
     required String nombre,
     required String raza,
@@ -122,158 +104,220 @@ class PerrosService {
     required String notas,
     String? fotoUrl,
   }) async {
-    final Map<String, dynamic> data = {
-      'nombre': nombre.trim(),
-      'Nombre': nombre.trim(),
-      'raza': raza.trim(),
-      'Raza': raza.trim(),
-      'edad': edad,
-      'Edad': edad,
-      'tamano': tamano.trim(),
-      'Tamano': tamano.trim(),
-      'tamanio': tamano.trim(),
-      'Tamanio': tamano.trim(),
-      'tamaño': tamano.trim(),
-      'Tamaño': tamano.trim(),
-      'notas': notas.trim(),
-      'Notas': notas.trim(),
-      'observaciones': notas.trim(),
-      'Observaciones': notas.trim(),
-    };
-
-    final foto = fotoUrl?.trim() ?? '';
-
-    if (foto.isNotEmpty) {
-      data['fotoUrl'] = foto;
-      data['FotoUrl'] = foto;
-      data['imagenUrl'] = foto;
-      data['ImagenUrl'] = foto;
-      data['urlFoto'] = foto;
-      data['UrlFoto'] = foto;
-      data['fotoPerroUrl'] = foto;
-      data['FotoPerroUrl'] = foto;
-    }
+    final data = _petBody(
+      nombre: nombre,
+      raza: raza,
+      edad: edad,
+      tamano: tamano,
+      notas: notas,
+      fotoUrl: fotoUrl,
+    );
 
     final response = await ApiService.putAuth(
       '/api/perros/$id',
       data,
     );
 
-    final statusCode = response['statusCode'];
-    final body = response['body'];
-
-    if (statusCode == 200 && body is Map && body['success'] == true) {
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Perro actualizado correctamente.',
-        'data': body['data'],
-      };
-    }
-
-    return {
-      'success': false,
-      'message': body is Map
-          ? body['message'] ?? 'No se pudo actualizar el perro.'
-          : 'No se pudo actualizar el perro.',
-      'statusCode': statusCode,
-    };
+    return _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo actualizar el perro.',
+    );
   }
 
-  static Future<Map<String, dynamic>> subirFotoPerro({
+  // Método anterior: sube una foto y la convierte
+  // directamente en la portada.
+  static Future<Map<String, dynamic>>
+      subirFotoPerro({
     required int id,
     required String filePath,
   }) async {
-    final nombresCampo = [
-      'foto',
-      'archivo',
-      'file',
-      'imagen',
-    ];
+    final response =
+        await ApiService.postMultipartAuth(
+      '/api/perros/$id/foto',
+      filePath: filePath,
+      fileFieldName: 'foto',
+    );
 
-    Map<String, dynamic>? ultimaRespuesta;
-
-    for (final nombreCampo in nombresCampo) {
-      final response = await ApiService.postMultipartAuth(
-        '/api/perros/$id/foto',
-        filePath: filePath,
-        fileFieldName: nombreCampo,
-      );
-
-      final statusCode = response['statusCode'];
-      final body = response['body'];
-
-      if ((statusCode == 200 || statusCode == 201) &&
-          body is Map &&
-          body['success'] == true) {
-        return {
-          'success': true,
-          'message': body['message'] ?? 'Foto del perro actualizada.',
-          'data': body['data'],
-          'statusCode': statusCode,
-        };
-      }
-
-      ultimaRespuesta = {
-        'success': false,
-        'message': body is Map
-            ? body['message'] ?? 'No se pudo subir la foto del perro.'
-            : 'No se pudo subir la foto del perro.',
-        'statusCode': statusCode,
-      };
-
-      if (statusCode == 401 || statusCode == 403 || statusCode == 404) {
-        break;
-      }
-    }
-
-    return ultimaRespuesta ??
-        {
-          'success': false,
-          'message': 'No se pudo subir la foto del perro.',
-        };
+    return _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo subir la foto.',
+    );
   }
 
-  static Future<Map<String, dynamic>> eliminarPerro(int id) async {
-    final response = await ApiService.deleteAuth('/api/perros/$id');
+  static Future<Map<String, dynamic>>
+      agregarFotoGaleria({
+    required int id,
+    required String filePath,
+    bool hacerPrincipal = false,
+  }) async {
+    final response =
+        await ApiService.postMultipartAuth(
+      '/api/perros/$id/fotos',
+      filePath: filePath,
+      fileFieldName: 'foto',
+      fields: {
+        'principal':
+            hacerPrincipal.toString(),
+      },
+    );
 
-    final statusCode = response['statusCode'];
-    final body = response['body'];
+    return _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo agregar la fotografía.',
+    );
+  }
 
-    if (statusCode == 200 && body is Map && body['success'] == true) {
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Perro eliminado correctamente.',
-      };
+  static Future<Map<String, dynamic>>
+      marcarFotoPrincipal({
+    required int id,
+    required int fotoId,
+  }) async {
+    final response = await ApiService.putAuth(
+      '/api/perros/$id/fotos/'
+      '$fotoId/principal',
+    );
+
+    return _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo cambiar la foto principal.',
+    );
+  }
+
+  static Future<Map<String, dynamic>>
+      eliminarFotoGaleria({
+    required int id,
+    required int fotoId,
+  }) async {
+    final response =
+        await ApiService.deleteAuth(
+      '/api/perros/$id/fotos/$fotoId',
+    );
+
+    return _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo eliminar la fotografía.',
+    );
+  }
+
+  static Future<Map<String, dynamic>>
+      eliminarPerro(int id) async {
+    final response =
+        await ApiService.deleteAuth(
+      '/api/perros/$id',
+    );
+
+    return _normalizeResponse(
+      response,
+      fallback:
+          'No se pudo eliminar el perro.',
+    );
+  }
+
+  static Map<String, dynamic> _petBody({
+    required String nombre,
+    required String raza,
+    required int edad,
+    required String tamano,
+    required String notas,
+    String? fotoUrl,
+  }) {
+    final data = <String, dynamic>{
+      'nombre': nombre.trim(),
+      'raza': raza.trim(),
+      'edad': edad,
+      'tamano': tamano.trim(),
+      'tamanio': tamano.trim(),
+      'tamaño': tamano.trim(),
+      'notas': notas.trim(),
+      'observaciones': notas.trim(),
+    };
+
+    final photo = fotoUrl?.trim() ?? '';
+
+    if (photo.isNotEmpty) {
+      data['fotoUrl'] = photo;
+      data['imagenUrl'] = photo;
     }
 
+    return data;
+  }
+
+  static Map<String, dynamic>
+      _normalizeResponse(
+    Map<String, dynamic> response, {
+    required String fallback,
+  }) {
+    final statusCode = response['statusCode'];
+    final rawBody =
+        response['body'] ?? response;
+
+    final body = rawBody is Map
+        ? Map<String, dynamic>.from(rawBody)
+        : <String, dynamic>{};
+
+    final validStatus = statusCode is int
+        ? statusCode >= 200 &&
+            statusCode < 300
+        : false;
+
+    final successValue = body['success'];
+    final success = successValue is bool
+        ? successValue
+        : validStatus;
+
     return {
-      'success': false,
-      'message': body is Map
-          ? body['message'] ?? 'No se pudo eliminar el perro.'
-          : 'No se pudo eliminar el perro.',
+      'success': success,
+      'message': (
+        body['message'] ??
+        body['mensaje'] ??
+        response['message'] ??
+        fallback
+      ).toString(),
+      'data': body['data'] ?? body['Data'],
       'statusCode': statusCode,
     };
   }
 
-  static List<dynamic> _normalizarLista(dynamic data) {
-    if (data is List) return data;
+  static List<dynamic> _normalizarLista(
+    dynamic data,
+  ) {
+    if (data is List) {
+      return data;
+    }
 
     if (data is Map) {
-      final posibleLista = data['items'] ??
-          data['perros'] ??
-          data['data'] ??
-          data['result'] ??
-          data['resultado'];
+      final possibleList =
+          data['items'] ??
+              data['perros'] ??
+              data['fotos'] ??
+              data['data'] ??
+              data['result'] ??
+              data['resultado'];
 
-      if (posibleLista is List) return posibleLista;
+      if (possibleList is List) {
+        return possibleList;
+      }
     }
 
     return [];
   }
 
-  static Map<String, dynamic> _normalizarMapa(dynamic data) {
-    if (data is Map<String, dynamic>) return data;
-    if (data is Map) return Map<String, dynamic>.from(data);
+  static Map<String, dynamic> _normalizarMapa(
+    dynamic data,
+  ) {
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+
     return {};
   }
 }

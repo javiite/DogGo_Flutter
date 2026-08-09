@@ -14,6 +14,7 @@ import 'home/models/home_walk_status.dart';
 import 'mapa_paseo_screen.dart';
 import 'walks/walks_controller.dart';
 import 'walks/walks_state.dart';
+import 'home/widgets/home_walk_pet_avatar.dart';
 
 class MisPaseosScreen extends StatefulWidget {
   final int? usuarioId;
@@ -1013,8 +1014,10 @@ class _WalkCard extends StatelessWidget {
                 CrossAxisAlignment.start,
             children: [
               _WalkPhoto(
-                imageUrl: walk.imageUrl,
-                color: color,
+                  imageUrl: walk.imageUrl,
+                  imageUrls: walk.petImageUrls,
+                  petCount: walk.petCount,
+                  color: color,
               ),
               const SizedBox(width: DogGoSpacing.md),
               Expanded(
@@ -1256,42 +1259,25 @@ class _WalkCard extends StatelessWidget {
 
 class _WalkPhoto extends StatelessWidget {
   final String imageUrl;
+  final List<String> imageUrls;
+  final int petCount;
   final Color color;
 
   const _WalkPhoto({
     required this.imageUrl,
+    required this.imageUrls,
+    required this.petCount,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 76,
-      height: 76,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
-      ),
-      child: imageUrl.isEmpty
-          ? Icon(
-              Icons.pets_rounded,
-              color: color,
-              size: 30,
-            )
-          : Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return Icon(
-                  Icons.pets_rounded,
-                  color: color,
-                  size: 30,
-                );
-              },
-            ),
+    return HomeWalkPetAvatar(
+      imageUrls: imageUrls,
+      fallbackImageUrl: imageUrl,
+      petCount: petCount,
+      size: 76,
+      accentColor: color,
     );
   }
 }

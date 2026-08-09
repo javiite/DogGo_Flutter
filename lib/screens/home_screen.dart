@@ -30,6 +30,7 @@ import 'mis_perros_screen.dart';
 import 'mis_paseos_screen.dart';
 import 'notificaciones_screen.dart';
 import 'perfil_screen.dart';
+import 'routes/saved_routes_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -47,6 +48,10 @@ class _HomeScreenState
   late final HomeController _controller;
 
   int _navigationIndex = 0;
+
+  HomeState get _state {
+    return _controller.state;
+  }
 
   @override
   void initState() {
@@ -73,10 +78,6 @@ class _HomeScreenState
     if (mounted) {
       setState(() {});
     }
-  }
-
-  HomeState get _state {
-    return _controller.state;
   }
 
   Future<void> _open(
@@ -314,126 +315,195 @@ class _HomeScreenState
   void _showMenu() {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor:
           Colors.transparent,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Container(
-            margin:
-                const EdgeInsets.all(12),
-            padding:
-                const EdgeInsets.fromLTRB(
-              18,
-              12,
-              18,
-              18,
-            ),
-            decoration: BoxDecoration(
-              color: DogGoTheme.card,
-              borderRadius:
-                  BorderRadius.circular(
-                26,
+        final screenHeight =
+            MediaQuery.sizeOf(
+          sheetContext,
+        ).height;
+
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight:
+                screenHeight * 0.86,
+          ),
+          margin: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: DogGoTheme.card,
+            borderRadius:
+                BorderRadius.circular(26),
+            boxShadow:
+                DogGoTheme.softShadow(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 46,
+                height: 5,
+                decoration: BoxDecoration(
+                  color:
+                      DogGoTheme.border,
+                  borderRadius:
+                      BorderRadius.circular(
+                    20,
+                  ),
+                ),
               ),
-              boxShadow:
-                  DogGoTheme.softShadow(),
-            ),
-            child: Column(
-              mainAxisSize:
-                  MainAxisSize.min,
-              children: [
-                Container(
-                  width: 46,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color:
-                        DogGoTheme.border,
-                    borderRadius:
-                        BorderRadius.circular(
-                      20,
+              const SizedBox(height: 10),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(
+                  horizontal: 18,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Menú',
+                        style:
+                            DogGoTheme.title(
+                          size: 20,
+                        ),
+                      ),
                     ),
+                    IconButton(
+                      tooltip: 'Cerrar menú',
+                      onPressed: () {
+                        Navigator.pop(
+                          sheetContext,
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.close_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  physics:
+                      const BouncingScrollPhysics(),
+                  padding:
+                      const EdgeInsets.fromLTRB(
+                    18,
+                    8,
+                    18,
+                    18,
                   ),
+                  children: [
+                    _HomeMenuItem(
+                      icon: Icons
+                          .notifications_outlined,
+                      title:
+                          'Notificaciones',
+                      onTap: () {
+                        Navigator.pop(
+                          sheetContext,
+                        );
+                        _openNotifications();
+                      },
+                    ),
+                    _HomeMenuItem(
+                      icon: Icons
+                          .person_outline_rounded,
+                      title: 'Mi perfil',
+                      onTap: () {
+                        Navigator.pop(
+                          sheetContext,
+                        );
+                        _open(
+                          const PerfilScreen(),
+                        );
+                      },
+                    ),
+                    _HomeMenuItem(
+                      icon: Icons
+                          .settings_rounded,
+                      title:
+                          'Configuración',
+                      onTap: () {
+                        Navigator.pop(
+                          sheetContext,
+                        );
+                        _open(
+                          const ConfiguracionScreen(),
+                        );
+                      },
+                    ),
+                    _HomeMenuItem(
+                      icon:
+                          Icons.route_rounded,
+                      title: 'Mis paseos',
+                      onTap: () {
+                        Navigator.pop(
+                          sheetContext,
+                        );
+                        _open(
+                          const MisPaseosScreen(),
+                        );
+                      },
+                    ),
+                    if (_state.isOwner ||
+                        _state.isAdmin)
+                      _HomeMenuItem(
+                        icon:
+                            Icons.pets_rounded,
+                        title:
+                            'Mis mascotas',
+                        onTap: () {
+                          Navigator.pop(
+                            sheetContext,
+                          );
+                          _open(
+                            const MisPerrosScreen(),
+                          );
+                        },
+                      ),
+                    const Divider(
+                      height: 18,
+                    ),
+                    if (_state.isOwner ||
+                        _state.isAdmin)
+                      _HomeMenuItem(
+                        icon:
+                            Icons.alt_route_rounded,
+                        title:
+                            'Mis rutas',
+                        onTap: () {
+                          Navigator.pop(
+                            sheetContext,
+                          );
+                          _open(
+                            SavedRoutesScreen(),
+                          );
+                        },
+                      ),
+                    _HomeMenuItem(
+                      icon:
+                          Icons.logout_rounded,
+                      title:
+                          'Cerrar sesión',
+                      danger: true,
+                      onTap: () {
+                        Navigator.pop(
+                          sheetContext,
+                        );
+                        _closeSession();
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                _HomeMenuItem(
-                  icon: Icons
-                      .notifications_outlined,
-                  title: 'Notificaciones',
-                  onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                    );
-                    _openNotifications();
-                  },
-                ),
-                _HomeMenuItem(
-                  icon: Icons
-                      .person_outline_rounded,
-                  title: 'Mi perfil',
-                  onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                    );
-                    _open(
-                      const PerfilScreen(),
-                    );
-                  },
-                ),
-                _HomeMenuItem(
-                  icon:
-                      Icons.settings_rounded,
-                  title: 'Configuración',
-                  onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                    );
-                    _open(
-                      const ConfiguracionScreen(),
-                    );
-                  },
-                ),
-                _HomeMenuItem(
-                  icon:
-                      Icons.route_rounded,
-                  title: 'Mis paseos',
-                  onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                    );
-                    _open(
-                      const MisPaseosScreen(),
-                    );
-                  },
-                ),
-                if (_state.isOwner ||
-                    _state.isAdmin)
-                  _HomeMenuItem(
-                    icon:
-                        Icons.pets_rounded,
-                    title: 'Mis mascotas',
-                    onTap: () {
-                      Navigator.pop(
-                        sheetContext,
-                      );
-                      _open(
-                        const MisPerrosScreen(),
-                      );
-                    },
-                  ),
-                const Divider(height: 18),
-                _HomeMenuItem(
-                  icon:
-                      Icons.logout_rounded,
-                  title: 'Cerrar sesión',
-                  danger: true,
-                  onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                    );
-                    _closeSession();
-                  },
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -880,6 +950,8 @@ class _HomeScreenState
         walk.status,
       ),
       imageUrl: walk.imageUrl,
+      imageUrls: walk.petImageUrls,
+      petCount: walk.petCount,
       primaryLabel: walk.isInProgress
           ? 'Ver recorrido'
           : 'Ver detalles',
@@ -996,7 +1068,7 @@ class _HomeMenuItem
         child: Padding(
           padding:
               const EdgeInsets.symmetric(
-            vertical: 13,
+            vertical: 12,
           ),
           child: Row(
             children: [

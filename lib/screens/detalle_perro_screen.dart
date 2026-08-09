@@ -9,6 +9,7 @@ import 'editar_perro_screen.dart';
 import 'pets/models/pet.dart';
 import 'pets/pet_detail_controller.dart';
 import 'pets/pet_detail_state.dart';
+import 'pets/widgets/pet_gallery_section.dart';
 
 class DetallePerroScreen extends StatefulWidget {
   final Map<String, dynamic> perro;
@@ -167,6 +168,11 @@ class _DetallePerroScreenState
             pet: pet,
             photoUrl: state.photoUrl,
             onEdit: () => _openEdit(pet),
+          ),
+          const SizedBox(height: DogGoSpacing.md),
+          PetGallerySection(
+            state: state,
+            controller: _controller,
           ),
           const SizedBox(height: DogGoSpacing.md),
           _buildGeneralInformation(pet),

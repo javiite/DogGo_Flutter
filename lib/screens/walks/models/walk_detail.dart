@@ -1,42 +1,75 @@
 import '../../home/models/home_walk_status.dart';
+import 'walk_pet.dart';
 
 class WalkDetail {
   final int id;
   final HomeWalkStatus status;
+  final String rawStatus;
+
   final DateTime? scheduledAt;
   final DateTime? startedAt;
   final DateTime? finishedAt;
   final DateTime? cancelledAt;
+
   final int durationMinutes;
+
   final double? price;
+  final double? basePrice;
+  final double? proposedPrice;
+
   final String petName;
+  final List<WalkPet> pets;
+
+  final int requestedPetCount;
+  final int proposedPetCount;
+  final int activePetCount;
+
   final String walkerName;
   final String ownerName;
+
   final String pickupAddress;
   final String pickupReferences;
   final String notes;
+
   final double? pickupLatitude;
   final double? pickupLongitude;
+
   final String? petPhotoPath;
   final String? startPhotoPath;
   final String? endPhotoPath;
+
   final String? cancellationReason;
   final String? cancelledBy;
+
+  final String? petChangeReason;
+  final DateTime? petChangeProposedAt;
+  final DateTime? petChangeAnsweredAt;
+  final bool? petChangeAccepted;
+
   final bool rated;
   final Map<String, dynamic> rawData;
 
   const WalkDetail({
     required this.id,
     required this.status,
+    this.rawStatus = '',
     this.scheduledAt,
     this.startedAt,
     this.finishedAt,
     this.cancelledAt,
     this.durationMinutes = 0,
     this.price,
+    this.basePrice,
+    this.proposedPrice,
     this.petName = 'Mascota',
-    this.walkerName = 'Paseador no asignado',
-    this.ownerName = 'Dueño no disponible',
+    this.pets = const [],
+    this.requestedPetCount = 0,
+    this.proposedPetCount = 0,
+    this.activePetCount = 0,
+    this.walkerName =
+        'Paseador no asignado',
+    this.ownerName =
+        'Dueño no disponible',
     this.pickupAddress =
         'Ubicación de recogida no definida',
     this.pickupReferences =
@@ -49,6 +82,10 @@ class WalkDetail {
     this.endPhotoPath,
     this.cancellationReason,
     this.cancelledBy,
+    this.petChangeReason,
+    this.petChangeProposedAt,
+    this.petChangeAnsweredAt,
+    this.petChangeAccepted,
     this.rated = false,
     this.rawData = const {},
   });
@@ -110,6 +147,203 @@ class WalkDetail {
       ],
     );
 
+    final rawStatus = _text(
+      _value(
+        map,
+        const [
+          'estado',
+          'Estado',
+          'status',
+          'Status',
+        ],
+      ),
+    );
+
+    final parsedPets = WalkPet.listFrom(
+      _value(
+        map,
+        const [
+          'perros',
+          'Perros',
+          'mascotas',
+          'Mascotas',
+        ],
+      ),
+    );
+
+    final legacyPetId = _integer(
+      _value(
+        map,
+        const [
+          'perroId',
+          'PerroId',
+        ],
+      ),
+    );
+
+    final legacyPetName = _text(
+      _value(
+            map,
+            const [
+              'perroNombre',
+              'PerroNombre',
+              'nombrePerro',
+              'NombrePerro',
+              'mascotaNombre',
+              'MascotaNombre',
+            ],
+          ) ??
+          _value(
+            pet,
+            const [
+              'nombre',
+              'Nombre',
+              'name',
+              'Name',
+            ],
+          ),
+      fallback: 'Mascota',
+    );
+
+    final legacyPetPhoto =
+        _nullableText(
+      _value(
+            map,
+            const [
+              'perroFotoUrl',
+              'PerroFotoUrl',
+              'perroImagenUrl',
+              'PerroImagenUrl',
+              'fotoPerroUrl',
+              'FotoPerroUrl',
+            ],
+          ) ??
+          _value(
+            pet,
+            const [
+              'fotoUrl',
+              'FotoUrl',
+              'imagenUrl',
+              'ImagenUrl',
+            ],
+          ),
+    );
+
+    final allPets = parsedPets.isNotEmpty
+        ? parsedPets
+        : legacyPetId != null &&
+                legacyPetId > 0
+            ? [
+                WalkPet(
+                  id: legacyPetId,
+                  name: legacyPetName,
+                  breed: _text(
+                    _value(
+                      pet,
+                      const [
+                        'raza',
+                        'Raza',
+                      ],
+                    ),
+                    fallback:
+                        'Sin raza registrada',
+                  ),
+                  age: _integer(
+                    _value(
+                      pet,
+                      const [
+                        'edad',
+                        'Edad',
+                      ],
+                    ),
+                  ),
+                  size: _text(
+                    _value(
+                      pet,
+                      const [
+                        'tamanio',
+                        'Tamanio',
+                        'tamano',
+                        'Tamano',
+                        'tamaño',
+                        'Tamaño',
+                      ],
+                    ),
+                    fallback:
+                        'Sin tamaño registrado',
+                  ),
+                  notes: _text(
+                    _value(
+                      pet,
+                      const [
+                        'notas',
+                        'Notas',
+                      ],
+                    ),
+                  ),
+                  photoPath: legacyPetPhoto,
+                  requestedByOwner: true,
+                  includedInProposal: true,
+                  active: true,
+                ),
+              ]
+            : const <WalkPet>[];
+
+    final requestedCount =
+        _integer(
+          _value(
+            map,
+            const [
+              'cantidadPerrosSolicitados',
+              'CantidadPerrosSolicitados',
+            ],
+          ),
+        ) ??
+        allPets
+            .where(
+              (pet) =>
+                  pet.requestedByOwner,
+            )
+            .length;
+
+    final proposedCount =
+        _integer(
+          _value(
+            map,
+            const [
+              'cantidadPerrosPropuestos',
+              'CantidadPerrosPropuestos',
+            ],
+          ),
+        ) ??
+        allPets
+            .where(
+              (pet) =>
+                  pet.includedInProposal,
+            )
+            .length;
+
+    final activeCount =
+        _integer(
+          _value(
+            map,
+            const [
+              'cantidadPerros',
+              'CantidadPerros',
+            ],
+          ),
+        ) ??
+        allPets
+            .where((pet) => pet.active)
+            .length;
+
+    final primaryPet = allPets.isEmpty
+        ? null
+        : allPets.firstWhere(
+            (pet) => pet.active,
+            orElse: () => allPets.first,
+          );
+
     return WalkDetail(
       id: _integer(
             _value(
@@ -123,17 +357,10 @@ class WalkDetail {
             ),
           ) ??
           0,
-      status: HomeWalkStatus.fromValue(
-        _value(
-          map,
-          const [
-            'estado',
-            'Estado',
-            'status',
-            'Status',
-          ],
-        ),
+      status: _statusFrom(
+        rawStatus,
       ),
+      rawStatus: rawStatus,
       scheduledAt: _dateTime(
         _value(
           map,
@@ -180,7 +407,8 @@ class WalkDetail {
           ],
         ),
       ),
-      durationMinutes: _integer(
+      durationMinutes:
+          _integer(
             _value(
               map,
               const [
@@ -205,30 +433,40 @@ class WalkDetail {
           ],
         ),
       ),
-      petName: _text(
+      basePrice: _decimal(
         _value(
-              map,
-              const [
-                'perroNombre',
-                'PerroNombre',
-                'nombrePerro',
-                'NombrePerro',
-                'mascotaNombre',
-                'MascotaNombre',
-              ],
-            ) ??
-            _value(
-              pet,
-              const [
-                'nombre',
-                'Nombre',
-                'name',
-                'Name',
-              ],
-            ),
-        fallback: 'Mascota',
+          map,
+          const [
+            'precioBase',
+            'PrecioBase',
+          ],
+        ),
       ),
+      proposedPrice: _decimal(
+        _value(
+          map,
+          const [
+            'precioPropuesto',
+            'PrecioPropuesto',
+          ],
+        ),
+      ),
+      petName:
+          primaryPet?.name ?? legacyPetName,
+      pets: List<WalkPet>.unmodifiable(
+        allPets,
+      ),
+      requestedPetCount: requestedCount,
+      proposedPetCount: proposedCount,
+      activePetCount: activeCount,
       walkerName: _personName(
+        completeName: _value(
+          map,
+          const [
+            'paseadorNombreCompleto',
+            'PaseadorNombreCompleto',
+          ],
+        ),
         directName: _value(
           map,
           const [
@@ -243,15 +481,23 @@ class WalkDetail {
           const [
             'paseadorApellido',
             'PaseadorApellido',
-            'apellidoPaseador',
-            'ApellidoPaseador',
           ],
         ),
         person: walker,
         user: walkerUser,
-        fallback: 'Paseador no asignado',
+        fallback:
+            'Paseador no asignado',
       ),
       ownerName: _personName(
+        completeName: _value(
+          map,
+          const [
+            'duenioNombreCompleto',
+            'DuenioNombreCompleto',
+            'dueñoNombreCompleto',
+            'DueñoNombreCompleto',
+          ],
+        ),
         directName: _value(
           map,
           const [
@@ -259,10 +505,6 @@ class WalkDetail {
             'DuenioNombre',
             'dueñoNombre',
             'DueñoNombre',
-            'nombreDuenio',
-            'NombreDuenio',
-            'nombreDueño',
-            'NombreDueño',
           ],
         ),
         directLastName: _value(
@@ -272,14 +514,12 @@ class WalkDetail {
             'DuenioApellido',
             'dueñoApellido',
             'DueñoApellido',
-            'apellidoDuenio',
-            'ApellidoDuenio',
-            'apellidoDueño',
-            'ApellidoDueño',
           ],
         ),
-        person: owner.isEmpty ? petOwner : owner,
-        fallback: 'Dueño no disponible',
+        person:
+            owner.isEmpty ? petOwner : owner,
+        fallback:
+            'Dueño no disponible',
       ),
       pickupAddress: _text(
         _value(
@@ -287,8 +527,6 @@ class WalkDetail {
           const [
             'ubicacionTexto',
             'UbicacionTexto',
-            'ubicacionRecogidaTexto',
-            'UbicacionRecogidaTexto',
             'direccionRecogida',
             'DireccionRecogida',
             'direccion',
@@ -330,8 +568,6 @@ class WalkDetail {
             'LatitudRecogida',
             'latRecogida',
             'LatRecogida',
-            'ubicacionLatitud',
-            'UbicacionLatitud',
             'latitud',
             'Latitud',
           ],
@@ -345,35 +581,14 @@ class WalkDetail {
             'LongitudRecogida',
             'lngRecogida',
             'LngRecogida',
-            'lonRecogida',
-            'LonRecogida',
-            'ubicacionLongitud',
-            'UbicacionLongitud',
             'longitud',
             'Longitud',
           ],
         ),
       ),
-      petPhotoPath: _nullableText(
-        _value(
-              map,
-              const [
-                'perroFotoUrl',
-                'PerroFotoUrl',
-                'fotoPerroUrl',
-                'FotoPerroUrl',
-              ],
-            ) ??
-            _value(
-              pet,
-              const [
-                'fotoUrl',
-                'FotoUrl',
-                'imagenUrl',
-                'ImagenUrl',
-              ],
-            ),
-      ),
+      petPhotoPath:
+          primaryPet?.photoPath ??
+              legacyPetPhoto,
       startPhotoPath: _nullableText(
         _value(
           map,
@@ -416,6 +631,42 @@ class WalkDetail {
           ],
         ),
       ),
+      petChangeReason: _nullableText(
+        _value(
+          map,
+          const [
+            'motivoPropuestaCambioPerros',
+            'MotivoPropuestaCambioPerros',
+          ],
+        ),
+      ),
+      petChangeProposedAt: _dateTime(
+        _value(
+          map,
+          const [
+            'fechaPropuestaCambioPerros',
+            'FechaPropuestaCambioPerros',
+          ],
+        ),
+      ),
+      petChangeAnsweredAt: _dateTime(
+        _value(
+          map,
+          const [
+            'fechaRespuestaCambioPerros',
+            'FechaRespuestaCambioPerros',
+          ],
+        ),
+      ),
+      petChangeAccepted: _nullableBoolean(
+        _value(
+          map,
+          const [
+            'cambioPerrosAceptado',
+            'CambioPerrosAceptado',
+          ],
+        ),
+      ),
       rated: _boolean(
         _value(
           map,
@@ -424,14 +675,13 @@ class WalkDetail {
             'Calificado',
             'tieneCalificacion',
             'TieneCalificacion',
-            'tieneCalificación',
-            'TieneCalificación',
             'rated',
             'Rated',
           ],
         ),
       ),
-      rawData: Map<String, dynamic>.unmodifiable(
+      rawData:
+          Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(map),
       ),
     );
@@ -460,6 +710,58 @@ class WalkDetail {
   bool get isFinished =>
       isCompleted || isCancelled || isRejected;
 
+  bool get hasMultiplePets =>
+      requestedPetCount > 1 || pets.length > 1;
+
+  bool get hasPendingPetProposal {
+    final normalized =
+        _normalize(rawStatus);
+
+    return normalized ==
+            'cambiopropuesto' ||
+        normalized ==
+            'cambiomascotaspropuesto';
+  }
+
+  bool get petProposalWasAccepted =>
+      petChangeAccepted == true;
+
+  bool get petProposalWasRejected =>
+      petChangeAccepted == false;
+
+  List<WalkPet> get requestedPets {
+    return pets
+        .where(
+          (pet) => pet.requestedByOwner,
+        )
+        .toList(growable: false);
+  }
+
+  List<WalkPet> get proposedPets {
+    return pets
+        .where(
+          (pet) =>
+              pet.includedInProposal,
+        )
+        .toList(growable: false);
+  }
+
+  List<WalkPet> get activePets {
+    return pets
+        .where((pet) => pet.active)
+        .toList(growable: false);
+  }
+
+  List<WalkPet> get excludedFromProposal {
+    return pets
+        .where(
+          (pet) =>
+              pet.requestedByOwner &&
+              !pet.includedInProposal,
+        )
+        .toList(growable: false);
+  }
+
   bool get hasStartEvidence =>
       startPhotoPath != null;
 
@@ -470,7 +772,8 @@ class WalkDetail {
     final latitude = pickupLatitude;
     final longitude = pickupLongitude;
 
-    if (latitude == null || longitude == null) {
+    if (latitude == null ||
+        longitude == null) {
       return false;
     }
 
@@ -482,6 +785,34 @@ class WalkDetail {
         latitude <= 90 &&
         longitude >= -180 &&
         longitude <= 180;
+  }
+
+  String get petsLabel {
+    final list = activePets.isNotEmpty
+        ? activePets
+        : requestedPets;
+
+    if (list.isEmpty) {
+      return petName;
+    }
+
+    if (list.length == 1) {
+      return list.first.name;
+    }
+
+    return list
+        .map((pet) => pet.name)
+        .join(', ');
+  }
+
+  String get petCountLabel {
+    final count = activePetCount > 0
+        ? activePetCount
+        : pets.length;
+
+    return count == 1
+        ? '1 mascota'
+        : '$count mascotas';
   }
 
   String get durationLabel {
@@ -503,28 +834,38 @@ class WalkDetail {
   String get priceLabel {
     final value = price;
 
-    if (value == null) {
-      return 'No disponible';
-    }
-
-    return '\$${value.toStringAsFixed(2)}';
+    return value == null
+        ? 'No disponible'
+        : '\$${value.toStringAsFixed(2)}';
   }
 
-  String get scheduledLabel {
-    return _formatDate(scheduledAt);
+  String get basePriceLabel {
+    final value = basePrice;
+
+    return value == null
+        ? 'No disponible'
+        : '\$${value.toStringAsFixed(2)}';
   }
 
-  String get startedLabel {
-    return _formatDate(startedAt);
+  String get proposedPriceLabel {
+    final value = proposedPrice;
+
+    return value == null
+        ? priceLabel
+        : '\$${value.toStringAsFixed(2)}';
   }
 
-  String get finishedLabel {
-    return _formatDate(finishedAt);
-  }
+  String get scheduledLabel =>
+      _formatDate(scheduledAt);
 
-  String get cancelledLabel {
-    return _formatDate(cancelledAt);
-  }
+  String get startedLabel =>
+      _formatDate(startedAt);
+
+  String get finishedLabel =>
+      _formatDate(finishedAt);
+
+  String get cancelledLabel =>
+      _formatDate(cancelledAt);
 
   String get pickupCoordinatesLabel {
     if (!hasPickupCoordinates) {
@@ -535,29 +876,92 @@ class WalkDetail {
         '${pickupLongitude!.toStringAsFixed(6)}';
   }
 
-  String? publicPetPhotoUrl(String? baseUrl) {
-    return _publicUrl(petPhotoPath, baseUrl);
+  String? publicPetPhotoUrl(
+    String? baseUrl,
+  ) {
+    return _publicUrl(
+      petPhotoPath,
+      baseUrl,
+    );
   }
 
-  String? publicStartPhotoUrl(String? baseUrl) {
-    return _publicUrl(startPhotoPath, baseUrl);
+  String? publicStartPhotoUrl(
+    String? baseUrl,
+  ) {
+    return _publicUrl(
+      startPhotoPath,
+      baseUrl,
+    );
   }
 
-  String? publicEndPhotoUrl(String? baseUrl) {
-    return _publicUrl(endPhotoPath, baseUrl);
+  String? publicEndPhotoUrl(
+    String? baseUrl,
+  ) {
+    return _publicUrl(
+      endPhotoPath,
+      baseUrl,
+    );
   }
 
   Map<String, dynamic> toNavigationMap() {
-    return Map<String, dynamic>.from(rawData);
+    return {
+      ...rawData,
+      'id': id,
+      'paseoId': id,
+      'estado': rawStatus,
+      'perroNombre': petName,
+      'perros': pets
+          .map(
+            (pet) => {
+              'perroId': pet.id,
+              'nombre': pet.name,
+              'raza': pet.breed,
+              'edad': pet.age,
+              'tamanio': pet.size,
+              'notas': pet.notes,
+              'fotoUrl': pet.photoPath,
+              'solicitadoPorDuenio':
+                  pet.requestedByOwner,
+              'incluidoEnPropuesta':
+                  pet.includedInProposal,
+              'activo': pet.active,
+            },
+          )
+          .toList(),
+    };
+  }
+
+  static HomeWalkStatus _statusFrom(
+    String value,
+  ) {
+    final normalized = _normalize(value);
+
+    // Mientras existe una contrapropuesta,
+    // no debe tratarse como paseo aceptable
+    // o iniciable.
+    if (normalized == 'cambiopropuesto' ||
+        normalized ==
+            'cambiomascotaspropuesto') {
+      return HomeWalkStatus.unknown;
+    }
+
+    return HomeWalkStatus.fromValue(value);
   }
 
   static String _personName({
+    dynamic completeName,
     dynamic directName,
     dynamic directLastName,
     Map<String, dynamic> person = const {},
     Map<String, dynamic> user = const {},
     required String fallback,
   }) {
+    final complete = _text(completeName);
+
+    if (complete.isNotEmpty) {
+      return complete;
+    }
+
     final direct = [
       _text(directName),
       _text(directLastName),
@@ -567,7 +971,7 @@ class WalkDetail {
       return direct;
     }
 
-    final fullName = _text(
+    final nestedComplete = _text(
       _value(
             person,
             const [
@@ -588,8 +992,8 @@ class WalkDetail {
           ),
     );
 
-    if (fullName.isNotEmpty) {
-      return fullName;
+    if (nestedComplete.isNotEmpty) {
+      return nestedComplete;
     }
 
     final firstName = _text(
@@ -640,7 +1044,9 @@ class WalkDetail {
     return result.isEmpty ? fallback : result;
   }
 
-  static String _formatDate(DateTime? date) {
+  static String _formatDate(
+    DateTime? date,
+  ) {
     if (date == null) {
       return 'No disponible';
     }
@@ -649,10 +1055,13 @@ class WalkDetail {
 
     final day =
         local.day.toString().padLeft(2, '0');
+
     final month =
         local.month.toString().padLeft(2, '0');
+
     final hour =
         local.hour.toString().padLeft(2, '0');
+
     final minute =
         local.minute.toString().padLeft(2, '0');
 
@@ -684,7 +1093,10 @@ class WalkDetail {
     }
 
     final cleanServer = server.endsWith('/')
-        ? server.substring(0, server.length - 1)
+        ? server.substring(
+            0,
+            server.length - 1,
+          )
         : server;
 
     final cleanPath =
@@ -716,7 +1128,9 @@ class WalkDetail {
       final value = map[key];
 
       if (value is Map) {
-        return Map<String, dynamic>.from(value);
+        return Map<String, dynamic>.from(
+          value,
+        );
       }
     }
 
@@ -727,7 +1141,8 @@ class WalkDetail {
     dynamic value, {
     String fallback = '',
   }) {
-    final text = value?.toString().trim() ?? '';
+    final text =
+        value?.toString().trim() ?? '';
 
     if (text.isEmpty ||
         text.toLowerCase() == 'null') {
@@ -737,7 +1152,9 @@ class WalkDetail {
     return text;
   }
 
-  static String? _nullableText(dynamic value) {
+  static String? _nullableText(
+    dynamic value,
+  ) {
     final text = value?.toString().trim();
 
     if (text == null ||
@@ -784,7 +1201,9 @@ class WalkDetail {
     );
   }
 
-  static DateTime? _dateTime(dynamic value) {
+  static DateTime? _dateTime(
+    dynamic value,
+  ) {
     if (value is DateTime) {
       return value;
     }
@@ -795,6 +1214,16 @@ class WalkDetail {
   }
 
   static bool _boolean(dynamic value) {
+    return _nullableBoolean(value) ?? false;
+  }
+
+  static bool? _nullableBoolean(
+    dynamic value,
+  ) {
+    if (value == null) {
+      return null;
+    }
+
     if (value is bool) {
       return value;
     }
@@ -804,14 +1233,45 @@ class WalkDetail {
     }
 
     final text =
-        value?.toString().trim().toLowerCase();
+        value.toString().trim().toLowerCase();
 
-    return const {
+    if (const {
       'true',
       '1',
       'sí',
       'si',
       'yes',
-    }.contains(text);
+    }.contains(text)) {
+      return true;
+    }
+
+    if (const {
+      'false',
+      '0',
+      'no',
+    }.contains(text)) {
+      return false;
+    }
+
+    return null;
+  }
+
+  static String _normalize(
+    String value,
+  ) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(
+          RegExp(r'[\s_\-]'),
+          '',
+        );
   }
 }

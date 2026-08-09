@@ -231,6 +231,20 @@ class AppNotification {
         referenceId != null &&
         referenceId! > 0;
   }
+  
+    bool get opensRouteMap {
+    final normalizedType = type
+        .trim()
+        .toLowerCase()
+        .replaceAll(
+          RegExp(r'[^a-z0-9]'),
+          '',
+        );
+
+    return normalizedType == 'rutapaseo' &&
+        referenceId != null &&
+        referenceId! > 0;
+  }
 
   bool get opensWalks {
     return category ==

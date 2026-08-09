@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'chat_paseo_screen.dart';
+import 'detalle_paseo_screen.dart';
 import 'mis_paseos_screen.dart';
 import 'notifications/models/app_notification.dart';
 import 'notifications/notifications_controller.dart';
@@ -30,6 +31,7 @@ class _NotificacionesScreenState
     super.initState();
 
     _controller = NotificationsController();
+
     _controller.addListener(
       _handleControllerChange,
     );
@@ -50,12 +52,13 @@ class _NotificacionesScreenState
     _controller.removeListener(
       _handleControllerChange,
     );
+
     _controller.dispose();
 
     super.dispose();
   }
 
-  Future<void> _openNotification(
+    Future<void> _openNotification(
     AppNotification notification,
   ) async {
     if (_openingNotification ||
@@ -76,17 +79,46 @@ class _NotificacionesScreenState
         return;
       }
 
-      if (notification.opensChat) {
+      final referenceId =
+          notification.referenceId;
+
+      if (notification.opensRouteMap &&
+          referenceId != null &&
+          referenceId > 0) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                DetallePaseoScreen(
+              paseoId: referenceId,
+              openMapOnLoad: true,
+            ),
+          ),
+        );
+      } else if (notification.opensChat &&
+          referenceId != null &&
+          referenceId > 0) {
         await Navigator.push(
           context,
           MaterialPageRoute<void>(
             builder: (_) => ChatPaseoScreen(
-              paseoId:
-                  notification.referenceId!,
+              paseoId: referenceId,
               nombrePerro:
                   notification.dogName,
               nombreOtroUsuario:
                   notification.otherUserName,
+            ),
+          ),
+        );
+      } else if (notification.opensWalks &&
+          referenceId != null &&
+          referenceId > 0) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                DetallePaseoScreen(
+              paseoId: referenceId,
             ),
           ),
         );
@@ -185,8 +217,7 @@ class _NotificacionesScreenState
                   child: const Row(
                     children: [
                       Icon(
-                        Icons
-                            .done_all_rounded,
+                        Icons.done_all_rounded,
                         size: 21,
                       ),
                       SizedBox(width: 11),
@@ -284,9 +315,7 @@ class _NotificacionesScreenState
               .isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
-              child: _buildEmptyState(
-                state,
-              ),
+              child: _buildEmptyState(state),
             )
           else
             ..._buildNotificationGroups(
@@ -321,7 +350,7 @@ class _NotificacionesScreenState
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF087D68)
-                .withOpacity(0.20),
+                .withValues(alpha: .20),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -333,8 +362,9 @@ class _NotificacionesScreenState
             width: 62,
             height: 62,
             decoration: BoxDecoration(
-              color:
-                  Colors.white.withOpacity(0.14),
+              color: Colors.white.withValues(
+                alpha: .14,
+              ),
               borderRadius:
                   BorderRadius.circular(20),
             ),
@@ -397,7 +427,8 @@ class _NotificacionesScreenState
                 Text(
                   unreadCount == 0
                       ? 'Todo al día'
-                      : '$unreadCount pendiente${unreadCount == 1 ? '' : 's'}',
+                      : '$unreadCount pendiente'
+                          '${unreadCount == 1 ? '' : 's'}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 21,
@@ -412,7 +443,7 @@ class _NotificacionesScreenState
                       : 'Revisa las novedades de tus paseos y mensajes.',
                   style: TextStyle(
                     color: Colors.white
-                        .withOpacity(0.86),
+                        .withValues(alpha: .86),
                     fontSize: 13,
                     height: 1.35,
                     fontWeight:
@@ -430,8 +461,10 @@ class _NotificacionesScreenState
                   ? null
                   : _markAllAsRead,
               style: IconButton.styleFrom(
-                backgroundColor: Colors.white
-                    .withOpacity(0.14),
+                backgroundColor:
+                    Colors.white.withValues(
+                  alpha: .14,
+                ),
                 foregroundColor:
                     Colors.white,
               ),
@@ -493,8 +526,7 @@ class _NotificacionesScreenState
       child: Row(
         children: [
           const Icon(
-            Icons
-                .error_outline_rounded,
+            Icons.error_outline_rounded,
             color: Color(0xFFB73E35),
           ),
           const SizedBox(width: 11),
@@ -530,6 +562,7 @@ class _NotificacionesScreenState
   ) {
     final groups =
         state.groupedNotifications;
+
     final widgets = <Widget>[];
 
     for (final group
@@ -672,8 +705,7 @@ class _NotificacionesScreenState
             ),
             child: Icon(
               filtered
-                  ? Icons
-                      .done_all_rounded
+                  ? Icons.done_all_rounded
                   : Icons
                       .notifications_none_rounded,
               color:
@@ -713,8 +745,7 @@ class _NotificacionesScreenState
                   _controller
                       .toggleUnreadFilter,
               icon: const Icon(
-                Icons
-                    .notifications_rounded,
+                Icons.notifications_rounded,
               ),
               label: const Text(
                 'Ver todas',
@@ -812,7 +843,9 @@ class _NotificationFilter
                 decoration: BoxDecoration(
                   color: selected
                       ? Colors.white
-                          .withOpacity(0.18)
+                          .withValues(
+                            alpha: .18,
+                          )
                       : const Color(
                           0xFFF0F2F1,
                         ),
@@ -863,6 +896,7 @@ class _NotificationCard
     final color = _categoryColor(
       notification.category,
     );
+
     final icon = _categoryIcon(
       notification.category,
     );
@@ -870,7 +904,7 @@ class _NotificationCard
     return Material(
       color: notification.isRead
           ? Colors.white
-          : color.withOpacity(0.065),
+          : color.withValues(alpha: .065),
       borderRadius:
           BorderRadius.circular(21),
       child: InkWell(
@@ -890,7 +924,9 @@ class _NotificationCard
                   ? const Color(
                       0xFFE7E9E8,
                     )
-                  : color.withOpacity(0.25),
+                  : color.withValues(
+                      alpha: .25,
+                    ),
             ),
           ),
           child: Row(
@@ -901,8 +937,9 @@ class _NotificationCard
                 width: 49,
                 height: 49,
                 decoration: BoxDecoration(
-                  color:
-                      color.withOpacity(0.12),
+                  color: color.withValues(
+                    alpha: .12,
+                  ),
                   borderRadius:
                       BorderRadius.circular(
                     16,
@@ -918,20 +955,16 @@ class _NotificationCard
               Expanded(
                 child: Column(
                   crossAxisAlignment:
-                      CrossAxisAlignment
-                          .start,
+                      CrossAxisAlignment.start,
                   children: [
                     Row(
                       crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
+                          CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Text(
-                            notification
-                                .title,
-                            style:
-                                TextStyle(
+                            notification.title,
+                            style: TextStyle(
                               color:
                                   const Color(
                                 0xFF20212D,
@@ -948,9 +981,7 @@ class _NotificationCard
                             ),
                           ),
                         ),
-                        const SizedBox(
-                          width: 8,
-                        ),
+                        const SizedBox(width: 8),
                         if (loading)
                           SizedBox(
                             width: 16,
@@ -967,8 +998,7 @@ class _NotificationCard
                             width: 9,
                             height: 9,
                             margin:
-                                const EdgeInsets
-                                    .only(
+                                const EdgeInsets.only(
                               top: 4,
                             ),
                             decoration:
@@ -1005,8 +1035,8 @@ class _NotificationCard
                           decoration:
                               BoxDecoration(
                             color: color
-                                .withOpacity(
-                              0.10,
+                                .withValues(
+                              alpha: .10,
                             ),
                             borderRadius:
                                 BorderRadius
@@ -1019,8 +1049,7 @@ class _NotificationCard
                               notification
                                   .category,
                             ),
-                            style:
-                                TextStyle(
+                            style: TextStyle(
                               color: color,
                               fontSize: 10.5,
                               fontWeight:
@@ -1079,8 +1108,7 @@ class _NotificationCard
       case AppNotificationCategory.walk:
         return Icons.route_rounded;
       case AppNotificationCategory.request:
-        return Icons
-            .assignment_rounded;
+        return Icons.assignment_rounded;
       case AppNotificationCategory.message:
         return Icons.chat_rounded;
       case AppNotificationCategory.cancelled:
@@ -1092,8 +1120,7 @@ class _NotificationCard
       case AppNotificationCategory.evidence:
         return Icons.photo_camera_rounded;
       case AppNotificationCategory.general:
-        return Icons
-            .notifications_rounded;
+        return Icons.notifications_rounded;
     }
   }
 

@@ -5,6 +5,7 @@ import '../../walker_home/walker_home_controller.dart';
 import '../../walker_home/walker_home_state.dart';
 import '../models/home_walk.dart';
 import '../models/home_walk_status.dart';
+import '../widgets/home_walk_pet_avatar.dart';
 
 class HomeWalkerPanelSection
     extends StatefulWidget {
@@ -1116,6 +1117,8 @@ class _ActiveWalkCard
             children: [
               _PetAvatar(
                 imageUrl: walk.imageUrl,
+                imageUrls: walk.petImageUrls,
+                petCount: walk.petCount,
                 size: 59,
                 dark: true,
               ),
@@ -1285,6 +1288,8 @@ class _RequestCard
               children: [
                 _PetAvatar(
                   imageUrl: walk.imageUrl,
+                  imageUrls: walk.petImageUrls,
+                  petCount: walk.petCount,
                   size: 51,
                 ),
                 const SizedBox(width: 12),
@@ -1437,6 +1442,8 @@ class _NextWalkCard
             children: [
               _PetAvatar(
                 imageUrl: walk.imageUrl,
+                imageUrls: walk.petImageUrls,
+                petCount: walk.petCount,
                 size: 52,
               ),
               const SizedBox(width: 12),
@@ -1691,57 +1698,27 @@ class _EmptyOperationalCard
 
 class _PetAvatar extends StatelessWidget {
   final String imageUrl;
+  final List<String> imageUrls;
+  final int petCount;
   final double size;
   final bool dark;
 
   const _PetAvatar({
     required this.imageUrl,
+    required this.imageUrls,
+    required this.petCount,
     required this.size,
     this.dark = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fallback = Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: dark
-            ? Colors.white.withValues(
-                alpha: 0.14,
-              )
-            : const Color(0xFFE7F4F1),
-        borderRadius:
-            BorderRadius.circular(
-          size * 0.30,
-        ),
-      ),
-      child: Icon(
-        Icons.pets_rounded,
-        color: dark
-            ? Colors.white
-            : const Color(0xFF087D68),
-        size: size * 0.46,
-      ),
-    );
-
-    if (imageUrl.isEmpty) {
-      return fallback;
-    }
-
-    return ClipRRect(
-      borderRadius:
-          BorderRadius.circular(
-        size * 0.30,
-      ),
-      child: Image.network(
-        imageUrl,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder:
-            (_, __, ___) => fallback,
-      ),
+    return HomeWalkPetAvatar(
+      imageUrls: imageUrls,
+      fallbackImageUrl: imageUrl,
+      petCount: petCount,
+      size: size,
+      dark: dark,
     );
   }
 }

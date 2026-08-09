@@ -12,9 +12,11 @@ import 'models/home_pet.dart';
 import 'models/home_walk.dart';
 
 class HomeController extends ChangeNotifier {
-  final NotificacionesService _notificationsService;
+  final NotificacionesService
+      _notificationsService;
 
   HomeState _state = const HomeState();
+
   Timer? _notificationsTimer;
 
   bool _disposed = false;
@@ -22,9 +24,11 @@ class HomeController extends ChangeNotifier {
   bool _initialized = false;
 
   HomeController({
-    NotificacionesService? notificationsService,
+    NotificacionesService?
+        notificationsService,
   }) : _notificationsService =
-            notificationsService ?? NotificacionesService();
+            notificationsService ??
+                NotificacionesService();
 
   HomeState get state => _state;
 
@@ -48,13 +52,23 @@ class HomeController extends ChangeNotifier {
     await _loadSession();
 
     await Future.wait([
-      if (_state.isOwner || _state.isAdmin) loadPets(),
+      if (_state.isOwner ||
+          _state.isAdmin)
+        loadPets(),
       loadWalks(),
-      loadNotifications(silent: true),
+      loadNotifications(
+        silent: true,
+      ),
     ]);
 
+    if (_disposed) {
+      return;
+    }
+
     _setState(
-      _state.copyWith(initialLoading: false),
+      _state.copyWith(
+        initialLoading: false,
+      ),
     );
 
     _startNotificationsPolling();
@@ -68,9 +82,13 @@ class HomeController extends ChangeNotifier {
     await _loadSession();
 
     await Future.wait([
-      if (_state.isOwner || _state.isAdmin) loadPets(),
+      if (_state.isOwner ||
+          _state.isAdmin)
+        loadPets(),
       loadWalks(),
-      loadNotifications(silent: true),
+      loadNotifications(
+        silent: true,
+      ),
     ]);
   }
 
@@ -87,14 +105,17 @@ class HomeController extends ChangeNotifier {
     );
 
     try {
-      final result = await PerrosService.obtenerMisPerros();
+      final result =
+          await PerrosService
+              .obtenerMisPerros();
 
       if (_disposed) {
         return;
       }
 
       if (result['success'] == true) {
-        final maps = HomeState.normalizeMapList(
+        final maps =
+            HomeState.normalizeMapList(
           result['data'],
           possibleKeys: const [
             'items',
@@ -114,10 +135,17 @@ class HomeController extends ChangeNotifier {
             )
             .toList(growable: false);
 
+        final enrichedWalks =
+            _enrichWalksWithPets(
+          _state.walks,
+          pets,
+        );
+
         _setState(
           _state.copyWith(
             petsLoading: false,
             pets: pets,
+            walks: enrichedWalks,
             clearPetsError: true,
           ),
         );
@@ -161,14 +189,17 @@ class HomeController extends ChangeNotifier {
     );
 
     try {
-      final result = await PaseosService.obtenerMisPaseos();
+      final result =
+          await PaseosService
+              .obtenerMisPaseos();
 
       if (_disposed) {
         return;
       }
 
       if (result['success'] == true) {
-        final maps = HomeState.normalizeMapList(
+        final maps =
+            HomeState.normalizeMapList(
           result['data'],
           possibleKeys: const [
             'items',
@@ -179,7 +210,7 @@ class HomeController extends ChangeNotifier {
           ],
         );
 
-        final walks = maps
+        final parsedWalks = maps
             .map(
               (map) => HomeWalk.fromMap(
                 map,
@@ -188,10 +219,16 @@ class HomeController extends ChangeNotifier {
             )
             .toList(growable: false);
 
+        final enrichedWalks =
+            _enrichWalksWithPets(
+          parsedWalks,
+          _state.pets,
+        );
+
         _setState(
           _state.copyWith(
             walksLoading: false,
-            walks: walks,
+            walks: enrichedWalks,
             clearWalksError: true,
           ),
         );
@@ -222,10 +259,105 @@ class HomeController extends ChangeNotifier {
     }
   }
 
+  List<HomeWalk> _enrichWalksWithPets(
+    List<HomeWalk> walks,
+    List<HomePet> registeredPets,
+  ) {
+    if (walks.isEmpty ||
+        registeredPets.isEmpty) {
+      return walks;
+    }
+
+    return walks.map((walk) {
+      final walkPets = walk.effectivePets;
+
+      if (walkPets.isEmpty) {
+        return walk;
+      }
+
+      final enrichedPets = walkPets.map(
+        (walkPet) {
+          final registeredPet =
+              _findRegisteredPet(
+            walkPet,
+            registeredPets,
+          );
+
+          if (registeredPet == null) {
+            return walkPet;
+          }
+
+          // La información del listado de mascotas
+          // es la fuente más completa para fotografías
+          // y datos generales.
+          return registeredPet;
+        },
+      ).toList(growable: false);
+
+      final primaryPet = enrichedPets.isEmpty
+          ? walk.pet
+          : enrichedPets.first;
+
+      return HomeWalk(
+        id: walk.id,
+        status: walk.status,
+        scheduledAt: walk.scheduledAt,
+        startedAt: walk.startedAt,
+        finishedAt: walk.finishedAt,
+        durationMinutes:
+            walk.durationMinutes,
+        distanceKilometers:
+            walk.distanceKilometers,
+        price: walk.price,
+        pickupAddress:
+            walk.pickupAddress,
+        notes: walk.notes,
+        pet: primaryPet,
+        pets: enrichedPets,
+        walker: walk.walker,
+        rawData: walk.rawData,
+      );
+    }).toList(growable: false);
+  }
+
+  HomePet? _findRegisteredPet(
+    HomePet walkPet,
+    List<HomePet> registeredPets,
+  ) {
+    final walkPetId = walkPet.id;
+
+    if (walkPetId != null) {
+      for (final pet in registeredPets) {
+        if (pet.id == walkPetId) {
+          return pet;
+        }
+      }
+    }
+
+    final normalizedName =
+        _normalizeText(walkPet.name);
+
+    if (normalizedName.isEmpty ||
+        normalizedName == 'tumascota' ||
+        normalizedName == 'mascota') {
+      return null;
+    }
+
+    for (final pet in registeredPets) {
+      if (_normalizeText(pet.name) ==
+          normalizedName) {
+        return pet;
+      }
+    }
+
+    return null;
+  }
+
   Future<void> loadNotifications({
     bool silent = false,
   }) async {
-    if (_disposed || _loadingNotifications) {
+    if (_disposed ||
+        _loadingNotifications) {
       return;
     }
 
@@ -233,13 +365,16 @@ class HomeController extends ChangeNotifier {
 
     if (!silent) {
       _setState(
-        _state.copyWith(notificationsLoading: true),
+        _state.copyWith(
+          notificationsLoading: true,
+        ),
       );
     }
 
     try {
       final response =
-          await _notificationsService.obtenerNotificaciones();
+          await _notificationsService
+              .obtenerNotificaciones();
 
       if (_disposed) {
         return;
@@ -247,12 +382,17 @@ class HomeController extends ChangeNotifier {
 
       final notifications = response
           .map(HomeState.safeMap)
-          .where((item) => item.isNotEmpty)
+          .where(
+            (item) => item.isNotEmpty,
+          )
           .toList(growable: false);
 
       notifications.sort((a, b) {
-        final dateA = _notificationDate(a);
-        final dateB = _notificationDate(b);
+        final dateA =
+            _notificationDate(a);
+
+        final dateB =
+            _notificationDate(b);
 
         return dateB.compareTo(dateA);
       });
@@ -281,7 +421,8 @@ class HomeController extends ChangeNotifier {
   Future<void> markNotificationAsRead(
     int notificationId,
   ) async {
-    await _notificationsService.marcarComoLeida(
+    await _notificationsService
+        .marcarComoLeida(
       notificationId,
     );
 
@@ -290,32 +431,38 @@ class HomeController extends ChangeNotifier {
     }
 
     final updatedNotifications =
-        _state.notifications.map((notification) {
-      final id = _notificationId(notification);
+        _state.notifications.map(
+      (notification) {
+        final id = _notificationId(
+          notification,
+        );
 
-      if (id != notificationId) {
-        return notification;
-      }
+        if (id != notificationId) {
+          return notification;
+        }
 
-      return <String, dynamic>{
-        ...notification,
-        'leida': true,
-        'Leida': true,
-        'read': true,
-        'Read': true,
-      };
-    }).toList(growable: false);
+        return <String, dynamic>{
+          ...notification,
+          'leida': true,
+          'Leida': true,
+          'read': true,
+          'Read': true,
+        };
+      },
+    ).toList(growable: false);
 
     _setState(
       _state.copyWith(
-        notifications: updatedNotifications,
+        notifications:
+            updatedNotifications,
       ),
     );
   }
 
   Future<void> _loadSession() async {
     try {
-      final results = await Future.wait<dynamic>([
+      final results =
+          await Future.wait<dynamic>([
         SessionService.obtenerNombre(),
         SessionService.obtenerRol(),
         StorageService.obtenerBaseUrl(),
@@ -325,19 +472,30 @@ class HomeController extends ChangeNotifier {
         return;
       }
 
-      final name = results[0]?.toString().trim();
-      final rawRole = results[1]?.toString();
-      final baseUrl = results[2]?.toString().trim();
+      final name =
+          results[0]?.toString().trim();
+
+      final rawRole =
+          results[1]?.toString();
+
+      final baseUrl =
+          results[2]?.toString().trim();
 
       _setState(
         _state.copyWith(
-          userName: name != null && name.isNotEmpty
-              ? name
-              : 'Usuario',
-          role: SessionService.normalizarRol(rawRole),
+          userName:
+              name != null &&
+                      name.isNotEmpty
+                  ? name
+                  : 'Usuario',
+          role:
+              SessionService.normalizarRol(
+            rawRole,
+          ),
           baseUrl: baseUrl,
           clearBaseUrl:
-              baseUrl == null || baseUrl.isEmpty,
+              baseUrl == null ||
+                  baseUrl.isEmpty,
         ),
       );
     } catch (_) {
@@ -357,16 +515,22 @@ class HomeController extends ChangeNotifier {
   void _startNotificationsPolling() {
     _notificationsTimer?.cancel();
 
-    _notificationsTimer = Timer.periodic(
+    _notificationsTimer =
+        Timer.periodic(
       const Duration(seconds: 15),
-      (_) => loadNotifications(silent: true),
+      (_) {
+        loadNotifications(
+          silent: true,
+        );
+      },
     );
   }
 
   DateTime _notificationDate(
     Map<String, dynamic> notification,
   ) {
-    final value = HomeState.firstValue(
+    final value =
+        HomeState.firstValue(
       notification,
       const [
         'fecha',
@@ -378,14 +542,20 @@ class HomeController extends ChangeNotifier {
       ],
     );
 
-    return DateTime.tryParse(value?.toString() ?? '') ??
-        DateTime.fromMillisecondsSinceEpoch(0);
+    return DateTime.tryParse(
+          value?.toString() ?? '',
+        ) ??
+        DateTime
+            .fromMillisecondsSinceEpoch(
+          0,
+        );
   }
 
   int? _notificationId(
     Map<String, dynamic> notification,
   ) {
-    final value = HomeState.firstValue(
+    final value =
+        HomeState.firstValue(
       notification,
       const [
         'id',
@@ -399,16 +569,26 @@ class HomeController extends ChangeNotifier {
       return value;
     }
 
-    return int.tryParse(value?.toString() ?? '');
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(
+      value?.toString() ?? '',
+    );
   }
 
   String _messageFrom(
     Map<String, dynamic> result,
     String fallback,
   ) {
-    final message = result['message']?.toString().trim();
+    final message =
+        result['message']
+            ?.toString()
+            .trim();
 
-    return message != null && message.isNotEmpty
+    return message != null &&
+            message.isNotEmpty
         ? message
         : fallback;
   }
@@ -416,7 +596,10 @@ class HomeController extends ChangeNotifier {
   String _cleanError(Object error) {
     final message = error
         .toString()
-        .replaceFirst('Exception: ', '')
+        .replaceFirst(
+          'Exception: ',
+          '',
+        )
         .trim();
 
     return message.isEmpty
@@ -424,7 +607,28 @@ class HomeController extends ChangeNotifier {
         : message;
   }
 
-  void _setState(HomeState newState) {
+  String _normalizeText(
+    String value,
+  ) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(
+          RegExp(r'[\s_\-]'),
+          '',
+        );
+  }
+
+  void _setState(
+    HomeState newState,
+  ) {
     if (_disposed) {
       return;
     }
@@ -437,6 +641,7 @@ class HomeController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _notificationsTimer?.cancel();
+
     super.dispose();
   }
 }

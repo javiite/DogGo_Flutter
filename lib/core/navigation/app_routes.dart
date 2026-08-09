@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../screens/home_screen.dart';
+import '../../screens/authenticated_entry_screen.dart';
 import '../../screens/login_screen.dart';
 import '../../screens/mis_perros_screen.dart';
 import '../../screens/mis_paseos_screen.dart';
@@ -14,7 +14,8 @@ abstract final class AppRoutes {
   static const String pets = '/pets';
   static const String walks = '/walks';
   static const String walkers = '/walkers';
-  static const String notifications = '/notifications';
+  static const String notifications =
+      '/notifications';
   static const String profile = '/profile';
 
   static Route<dynamic> onGenerateRoute(
@@ -30,7 +31,7 @@ abstract final class AppRoutes {
       case home:
         return _route(
           settings,
-          const HomeScreen(),
+          const AuthenticatedEntryScreen(),
         );
 
       case pets:
@@ -82,7 +83,8 @@ abstract final class AppRoutes {
   }
 }
 
-class _RouteNotFoundScreen extends StatelessWidget {
+class _RouteNotFoundScreen
+    extends StatelessWidget {
   const _RouteNotFoundScreen();
 
   @override
@@ -93,9 +95,11 @@ class _RouteNotFoundScreen extends StatelessWidget {
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding:
+              const EdgeInsets.all(24),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize:
+                MainAxisSize.min,
             children: [
               const Icon(
                 Icons.route_outlined,
@@ -104,18 +108,22 @@ class _RouteNotFoundScreen extends StatelessWidget {
               const SizedBox(height: 16),
               const Text(
                 'La pantalla solicitada no existe.',
-                textAlign: TextAlign.center,
+                textAlign:
+                    TextAlign.center,
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.pushNamedAndRemoveUntil(
+                  Navigator
+                      .pushNamedAndRemoveUntil(
                     context,
                     AppRoutes.home,
                     (_) => false,
                   );
                 },
-                child: const Text('Volver al inicio'),
+                child: const Text(
+                  'Volver al inicio',
+                ),
               ),
             ],
           ),

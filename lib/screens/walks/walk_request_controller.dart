@@ -4,31 +4,43 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/errors/api_exception.dart';
 import '../../services/api_service.dart';
 import '../../services/perros_service.dart';
+import '../../services/routes_service.dart';
 import '../../services/storage_service.dart';
 import '../pets/models/pet.dart';
 import '../walkers/models/walker.dart';
 import 'models/pickup_location.dart';
+import 'models/walk_route_selection.dart';
 import 'walk_request_state.dart';
 
 class WalkRequestResult {
   final bool success;
   final String message;
+  final int? walkId;
+  final bool routeAssigned;
 
   const WalkRequestResult({
     required this.success,
     required this.message,
+    this.walkId,
+    this.routeAssigned = false,
   });
 
-  const WalkRequestResult.success([
-    this.message = 'Paseo programado correctamente.',
-  ]) : success = true;
+  const WalkRequestResult.success({
+    this.message =
+        'Paseo programado correctamente.',
+    this.walkId,
+    this.routeAssigned = false,
+  }) : success = true;
 
   const WalkRequestResult.failure(
     this.message,
-  ) : success = false;
+  )   : success = false,
+        walkId = null,
+        routeAssigned = false;
 }
 
-class WalkRequestController extends ChangeNotifier {
+class WalkRequestController
+    extends ChangeNotifier {
   WalkRequestState _state;
 
   bool _disposed = false;
@@ -58,7 +70,8 @@ class WalkRequestController extends ChangeNotifier {
     );
 
     try {
-      final results = await Future.wait<dynamic>([
+      final results =
+          await Future.wait<dynamic>([
         StorageService.obtenerBaseUrl(),
         PerrosService.obtenerMisPerros(),
       ]);
@@ -67,8 +80,11 @@ class WalkRequestController extends ChangeNotifier {
         return;
       }
 
-      final baseUrl = results[0]?.toString();
-      final petsResponse = _asMap(results[1]);
+      final baseUrl =
+          results[0]?.toString();
+
+      final petsResponse =
+          _asMap(results[1]);
 
       if (petsResponse['success'] != true) {
         throw Exception(
@@ -102,13 +118,16 @@ class WalkRequestController extends ChangeNotifier {
           loading: false,
           baseUrl: baseUrl,
           pets: pets,
-          selectedPetId:
-              pets.isEmpty ? null : pets.first.id,
-          clearSelectedPet: pets.isEmpty,
-          defaultLocation: defaultLocation,
+          selectedPetIds: pets.isEmpty
+              ? const []
+              : [pets.first.id],
+          clearSelectedPets: pets.isEmpty,
+          defaultLocation:
+              defaultLocation,
           clearDefaultLocation:
               defaultLocation == null,
-          pickupLocation: defaultLocation,
+          pickupLocation:
+              defaultLocation,
           clearPickupLocation:
               defaultLocation == null,
           clearError: true,
@@ -135,19 +154,42 @@ class WalkRequestController extends ChangeNotifier {
   }
 
   void selectPet(int petId) {
+    togglePet(petId);
+  }
+
+  String? togglePet(int petId) {
     final exists = _state.pets.any(
       (pet) => pet.id == petId,
     );
 
     if (!exists) {
-      return;
+      return 'La mascota seleccionada no existe.';
+    }
+
+    final selected =
+        List<int>.from(
+      _state.selectedPetIds,
+    );
+
+    if (selected.contains(petId)) {
+      selected.remove(petId);
+    } else {
+      if (selected.length >=
+          WalkRequestState.maxSelectedPets) {
+        return 'Puedes seleccionar máximo '
+            '${WalkRequestState.maxSelectedPets} mascotas.';
+      }
+
+      selected.add(petId);
     }
 
     _setState(
       _state.copyWith(
-        selectedPetId: petId,
+        selectedPetIds: selected,
       ),
     );
+
+    return null;
   }
 
   void selectDuration(int minutes) {
@@ -198,17 +240,20 @@ class WalkRequestController extends ChangeNotifier {
   }
 
   String? useDefaultLocation() {
-    final location = _state.defaultLocation;
+    final location =
+        _state.defaultLocation;
 
     if (location == null) {
-      return 'No tienes una ubicación predeterminada guardada.';
+      return 'No tienes una ubicación '
+          'predeterminada guardada.';
     }
 
     setPickupLocation(location);
     return null;
   }
 
-  Future<String?> useCurrentLocation() async {
+  Future<String?>
+      useCurrentLocation() async {
     if (_state.loadingLocation) {
       return null;
     }
@@ -221,33 +266,40 @@ class WalkRequestController extends ChangeNotifier {
 
     try {
       final serviceEnabled =
-          await Geolocator.isLocationServiceEnabled();
+          await Geolocator
+              .isLocationServiceEnabled();
 
       if (!serviceEnabled) {
-        return 'El GPS está desactivado. Enciéndelo.';
+        return 'El GPS está desactivado. '
+            'Enciéndelo.';
       }
 
       var permission =
           await Geolocator.checkPermission();
 
-      if (permission == LocationPermission.denied) {
+      if (permission ==
+          LocationPermission.denied) {
         permission =
-            await Geolocator.requestPermission();
+            await Geolocator
+                .requestPermission();
       }
 
-      if (permission == LocationPermission.denied) {
+      if (permission ==
+          LocationPermission.denied) {
         return 'Permiso de ubicación denegado.';
       }
 
       if (permission ==
           LocationPermission.deniedForever) {
-        return 'Los permisos de ubicación están '
-            'denegados permanentemente.';
+        return 'Los permisos de ubicación '
+            'están denegados permanentemente.';
       }
 
       final position =
-          await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+          await Geolocator
+              .getCurrentPosition(
+        desiredAccuracy:
+            LocationAccuracy.high,
       );
 
       if (_disposed) {
@@ -277,6 +329,7 @@ class WalkRequestController extends ChangeNotifier {
 
   Future<WalkRequestResult> submit({
     required String notes,
+    WalkRouteSelection? routeSelection,
   }) async {
     if (_submitInProgress) {
       return const WalkRequestResult.failure(
@@ -292,10 +345,24 @@ class WalkRequestController extends ChangeNotifier {
       );
     }
 
-    final pet = _state.selectedPet!;
-    final date = _state.scheduledAt!;
-    final location = _state.pickupLocation!;
-    final cleanNotes = notes.trim();
+    final selectedPets =
+        _state.selectedPets;
+
+    final selectedPetIds = selectedPets
+        .map((pet) => pet.id)
+        .toList(growable: false);
+
+    final primaryPet =
+        selectedPets.first;
+
+    final date =
+        _state.scheduledAt!;
+
+    final location =
+        _state.pickupLocation!;
+
+    final cleanNotes =
+        notes.trim();
 
     _submitInProgress = true;
 
@@ -309,36 +376,48 @@ class WalkRequestController extends ChangeNotifier {
     final body = <String, dynamic>{
       'paseadorId': _state.walker.id,
       'PaseadorId': _state.walker.id,
-      'perroId': pet.id,
-      'PerroId': pet.id,
-      'perrosIds': [pet.id],
-      'PerrosIds': [pet.id],
+
+      // Primer perro para compatibilidad.
+      'perroId': primaryPet.id,
+      'PerroId': primaryPet.id,
+
+      // Selección múltiple real.
+      'perroIds': selectedPetIds,
+      'PerroIds': selectedPetIds,
+
       'duracionMinutos':
           _state.durationMinutes,
       'DuracionMinutos':
           _state.durationMinutes,
+
       'esProgramado': true,
       'EsProgramado': true,
+
       'fechaProgramada':
           date.toIso8601String(),
       'FechaProgramada':
           date.toIso8601String(),
+
       'latitudRecogida':
           location.latitude,
       'LatitudRecogida':
           location.latitude,
+
       'longitudRecogida':
           location.longitude,
       'LongitudRecogida':
           location.longitude,
+
       'direccionRecogida':
           location.displayAddress,
       'DireccionRecogida':
           location.displayAddress,
+
       'ubicacionTexto':
           location.displayAddress,
       'UbicacionTexto':
           location.displayAddress,
+
       'referenciasRecogida':
           cleanNotes.isNotEmpty
               ? cleanNotes
@@ -347,51 +426,94 @@ class WalkRequestController extends ChangeNotifier {
           cleanNotes.isNotEmpty
               ? cleanNotes
               : location.reference,
+
       'notas': cleanNotes,
       'Notas': cleanNotes,
+
+      // El backend vuelve a calcularlo.
       'precio': _state.estimatedTotal,
       'Precio': _state.estimatedTotal,
     };
 
-    Object? lastError;
-    Map<String, dynamic>? lastResponse;
-
     try {
-      for (final endpoint in _createEndpoints) {
-        try {
-          final response =
-              await ApiService.postAuth(
-            endpoint,
-            body,
-          );
+      final response =
+          await ApiService.postAuth(
+        '/api/paseos/multiple',
+        body,
+      );
 
-          lastResponse = response;
+      if (!_isSuccessful(response)) {
+        final statusCode =
+            response['statusCode'];
 
-          if (_isSuccessful(response)) {
-            return const WalkRequestResult.success();
-          }
-
-          lastError = Exception(
+        final message =
             _responseMessage(
-              response,
-              fallback:
-                  'No se pudo crear el paseo.',
-            ),
-          );
-        } catch (error) {
-          lastError = error;
-        }
+          response,
+          fallback:
+              'No se pudo crear el paseo.',
+        );
+
+        return WalkRequestResult.failure(
+          statusCode == null
+              ? message
+              : '$message Código: $statusCode',
+        );
       }
 
-      final statusCode =
-          lastResponse?['statusCode'];
+      final walkId =
+          _extractCreatedWalkId(response);
 
-      final message = _cleanError(lastError);
+      final count =
+          selectedPetIds.length;
 
+      final baseMessage = count == 1
+          ? 'Paseo solicitado correctamente.'
+          : 'Paseo solicitado para '
+              '$count mascotas.';
+
+      if (routeSelection == null) {
+        return WalkRequestResult.success(
+          message: baseMessage,
+          walkId: walkId,
+          routeAssigned: false,
+        );
+      }
+
+      if (walkId == null || walkId <= 0) {
+        return WalkRequestResult.success(
+          message:
+              '$baseMessage No pudimos identificar '
+              'el paseo para asignar su ruta; '
+              'podrás agregarla desde Mis paseos.',
+          routeAssigned: false,
+        );
+      }
+
+      try {
+        await _assignRoute(
+          walkId: walkId,
+          selection: routeSelection,
+        );
+
+        return WalkRequestResult.success(
+          message:
+              '$baseMessage Recorrido guardado.',
+          walkId: walkId,
+          routeAssigned: true,
+        );
+      } catch (error) {
+        return WalkRequestResult.success(
+          message:
+              '$baseMessage La solicitud sí fue '
+              'creada, pero no se pudo asignar '
+              'el recorrido: ${_cleanError(error)}',
+          walkId: walkId,
+          routeAssigned: false,
+        );
+      }
+    } catch (error) {
       return WalkRequestResult.failure(
-        statusCode == null
-            ? message
-            : '$message Código: $statusCode',
+        _cleanError(error),
       );
     } finally {
       _submitInProgress = false;
@@ -404,19 +526,148 @@ class WalkRequestController extends ChangeNotifier {
     }
   }
 
-  String? _validate() {
-    if (!_state.walker.hasValidId) {
-      return 'No se pudo identificar al paseador.';
+  Future<void> _assignRoute({
+    required int walkId,
+    required WalkRouteSelection selection,
+  }) async {
+    final savedRoute =
+        selection.savedRoute;
+
+    if (savedRoute != null) {
+      await RoutesService.assignSavedRoute(
+        walkId: walkId,
+        savedRouteId: savedRoute.id,
+      );
+
+      return;
     }
 
-    if (_state.selectedPet == null) {
-      return 'Selecciona una mascota.';
+    final customRoute =
+        selection.customRoute;
+
+    if (customRoute == null) {
+      return;
+    }
+
+    await RoutesService.assignCustomRoute(
+      walkId: walkId,
+      draft: customRoute,
+      saveAsTemplate:
+          selection.saveAsTemplate,
+      templateName:
+          selection.templateName,
+    );
+  }
+
+  int? _extractCreatedWalkId(
+    Map<String, dynamic> response,
+  ) {
+    dynamic source =
+        response['body'] ?? response;
+
+    if (source is Map) {
+      source =
+          source['data'] ??
+          source['Data'] ??
+          source['paseo'] ??
+          source['Paseo'] ??
+          source['resultado'] ??
+          source['Resultado'] ??
+          source;
+    }
+
+    return _extractPositiveId(source);
+  }
+
+  int? _extractPositiveId(
+    dynamic source,
+  ) {
+    if (source is num) {
+      final value = source.toInt();
+
+      return value > 0 ? value : null;
+    }
+
+    if (source is String) {
+      final value =
+          int.tryParse(source.trim());
+
+      return value != null && value > 0
+          ? value
+          : null;
+    }
+
+    if (source is! Map) {
+      return null;
+    }
+
+    final map =
+        Map<String, dynamic>.from(source);
+
+    const directKeys = [
+      'id',
+      'Id',
+      'paseoId',
+      'PaseoId',
+      'walkId',
+      'WalkId',
+    ];
+
+    for (final key in directKeys) {
+      final id =
+          _extractPositiveId(map[key]);
+
+      if (id != null) {
+        return id;
+      }
+    }
+
+    const nestedKeys = [
+      'data',
+      'Data',
+      'paseo',
+      'Paseo',
+      'resultado',
+      'Resultado',
+      'result',
+      'Result',
+      'value',
+      'Value',
+    ];
+
+    for (final key in nestedKeys) {
+      final id =
+          _extractPositiveId(map[key]);
+
+      if (id != null) {
+        return id;
+      }
+    }
+
+    return null;
+  }
+
+  String? _validate() {
+    if (!_state.walker.hasValidId) {
+      return 'No se pudo identificar '
+          'al paseador.';
+    }
+
+    if (!_state.hasSelectedPets) {
+      return 'Selecciona al menos una mascota.';
+    }
+
+    if (_state.selectedPetCount >
+        WalkRequestState.maxSelectedPets) {
+      return 'Puedes seleccionar máximo '
+          '${WalkRequestState.maxSelectedPets} mascotas.';
     }
 
     final date = _state.scheduledAt;
 
     if (date == null) {
-      return 'Selecciona fecha y hora del paseo.';
+      return 'Selecciona fecha y hora '
+          'del paseo.';
     }
 
     if (!date.isAfter(DateTime.now())) {
@@ -432,10 +683,13 @@ class WalkRequestController extends ChangeNotifier {
 
   Future<PickupLocation?>
       _loadDefaultLocation() async {
-    for (final endpoint in _profileEndpoints) {
+    for (final endpoint
+        in _profileEndpoints) {
       try {
         final response =
-            await ApiService.getAuth(endpoint);
+            await ApiService.getAuth(
+          endpoint,
+        );
 
         if (!_isSuccessful(response)) {
           continue;
@@ -448,7 +702,8 @@ class WalkRequestController extends ChangeNotifier {
           continue;
         }
 
-        final ownerProfile = _nestedMap(
+        final ownerProfile =
+            _nestedMap(
           profile,
           const [
             'duenioPerfil',
@@ -462,12 +717,15 @@ class WalkRequestController extends ChangeNotifier {
           ],
         );
 
-        final source = ownerProfile.isEmpty
-            ? profile
-            : ownerProfile;
+        final source =
+            ownerProfile.isEmpty
+                ? profile
+                : ownerProfile;
 
         try {
-          return PickupLocation.fromMap(source);
+          return PickupLocation.fromMap(
+            source,
+          );
         } catch (_) {
           continue;
         }
@@ -505,7 +763,9 @@ class WalkRequestController extends ChangeNotifier {
       final value = source[key];
 
       if (value is Map) {
-        return Map<String, dynamic>.from(value);
+        return Map<String, dynamic>.from(
+          value,
+        );
       }
     }
 
@@ -515,18 +775,30 @@ class WalkRequestController extends ChangeNotifier {
   bool _isSuccessful(
     Map<String, dynamic> response,
   ) {
-    final statusCode = response['statusCode'];
+    final statusCode =
+        response['statusCode'];
 
-    if (statusCode is int) {
-      return statusCode >= 200 &&
-          statusCode < 300;
+    if (statusCode is int &&
+        (statusCode < 200 ||
+            statusCode >= 300)) {
+      return false;
+    }
+
+    dynamic body =
+        response['body'] ?? response;
+
+    if (body is Map &&
+        body['success'] is bool) {
+      return body['success'] == true;
     }
 
     if (response['success'] is bool) {
       return response['success'] == true;
     }
 
-    return true;
+    return statusCode is int &&
+        statusCode >= 200 &&
+        statusCode < 300;
   }
 
   String _responseMessage(
@@ -537,9 +809,10 @@ class WalkRequestController extends ChangeNotifier {
         response['body'] ?? response;
 
     if (source is Map) {
-      final value = source['message'] ??
-          source['mensaje'] ??
-          source['error'];
+      final value =
+          source['message'] ??
+              source['mensaje'] ??
+              source['error'];
 
       final message =
           value?.toString().trim();
@@ -551,20 +824,29 @@ class WalkRequestController extends ChangeNotifier {
     }
 
     final message =
-        response['message']?.toString().trim();
+        response['message']
+            ?.toString()
+            .trim();
 
-    return message == null || message.isEmpty
+    return message == null ||
+            message.isEmpty
         ? fallback
         : message;
   }
 
-  Map<String, dynamic> _asMap(dynamic value) {
+  Map<String, dynamic> _asMap(
+    dynamic value,
+  ) {
     if (value is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(value);
+      return Map<String, dynamic>.from(
+        value,
+      );
     }
 
     if (value is Map) {
-      return Map<String, dynamic>.from(value);
+      return Map<String, dynamic>.from(
+        value,
+      );
     }
 
     return <String, dynamic>{};
@@ -578,23 +860,16 @@ class WalkRequestController extends ChangeNotifier {
     final message = error
         ?.toString()
         .replaceFirst('Exception: ', '')
-        .replaceFirst('ApiException: ', '')
+        .replaceFirst(
+          'ApiException: ',
+          '',
+        )
         .trim();
 
-    return message == null || message.isEmpty
+    return message == null ||
+            message.isEmpty
         ? 'No se pudo completar la solicitud.'
         : message;
-  }
-
-  List<String> get _createEndpoints {
-    return const [
-      '/api/paseos/solicitar',
-      '/api/Paseos/solicitar',
-      '/api/paseos/programar',
-      '/api/Paseos/programar',
-      '/api/paseos',
-      '/api/Paseos',
-    ];
   }
 
   List<String> get _profileEndpoints {

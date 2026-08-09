@@ -20,11 +20,15 @@ class HomePet {
   });
 
   String get ageLabel {
-    if (age == null || age! <= 0) {
+    if (age == null || age! < 0) {
       return 'Edad por confirmar';
     }
 
-    return age == 1 ? '1 año' : '$age años';
+    if (age == 1) {
+      return '1 año';
+    }
+
+    return '$age años';
   }
 
   bool get hasImage {
@@ -36,8 +40,10 @@ class HomePet {
     Map<String, dynamic> map, {
     String? baseUrl,
   }) {
+    final source = _unwrap(map);
+
     final imageValue = _firstValue(
-      map,
+      source,
       const [
         'fotoMiniaturaUrl',
         'FotoMiniaturaUrl',
@@ -47,46 +53,79 @@ class HomePet {
         'ImagenUrl',
         'urlFoto',
         'UrlFoto',
+
+        // Variantes usadas por paseos.
+        'perroFotoUrl',
+        'PerroFotoUrl',
+        'perroImagenUrl',
+        'PerroImagenUrl',
         'fotoPerroUrl',
         'FotoPerroUrl',
+        'imagenPerroUrl',
+        'ImagenPerroUrl',
       ],
     );
 
     return HomePet(
       id: _toInt(
         _firstValue(
-          map,
+          source,
           const [
             'id',
             'Id',
             'perroId',
             'PerroId',
+            'mascotaId',
+            'MascotaId',
           ],
         ),
       ),
       name: _text(
         _firstValue(
-          map,
-          const ['nombre', 'Nombre', 'name', 'Name'],
+          source,
+          const [
+            'nombre',
+            'Nombre',
+            'name',
+            'Name',
+            'perroNombre',
+            'PerroNombre',
+            'nombrePerro',
+            'NombrePerro',
+          ],
         ),
         fallback: 'Mascota',
       ),
       breed: _text(
         _firstValue(
-          map,
-          const ['raza', 'Raza', 'breed', 'Breed'],
+          source,
+          const [
+            'raza',
+            'Raza',
+            'breed',
+            'Breed',
+            'perroRaza',
+            'PerroRaza',
+            'razaPerro',
+            'RazaPerro',
+          ],
         ),
         fallback: 'Raza por confirmar',
       ),
       age: _toInt(
         _firstValue(
-          map,
-          const ['edad', 'Edad', 'age', 'Age'],
+          source,
+          const [
+            'edad',
+            'Edad',
+            'age',
+            'Age',
+          ],
         ),
       ),
       size: _text(
         _firstValue(
-          map,
+          source,
           const [
             'tamano',
             'Tamano',
@@ -102,7 +141,7 @@ class HomePet {
       ),
       notes: _text(
         _firstValue(
-          map,
+          source,
           const [
             'notas',
             'Notas',
@@ -118,8 +157,37 @@ class HomePet {
         imageValue?.toString() ?? '',
         baseUrl,
       ),
-      rawData: Map<String, dynamic>.unmodifiable(map),
+      rawData:
+          Map<String, dynamic>.unmodifiable(
+        source,
+      ),
     );
+  }
+
+  static Map<String, dynamic> _unwrap(
+    Map<String, dynamic> map,
+  ) {
+    final nested = _firstValue(
+      map,
+      const [
+        'perro',
+        'Perro',
+        'mascota',
+        'Mascota',
+      ],
+    );
+
+    if (nested is Map<String, dynamic>) {
+      return nested;
+    }
+
+    if (nested is Map) {
+      return Map<String, dynamic>.from(
+        nested,
+      );
+    }
+
+    return map;
   }
 
   static String _resolveUrl(
@@ -128,7 +196,8 @@ class HomePet {
   ) {
     final cleanValue = value.trim();
 
-    if (cleanValue.isEmpty) {
+    if (cleanValue.isEmpty ||
+        cleanValue.toLowerCase() == 'null') {
       return '';
     }
 
@@ -137,21 +206,26 @@ class HomePet {
       return cleanValue;
     }
 
-    final cleanBase = baseUrl?.trim() ?? '';
+    var cleanBase =
+        baseUrl?.trim() ?? '';
+
+    while (cleanBase.endsWith('/')) {
+      cleanBase = cleanBase.substring(
+        0,
+        cleanBase.length - 1,
+      );
+    }
 
     if (cleanBase.isEmpty) {
       return cleanValue;
     }
 
-    final normalizedBase = cleanBase.endsWith('/')
-        ? cleanBase.substring(0, cleanBase.length - 1)
-        : cleanBase;
+    final normalizedPath =
+        cleanValue.startsWith('/')
+            ? cleanValue
+            : '/$cleanValue';
 
-    final normalizedPath = cleanValue.startsWith('/')
-        ? cleanValue
-        : '/$cleanValue';
-
-    return '$normalizedBase$normalizedPath';
+    return '$cleanBase$normalizedPath';
   }
 
   static dynamic _firstValue(
@@ -159,9 +233,24 @@ class HomePet {
     List<String> keys,
   ) {
     for (final key in keys) {
-      if (map.containsKey(key) && map[key] != null) {
-        return map[key];
+      if (!map.containsKey(key)) {
+        continue;
       }
+
+      final value = map[key];
+
+      if (value == null) {
+        continue;
+      }
+
+      if (value is String &&
+          (value.trim().isEmpty ||
+              value.trim().toLowerCase() ==
+                  'null')) {
+        continue;
+      }
+
+      return value;
     }
 
     return null;
@@ -176,14 +265,23 @@ class HomePet {
       return value.toInt();
     }
 
-    return int.tryParse(value?.toString() ?? '');
+    return int.tryParse(
+      value?.toString() ?? '',
+    );
   }
 
   static String _text(
     dynamic value, {
     required String fallback,
   }) {
-    final text = value?.toString().trim() ?? '';
-    return text.isEmpty ? fallback : text;
+    final text =
+        value?.toString().trim() ?? '';
+
+    if (text.isEmpty ||
+        text.toLowerCase() == 'null') {
+      return fallback;
+    }
+
+    return text;
   }
 }

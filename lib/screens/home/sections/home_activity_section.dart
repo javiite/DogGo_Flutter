@@ -27,6 +27,7 @@ class HomeActivitySection extends StatelessWidget {
         children: [
           HomeSectionTitle(
             title: 'Actividad reciente',
+            subtitle: 'Las novedades importantes de tu cuenta',
             actionText: activities.isEmpty ? null : 'Ver todas',
             onAction: activities.isEmpty ? null : onSeeAll,
           ),
@@ -39,8 +40,12 @@ class HomeActivitySection extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 color: DogGoTheme.card,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: DogGoTheme.border),
+                boxShadow: DogGoTheme.softShadow(
+                  opacity: .025,
+                  blur: 16,
+                ),
               ),
               clipBehavior: Clip.antiAlias,
               child: Column(
@@ -50,13 +55,14 @@ class HomeActivitySection extends StatelessWidget {
                       index++) ...[
                     _ActivityTile(
                       activity: activities[index],
-                      onTap: () =>
-                          onActivityTap(activities[index]),
+                      onTap: () {
+                        onActivityTap(activities[index]);
+                      },
                     ),
                     if (index < activities.length - 1)
                       const Divider(
                         height: 1,
-                        indent: 72,
+                        indent: 76,
                         color: DogGoTheme.border,
                       ),
                   ],
@@ -85,24 +91,24 @@ class _ActivityTile extends StatelessWidget {
     return Material(
       color: activity.read
           ? DogGoTheme.card
-          : DogGoTheme.tealLight.withOpacity(.35),
+          : DogGoTheme.tealLight.withValues(alpha: .42),
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+          padding: const EdgeInsets.fromLTRB(15, 14, 12, 14),
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 47,
+                height: 47,
                 decoration: BoxDecoration(
                   color: style.background,
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   style.icon,
                   color: style.color,
-                  size: 22,
+                  size: 23,
                 ),
               ),
               const SizedBox(width: 13),
@@ -119,6 +125,7 @@ class _ActivityTile extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: DogGoTheme.body(
                               size: 13.5,
+                              color: DogGoTheme.ink,
                               weight: activity.read
                                   ? FontWeight.w700
                                   : FontWeight.w900,
@@ -127,8 +134,8 @@ class _ActivityTile extends StatelessWidget {
                         ),
                         if (!activity.read)
                           Container(
-                            width: 7,
-                            height: 7,
+                            width: 8,
+                            height: 8,
                             margin: const EdgeInsets.only(left: 8),
                             decoration: const BoxDecoration(
                               color: DogGoTheme.teal,
@@ -142,17 +149,29 @@ class _ActivityTile extends StatelessWidget {
                       activity.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: DogGoTheme.subtitle(size: 11.5),
+                      style: DogGoTheme.subtitle(
+                        size: 11.5,
+                      ),
                     ),
                     if (activity.occurredAt != null) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        _relativeDate(activity.occurredAt!),
-                        style: DogGoTheme.body(
-                          size: 10,
-                          color: DogGoTheme.muted,
-                          weight: FontWeight.w600,
-                        ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 13,
+                            color: DogGoTheme.muted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _relativeDate(activity.occurredAt!),
+                            style: DogGoTheme.body(
+                              size: 10,
+                              color: DogGoTheme.muted,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -162,7 +181,7 @@ class _ActivityTile extends StatelessWidget {
               const Icon(
                 Icons.chevron_right_rounded,
                 color: DogGoTheme.muted,
-                size: 20,
+                size: 21,
               ),
             ],
           ),
@@ -178,14 +197,16 @@ class _ActivityLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 116,
+      height: 132,
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: DogGoTheme.border),
       ),
       child: const Center(
-        child: CircularProgressIndicator(),
+        child: CircularProgressIndicator(
+          color: DogGoTheme.teal,
+        ),
       ),
     );
   }
@@ -198,29 +219,52 @@ class _EmptyActivity extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
       decoration: BoxDecoration(
-        color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: DogGoTheme.border),
+        gradient: LinearGradient(
+          colors: [
+            DogGoTheme.tealLight,
+            DogGoTheme.card,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: DogGoTheme.teal.withValues(alpha: .12),
+        ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          const Icon(
-            Icons.notifications_none_rounded,
-            color: DogGoTheme.muted,
-            size: 32,
+          Container(
+            width: 55,
+            height: 55,
+            decoration: const BoxDecoration(
+              color: DogGoTheme.card,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              color: DogGoTheme.teal,
+              size: 28,
+            ),
           ),
-          const SizedBox(height: 9),
-          Text(
-            'Sin actividad reciente',
-            style: DogGoTheme.title(size: 18),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Aquí aparecerán las actualizaciones de tus paseos.',
-            textAlign: TextAlign.center,
-            style: DogGoTheme.subtitle(size: 12.5),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Todo tranquilo por aquí',
+                  style: DogGoTheme.title(size: 17),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Las actualizaciones de tus paseos aparecerán en este espacio.',
+                  style: DogGoTheme.subtitle(size: 11.5),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -295,7 +339,7 @@ _ActivityStyle _activityStyle(HomeActivityType type) {
     case HomeActivityType.unknown:
       return const _ActivityStyle(
         icon: Icons.notifications_none_rounded,
-        color: DogGoTheme.muted,
+        color: DogGoTheme.purple,
         background: DogGoTheme.purpleLight,
       );
   }

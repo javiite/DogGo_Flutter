@@ -206,6 +206,12 @@ void _onStart(ServiceInstance service) async {
         'LatitudActual': pos.latitude,
         'longitudActual': pos.longitude,
         'LongitudActual': pos.longitude,
+        'precisionGpsMetros': pos.accuracy,
+        'PrecisionGpsMetros': pos.accuracy,
+        'fechaLectura':
+            pos.timestamp.toUtc().toIso8601String(),
+        'FechaLectura':
+            pos.timestamp.toUtc().toIso8601String(),
       };
 
       final endpoint = Uri.parse('$baseUrl/api/paseos/$paseoId/ubicacion');
@@ -245,6 +251,7 @@ void _onStart(ServiceInstance service) async {
         'paseoId': paseoId,
         'latitud': pos.latitude,
         'longitud': pos.longitude,
+        'precisionGpsMetros': pos.accuracy,
         'fecha': fecha.toIso8601String(),
       });
 

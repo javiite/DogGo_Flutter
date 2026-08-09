@@ -592,6 +592,8 @@ class _NextWalkCard extends StatelessWidget {
                   children: [
                     _WalkImage(
                       imageUrl: walk.imageUrl,
+                      imageUrls: walk.petImageUrls,
+                      petCount: walk.petCount,
                       size: 78,
                       backgroundColor:
                           Colors.white.withValues(alpha: .14),
@@ -964,6 +966,8 @@ class _TimelineWalkCard extends StatelessWidget {
                   children: [
                     _WalkImage(
                       imageUrl: walk.imageUrl,
+                      imageUrls: walk.petImageUrls,
+                      petCount: walk.petCount,
                       size: 54,
                     ),
                     const SizedBox(width: 12),
@@ -1277,6 +1281,8 @@ class _SummaryDivider extends StatelessWidget {
 
 class _WalkImage extends StatelessWidget {
   final String imageUrl;
+  final List<String> imageUrls;
+  final int petCount;
   final double size;
   final Color backgroundColor;
   final Color iconColor;
@@ -1284,44 +1290,144 @@ class _WalkImage extends StatelessWidget {
   const _WalkImage({
     required this.imageUrl,
     required this.size,
+    this.imageUrls = const [],
+    this.petCount = 1,
     this.backgroundColor = DogGoTheme.tealLight,
     this.iconColor = DogGoTheme.teal,
   });
 
-  bool get _hasImage {
-    return imageUrl.startsWith('http://') ||
-        imageUrl.startsWith('https://');
+  List<String> get _validImages {
+    final candidates = imageUrls.isNotEmpty
+        ? imageUrls
+        : imageUrl.trim().isEmpty
+            ? const <String>[]
+            : <String>[imageUrl];
+
+    return candidates
+        .map((url) => url.trim())
+        .where(
+          (url) =>
+              url.startsWith('http://') ||
+              url.startsWith('https://'),
+        )
+        .toSet()
+        .toList(growable: false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final images = _validImages;
+    final secondarySize = size * .48;
+
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: _hasImage
-          ? Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (
-                context,
-                error,
-                stackTrace,
-              ) {
-                return _WalkImagePlaceholder(
-                  iconColor: iconColor,
-                );
-              },
-            )
-          : _WalkImagePlaceholder(
-              iconColor: iconColor,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(
+                  DogGoRadius.medium,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: images.isEmpty
+                  ? _WalkImagePlaceholder(
+                      iconColor: iconColor,
+                    )
+                  : Image.network(
+                      images.first,
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                      errorBuilder: (
+                        context,
+                        error,
+                        stackTrace,
+                      ) {
+                        return _WalkImagePlaceholder(
+                          iconColor: iconColor,
+                        );
+                      },
+                    ),
             ),
+          ),
+          if (images.length > 1)
+            Positioned(
+              right: -3,
+              bottom: -3,
+              child: Container(
+                width: secondarySize,
+                height: secondarySize,
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: .18,
+                      ),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.network(
+                  images[1],
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (
+                    context,
+                    error,
+                    stackTrace,
+                  ) {
+                    return _WalkImagePlaceholder(
+                      iconColor: iconColor,
+                    );
+                  },
+                ),
+              ),
+            ),
+          if (petCount > 2)
+            Positioned(
+              top: -5,
+              right: -5,
+              child: Container(
+                constraints: const BoxConstraints(
+                  minWidth: 25,
+                  minHeight: 25,
+                ),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: DogGoTheme.orange,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  '+${petCount - 2}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -6,12 +6,15 @@ import '../shared/widgets/doggo_error_view.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
 import '../widgets/doggo_logo.dart';
-import 'home_screen.dart';
+import 'authenticated_entry_screen.dart';
 import 'login_screen.dart';
 import 'server_setup_screen.dart';
 
-class AppStartScreen extends StatefulWidget {
-  const AppStartScreen({super.key});
+class AppStartScreen
+    extends StatefulWidget {
+  const AppStartScreen({
+    super.key,
+  });
 
   @override
   State<AppStartScreen> createState() {
@@ -19,7 +22,8 @@ class AppStartScreen extends StatefulWidget {
   }
 }
 
-class _AppStartScreenState extends State<AppStartScreen> {
+class _AppStartScreenState
+    extends State<AppStartScreen> {
   bool _loading = true;
   bool _hasServer = false;
   bool _hasSession = false;
@@ -40,7 +44,8 @@ class _AppStartScreenState extends State<AppStartScreen> {
     }
 
     try {
-      final results = await Future.wait<dynamic>([
+      final results =
+          await Future.wait<dynamic>([
         StorageService.obtenerBaseUrl(),
         SessionService.haySesionActiva(),
       ]);
@@ -50,11 +55,13 @@ class _AppStartScreenState extends State<AppStartScreen> {
       }
 
       final baseUrl =
-          results[0]?.toString().trim() ?? '';
+          results[0]?.toString().trim() ??
+              '';
 
       setState(() {
         _hasServer = baseUrl.isNotEmpty;
-        _hasSession = results[1] == true;
+        _hasSession =
+            results[1] == true;
         _loading = false;
       });
     } catch (error) {
@@ -66,7 +73,10 @@ class _AppStartScreenState extends State<AppStartScreen> {
         _loading = false;
         _errorMessage = error
             .toString()
-            .replaceFirst('Exception: ', '');
+            .replaceFirst(
+              'Exception: ',
+              '',
+            );
       });
     }
   }
@@ -87,17 +97,23 @@ class _AppStartScreenState extends State<AppStartScreen> {
 
     if (_errorMessage != null) {
       return Scaffold(
-        backgroundColor: DogGoTheme.cream,
+        backgroundColor:
+            DogGoTheme.cream,
         body: SafeArea(
           child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(
+            child:
+                SingleChildScrollView(
+              padding:
+                  const EdgeInsets.all(
                 DogGoSpacing.lg,
               ),
               child: DogGoErrorView(
-                title: 'No pudimos iniciar DogGo',
-                message: _errorMessage!,
-                onRetry: _checkInitialState,
+                title:
+                    'No pudimos iniciar DogGo',
+                message:
+                    _errorMessage!,
+                onRetry:
+                    _checkInitialState,
               ),
             ),
           ),
@@ -107,39 +123,54 @@ class _AppStartScreenState extends State<AppStartScreen> {
 
     if (!_hasServer) {
       return ServerSetupScreen(
-        onConfigured: _serverConfigured,
+        onConfigured:
+            _serverConfigured,
       );
     }
 
     if (_hasSession) {
-      return const HomeScreen();
+      return const
+          AuthenticatedEntryScreen();
     }
 
     return const LoginScreen();
   }
 }
 
-class _AppLoadingScreen extends StatelessWidget {
+class _AppLoadingScreen
+    extends StatelessWidget {
   const _AppLoadingScreen();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DogGoTheme.cream,
+      backgroundColor:
+          DogGoTheme.cream,
       body: SafeArea(
         child: Center(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize:
+                MainAxisSize.min,
             children: [
-              const DogGoLogo(size: 86),
-              const SizedBox(height: DogGoSpacing.lg),
-              const CircularProgressIndicator(),
-              const SizedBox(height: DogGoSpacing.md),
+              const DogGoLogo(
+                size: 86,
+              ),
+              const SizedBox(
+                height:
+                    DogGoSpacing.lg,
+              ),
+              const
+                  CircularProgressIndicator(),
+              const SizedBox(
+                height:
+                    DogGoSpacing.md,
+              ),
               Text(
                 'Preparando DogGo',
                 style: DogGoTheme.body(
                   size: 13,
-                  color: DogGoTheme.muted,
+                  color:
+                      DogGoTheme.muted,
                 ),
               ),
             ],
