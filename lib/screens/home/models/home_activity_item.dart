@@ -6,6 +6,9 @@ enum HomeActivityType {
   walkCancelled,
   newPhoto,
   newMessage,
+  routeDeviation,
+  routeRecovered,
+  checkpointReached,
   notification,
   unknown,
 }
@@ -50,112 +53,105 @@ class HomeActivityItem {
   }
 
   factory HomeActivityItem.fromMap(Map<String, dynamic> map) {
-    final typeValue = _firstValue(
-      map,
-      const [
-        'tipo',
-        'Tipo',
-        'type',
-        'Type',
-        'categoria',
-        'Categoria',
-      ],
-    );
+    final typeValue = _firstValue(map, const [
+      'tipo',
+      'Tipo',
+      'type',
+      'Type',
+      'categoria',
+      'Categoria',
+    ]);
 
-    final titleValue = _firstValue(
-      map,
-      const [
-        'titulo',
-        'Titulo',
-        'title',
-        'Title',
-      ],
-    );
+    final titleValue = _firstValue(map, const [
+      'titulo',
+      'Titulo',
+      'title',
+      'Title',
+    ]);
 
-    final descriptionValue = _firstValue(
-      map,
-      const [
-        'mensaje',
-        'Mensaje',
-        'descripcion',
-        'Descripcion',
-        'description',
-        'Description',
-      ],
-    );
+    final descriptionValue = _firstValue(map, const [
+      'mensaje',
+      'Mensaje',
+      'descripcion',
+      'Descripcion',
+      'description',
+      'Description',
+    ]);
 
-    final dateValue = _firstValue(
-      map,
-      const [
-        'fecha',
-        'Fecha',
-        'fechaCreacion',
-        'FechaCreacion',
-        'createdAt',
-        'CreatedAt',
-      ],
-    );
+    final dateValue = _firstValue(map, const [
+      'fecha',
+      'Fecha',
+      'fechaCreacion',
+      'FechaCreacion',
+      'createdAt',
+      'CreatedAt',
+    ]);
 
     return HomeActivityItem(
       id: _toInt(
-        _firstValue(
-          map,
-          const ['id', 'Id', 'notificacionId', 'NotificacionId'],
-        ),
+        _firstValue(map, const [
+          'id',
+          'Id',
+          'notificacionId',
+          'NotificacionId',
+        ]),
       ),
-      type: _typeFromValue(typeValue),
+      type: _typeFromValue('$typeValue $titleValue $descriptionValue'),
       title: titleValue?.toString().trim().isNotEmpty == true
           ? titleValue.toString().trim()
           : 'Actividad de DogGo',
-      description:
-          descriptionValue?.toString().trim().isNotEmpty == true
-              ? descriptionValue.toString().trim()
-              : 'Tienes una nueva actualización.',
+      description: descriptionValue?.toString().trim().isNotEmpty == true
+          ? descriptionValue.toString().trim()
+          : 'Tienes una nueva actualización.',
       occurredAt: _toDateTime(dateValue),
       referenceId: _toInt(
-        _firstValue(
-          map,
-          const [
-            'referenciaId',
-            'ReferenciaId',
-            'paseoId',
-            'PaseoId',
-          ],
-        ),
+        _firstValue(map, const [
+          'referenciaId',
+          'ReferenciaId',
+          'paseoId',
+          'PaseoId',
+        ]),
       ),
-      read: _toBool(
-        _firstValue(
-          map,
-          const ['leida', 'Leida', 'read', 'Read'],
-        ),
-      ),
+      read: _toBool(_firstValue(map, const ['leida', 'Leida', 'read', 'Read'])),
     );
   }
 
   static HomeActivityType _typeFromValue(dynamic value) {
     final normalized = _normalize(value?.toString() ?? '');
 
+    if ((normalized.contains('rutapaseo') || normalized.contains('ruta')) &&
+        (normalized.contains('fuera') || normalized.contains('desvio'))) {
+      return HomeActivityType.routeDeviation;
+    }
+
+    if ((normalized.contains('rutapaseo') || normalized.contains('ruta')) &&
+        (normalized.contains('regres') || normalized.contains('reingreso'))) {
+      return HomeActivityType.routeRecovered;
+    }
+
+    if (normalized.contains('puntoalcanzado') ||
+        normalized.contains('puntodecontrol') ||
+        normalized.contains('checkpoint')) {
+      return HomeActivityType.checkpointReached;
+    }
+
     if (normalized.contains('acept')) {
       return HomeActivityType.walkAccepted;
     }
 
-    if (normalized.contains('inici') ||
-        normalized.contains('encurso')) {
+    if (normalized.contains('inici') || normalized.contains('encurso')) {
       return HomeActivityType.walkStarted;
     }
 
-    if (normalized.contains('final') ||
-        normalized.contains('complet')) {
+    if (normalized.contains('final') || normalized.contains('complet')) {
       return HomeActivityType.walkCompleted;
     }
 
-    if (normalized.contains('cancel') ||
-        normalized.contains('rechaz')) {
+    if (normalized.contains('cancel') || normalized.contains('rechaz')) {
       return HomeActivityType.walkCancelled;
     }
 
-    if (normalized.contains('solic') ||
-        normalized.contains('pendient')) {
+    if (normalized.contains('solic') || normalized.contains('pendient')) {
       return HomeActivityType.walkRequested;
     }
 
@@ -165,8 +161,7 @@ class HomeActivityItem {
       return HomeActivityType.newPhoto;
     }
 
-    if (normalized.contains('chat') ||
-        normalized.contains('mensaje')) {
+    if (normalized.contains('chat') || normalized.contains('mensaje')) {
       return HomeActivityType.newMessage;
     }
 
@@ -177,10 +172,7 @@ class HomeActivityItem {
     return HomeActivityType.unknown;
   }
 
-  static dynamic _firstValue(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
+  static dynamic _firstValue(Map<String, dynamic> map, List<String> keys) {
     for (final key in keys) {
       if (map.containsKey(key) && map[key] != null) {
         return map[key];

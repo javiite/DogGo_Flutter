@@ -3,17 +3,19 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../services/notificaciones_service.dart';
+import '../../services/paseadores_service.dart';
 import '../../services/paseos_service.dart';
 import '../../services/perros_service.dart';
 import '../../services/session_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/usuario_service.dart';
 import 'home_state.dart';
 import 'models/home_pet.dart';
 import 'models/home_walk.dart';
 
 class HomeController extends ChangeNotifier {
-  final NotificacionesService
-      _notificationsService;
+  final NotificacionesService _notificationsService;
+  final UsuarioService _usuarioService;
 
   HomeState _state = const HomeState();
 
@@ -24,11 +26,10 @@ class HomeController extends ChangeNotifier {
   bool _initialized = false;
 
   HomeController({
-    NotificacionesService?
-        notificationsService,
-  }) : _notificationsService =
-            notificationsService ??
-                NotificacionesService();
+    NotificacionesService? notificationsService,
+    UsuarioService? usuarioService,
+  }) : _notificationsService = notificationsService ?? NotificacionesService(),
+       _usuarioService = usuarioService ?? UsuarioService();
 
   HomeState get state => _state;
 
@@ -52,24 +53,17 @@ class HomeController extends ChangeNotifier {
     await _loadSession();
 
     await Future.wait([
-      if (_state.isOwner ||
-          _state.isAdmin)
-        loadPets(),
+      loadProfilePhoto(),
+      if (_state.isOwner || _state.isAdmin) loadPets(),
       loadWalks(),
-      loadNotifications(
-        silent: true,
-      ),
+      loadNotifications(silent: true),
     ]);
 
     if (_disposed) {
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        initialLoading: false,
-      ),
-    );
+    _setState(_state.copyWith(initialLoading: false));
 
     _startNotificationsPolling();
   }
@@ -82,14 +76,132 @@ class HomeController extends ChangeNotifier {
     await _loadSession();
 
     await Future.wait([
-      if (_state.isOwner ||
-          _state.isAdmin)
-        loadPets(),
+      loadProfilePhoto(),
+      if (_state.isOwner || _state.isAdmin) loadPets(),
       loadWalks(),
-      loadNotifications(
-        silent: true,
-      ),
+      loadNotifications(silent: true),
     ]);
+  }
+
+  Future<void> loadProfilePhoto() async {
+    if (_disposed) {
+      return;
+    }
+
+    try {
+      Map<String, dynamic> profile;
+
+      if (_state.isWalker) {
+        profile = await PaseadoresService.obtenerMiPerfilPaseador();
+      } else if (_state.isOwner || _state.isAdmin) {
+        profile = await _usuarioService.obtenerPerfilDuenio();
+      } else {
+        profile = await _usuarioService.obtenerPerfil();
+      }
+
+      dynamic photo = _findProfilePhoto(profile);
+
+      if (photo == null) {
+        final user = await _usuarioService.obtenerPerfil();
+        photo = _findProfilePhoto(user);
+      }
+
+      if (_disposed) {
+        return;
+      }
+
+      final publicUrl = _publicMediaUrl(photo);
+
+      _setState(
+        _state.copyWith(
+          userPhotoUrl: publicUrl,
+          clearUserPhotoUrl: publicUrl == null,
+        ),
+      );
+    } catch (error) {
+      debugPrint(
+        'No se pudo cargar la foto del Home: '
+        '${_cleanError(error)}',
+      );
+    }
+  }
+
+  dynamic _findProfilePhoto(dynamic source) {
+    if (source is! Map) {
+      return null;
+    }
+
+    const photoKeys = [
+      'fotoUrl',
+      'FotoUrl',
+      'fotoPerfilUrl',
+      'FotoPerfilUrl',
+      'imagenUrl',
+      'ImagenUrl',
+      'foto',
+      'Foto',
+    ];
+
+    for (final key in photoKeys) {
+      final value = source[key];
+      final text = value?.toString().trim() ?? '';
+
+      if (text.isNotEmpty && text.toLowerCase() != 'null') {
+        return value;
+      }
+    }
+
+    const nestedKeys = [
+      'data',
+      'Data',
+      'perfil',
+      'Perfil',
+      'usuario',
+      'Usuario',
+      'duenio',
+      'Duenio',
+      'dueño',
+      'Dueño',
+      'paseador',
+      'Paseador',
+      'result',
+      'resultado',
+    ];
+
+    for (final key in nestedKeys) {
+      final value = _findProfilePhoto(source[key]);
+
+      if (value != null) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  String? _publicMediaUrl(dynamic value) {
+    final path = value?.toString().trim() ?? '';
+
+    if (path.isEmpty || path.toLowerCase() == 'null') {
+      return null;
+    }
+
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+
+    final server = _state.baseUrl?.trim() ?? '';
+
+    if (server.isEmpty) {
+      return null;
+    }
+
+    final cleanServer = server.endsWith('/')
+        ? server.substring(0, server.length - 1)
+        : server;
+    final cleanPath = path.startsWith('/') ? path : '/$path';
+
+    return '$cleanServer$cleanPath';
   }
 
   Future<void> loadPets() async {
@@ -97,25 +209,17 @@ class HomeController extends ChangeNotifier {
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        petsLoading: true,
-        clearPetsError: true,
-      ),
-    );
+    _setState(_state.copyWith(petsLoading: true, clearPetsError: true));
 
     try {
-      final result =
-          await PerrosService
-              .obtenerMisPerros();
+      final result = await PerrosService.obtenerMisPerros();
 
       if (_disposed) {
         return;
       }
 
       if (result['success'] == true) {
-        final maps =
-            HomeState.normalizeMapList(
+        final maps = HomeState.normalizeMapList(
           result['data'],
           possibleKeys: const [
             'items',
@@ -127,19 +231,10 @@ class HomeController extends ChangeNotifier {
         );
 
         final pets = maps
-            .map(
-              (map) => HomePet.fromMap(
-                map,
-                baseUrl: _state.baseUrl,
-              ),
-            )
+            .map((map) => HomePet.fromMap(map, baseUrl: _state.baseUrl))
             .toList(growable: false);
 
-        final enrichedWalks =
-            _enrichWalksWithPets(
-          _state.walks,
-          pets,
-        );
+        final enrichedWalks = _enrichWalksWithPets(_state.walks, pets);
 
         _setState(
           _state.copyWith(
@@ -168,10 +263,7 @@ class HomeController extends ChangeNotifier {
       }
 
       _setState(
-        _state.copyWith(
-          petsLoading: false,
-          petsError: _cleanError(error),
-        ),
+        _state.copyWith(petsLoading: false, petsError: _cleanError(error)),
       );
     }
   }
@@ -181,25 +273,17 @@ class HomeController extends ChangeNotifier {
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        walksLoading: true,
-        clearWalksError: true,
-      ),
-    );
+    _setState(_state.copyWith(walksLoading: true, clearWalksError: true));
 
     try {
-      final result =
-          await PaseosService
-              .obtenerMisPaseos();
+      final result = await PaseosService.obtenerMisPaseos();
 
       if (_disposed) {
         return;
       }
 
       if (result['success'] == true) {
-        final maps =
-            HomeState.normalizeMapList(
+        final maps = HomeState.normalizeMapList(
           result['data'],
           possibleKeys: const [
             'items',
@@ -211,19 +295,10 @@ class HomeController extends ChangeNotifier {
         );
 
         final parsedWalks = maps
-            .map(
-              (map) => HomeWalk.fromMap(
-                map,
-                baseUrl: _state.baseUrl,
-              ),
-            )
+            .map((map) => HomeWalk.fromMap(map, baseUrl: _state.baseUrl))
             .toList(growable: false);
 
-        final enrichedWalks =
-            _enrichWalksWithPets(
-          parsedWalks,
-          _state.pets,
-        );
+        final enrichedWalks = _enrichWalksWithPets(parsedWalks, _state.pets);
 
         _setState(
           _state.copyWith(
@@ -239,10 +314,7 @@ class HomeController extends ChangeNotifier {
       _setState(
         _state.copyWith(
           walksLoading: false,
-          walksError: _messageFrom(
-            result,
-            'No se pudieron cargar los paseos.',
-          ),
+          walksError: _messageFrom(result, 'No se pudieron cargar los paseos.'),
         ),
       );
     } catch (error) {
@@ -251,10 +323,7 @@ class HomeController extends ChangeNotifier {
       }
 
       _setState(
-        _state.copyWith(
-          walksLoading: false,
-          walksError: _cleanError(error),
-        ),
+        _state.copyWith(walksLoading: false, walksError: _cleanError(error)),
       );
     }
   }
@@ -263,67 +332,61 @@ class HomeController extends ChangeNotifier {
     List<HomeWalk> walks,
     List<HomePet> registeredPets,
   ) {
-    if (walks.isEmpty ||
-        registeredPets.isEmpty) {
+    if (walks.isEmpty || registeredPets.isEmpty) {
       return walks;
     }
 
-    return walks.map((walk) {
-      final walkPets = walk.effectivePets;
+    return walks
+        .map((walk) {
+          final walkPets = walk.effectivePets;
 
-      if (walkPets.isEmpty) {
-        return walk;
-      }
-
-      final enrichedPets = walkPets.map(
-        (walkPet) {
-          final registeredPet =
-              _findRegisteredPet(
-            walkPet,
-            registeredPets,
-          );
-
-          if (registeredPet == null) {
-            return walkPet;
+          if (walkPets.isEmpty) {
+            return walk;
           }
 
-          // La información del listado de mascotas
-          // es la fuente más completa para fotografías
-          // y datos generales.
-          return registeredPet;
-        },
-      ).toList(growable: false);
+          final enrichedPets = walkPets
+              .map((walkPet) {
+                final registeredPet = _findRegisteredPet(
+                  walkPet,
+                  registeredPets,
+                );
 
-      final primaryPet = enrichedPets.isEmpty
-          ? walk.pet
-          : enrichedPets.first;
+                if (registeredPet == null) {
+                  return walkPet;
+                }
 
-      return HomeWalk(
-        id: walk.id,
-        status: walk.status,
-        scheduledAt: walk.scheduledAt,
-        startedAt: walk.startedAt,
-        finishedAt: walk.finishedAt,
-        durationMinutes:
-            walk.durationMinutes,
-        distanceKilometers:
-            walk.distanceKilometers,
-        price: walk.price,
-        pickupAddress:
-            walk.pickupAddress,
-        notes: walk.notes,
-        pet: primaryPet,
-        pets: enrichedPets,
-        walker: walk.walker,
-        rawData: walk.rawData,
-      );
-    }).toList(growable: false);
+                // La información del listado de mascotas
+                // es la fuente más completa para fotografías
+                // y datos generales.
+                return registeredPet;
+              })
+              .toList(growable: false);
+
+          final primaryPet = enrichedPets.isEmpty
+              ? walk.pet
+              : enrichedPets.first;
+
+          return HomeWalk(
+            id: walk.id,
+            status: walk.status,
+            scheduledAt: walk.scheduledAt,
+            startedAt: walk.startedAt,
+            finishedAt: walk.finishedAt,
+            durationMinutes: walk.durationMinutes,
+            distanceKilometers: walk.distanceKilometers,
+            price: walk.price,
+            pickupAddress: walk.pickupAddress,
+            notes: walk.notes,
+            pet: primaryPet,
+            pets: enrichedPets,
+            walker: walk.walker,
+            rawData: walk.rawData,
+          );
+        })
+        .toList(growable: false);
   }
 
-  HomePet? _findRegisteredPet(
-    HomePet walkPet,
-    List<HomePet> registeredPets,
-  ) {
+  HomePet? _findRegisteredPet(HomePet walkPet, List<HomePet> registeredPets) {
     final walkPetId = walkPet.id;
 
     if (walkPetId != null) {
@@ -334,8 +397,7 @@ class HomeController extends ChangeNotifier {
       }
     }
 
-    final normalizedName =
-        _normalizeText(walkPet.name);
+    final normalizedName = _normalizeText(walkPet.name);
 
     if (normalizedName.isEmpty ||
         normalizedName == 'tumascota' ||
@@ -344,8 +406,7 @@ class HomeController extends ChangeNotifier {
     }
 
     for (final pet in registeredPets) {
-      if (_normalizeText(pet.name) ==
-          normalizedName) {
+      if (_normalizeText(pet.name) == normalizedName) {
         return pet;
       }
     }
@@ -353,28 +414,19 @@ class HomeController extends ChangeNotifier {
     return null;
   }
 
-  Future<void> loadNotifications({
-    bool silent = false,
-  }) async {
-    if (_disposed ||
-        _loadingNotifications) {
+  Future<void> loadNotifications({bool silent = false}) async {
+    if (_disposed || _loadingNotifications) {
       return;
     }
 
     _loadingNotifications = true;
 
     if (!silent) {
-      _setState(
-        _state.copyWith(
-          notificationsLoading: true,
-        ),
-      );
+      _setState(_state.copyWith(notificationsLoading: true));
     }
 
     try {
-      final response =
-          await _notificationsService
-              .obtenerNotificaciones();
+      final response = await _notificationsService.obtenerNotificaciones();
 
       if (_disposed) {
         return;
@@ -382,17 +434,13 @@ class HomeController extends ChangeNotifier {
 
       final notifications = response
           .map(HomeState.safeMap)
-          .where(
-            (item) => item.isNotEmpty,
-          )
+          .where((item) => item.isNotEmpty)
           .toList(growable: false);
 
       notifications.sort((a, b) {
-        final dateA =
-            _notificationDate(a);
+        final dateA = _notificationDate(a);
 
-        final dateB =
-            _notificationDate(b);
+        final dateB = _notificationDate(b);
 
         return dateB.compareTo(dateA);
       });
@@ -408,61 +456,43 @@ class HomeController extends ChangeNotifier {
         return;
       }
 
-      _setState(
-        _state.copyWith(
-          notificationsLoading: false,
-        ),
-      );
+      _setState(_state.copyWith(notificationsLoading: false));
     } finally {
       _loadingNotifications = false;
     }
   }
 
-  Future<void> markNotificationAsRead(
-    int notificationId,
-  ) async {
-    await _notificationsService
-        .marcarComoLeida(
-      notificationId,
-    );
+  Future<void> markNotificationAsRead(int notificationId) async {
+    await _notificationsService.marcarComoLeida(notificationId);
 
     if (_disposed) {
       return;
     }
 
-    final updatedNotifications =
-        _state.notifications.map(
-      (notification) {
-        final id = _notificationId(
-          notification,
-        );
+    final updatedNotifications = _state.notifications
+        .map((notification) {
+          final id = _notificationId(notification);
 
-        if (id != notificationId) {
-          return notification;
-        }
+          if (id != notificationId) {
+            return notification;
+          }
 
-        return <String, dynamic>{
-          ...notification,
-          'leida': true,
-          'Leida': true,
-          'read': true,
-          'Read': true,
-        };
-      },
-    ).toList(growable: false);
+          return <String, dynamic>{
+            ...notification,
+            'leida': true,
+            'Leida': true,
+            'read': true,
+            'Read': true,
+          };
+        })
+        .toList(growable: false);
 
-    _setState(
-      _state.copyWith(
-        notifications:
-            updatedNotifications,
-      ),
-    );
+    _setState(_state.copyWith(notifications: updatedNotifications));
   }
 
   Future<void> _loadSession() async {
     try {
-      final results =
-          await Future.wait<dynamic>([
+      final results = await Future.wait<dynamic>([
         SessionService.obtenerNombre(),
         SessionService.obtenerRol(),
         StorageService.obtenerBaseUrl(),
@@ -472,30 +502,18 @@ class HomeController extends ChangeNotifier {
         return;
       }
 
-      final name =
-          results[0]?.toString().trim();
+      final name = results[0]?.toString().trim();
 
-      final rawRole =
-          results[1]?.toString();
+      final rawRole = results[1]?.toString();
 
-      final baseUrl =
-          results[2]?.toString().trim();
+      final baseUrl = results[2]?.toString().trim();
 
       _setState(
         _state.copyWith(
-          userName:
-              name != null &&
-                      name.isNotEmpty
-                  ? name
-                  : 'Usuario',
-          role:
-              SessionService.normalizarRol(
-            rawRole,
-          ),
+          userName: name != null && name.isNotEmpty ? name : 'Usuario',
+          role: SessionService.normalizarRol(rawRole),
           baseUrl: baseUrl,
-          clearBaseUrl:
-              baseUrl == null ||
-                  baseUrl.isEmpty,
+          clearBaseUrl: baseUrl == null || baseUrl.isEmpty,
         ),
       );
     } catch (_) {
@@ -503,67 +521,39 @@ class HomeController extends ChangeNotifier {
         return;
       }
 
-      _setState(
-        _state.copyWith(
-          userName: 'Usuario',
-          role: 'Usuario',
-        ),
-      );
+      _setState(_state.copyWith(userName: 'Usuario', role: 'Usuario'));
     }
   }
 
   void _startNotificationsPolling() {
     _notificationsTimer?.cancel();
 
-    _notificationsTimer =
-        Timer.periodic(
-      const Duration(seconds: 15),
-      (_) {
-        loadNotifications(
-          silent: true,
-        );
-      },
-    );
+    _notificationsTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      loadNotifications(silent: true);
+    });
   }
 
-  DateTime _notificationDate(
-    Map<String, dynamic> notification,
-  ) {
-    final value =
-        HomeState.firstValue(
-      notification,
-      const [
-        'fecha',
-        'Fecha',
-        'fechaCreacion',
-        'FechaCreacion',
-        'createdAt',
-        'CreatedAt',
-      ],
-    );
+  DateTime _notificationDate(Map<String, dynamic> notification) {
+    final value = HomeState.firstValue(notification, const [
+      'fecha',
+      'Fecha',
+      'fechaCreacion',
+      'FechaCreacion',
+      'createdAt',
+      'CreatedAt',
+    ]);
 
-    return DateTime.tryParse(
-          value?.toString() ?? '',
-        ) ??
-        DateTime
-            .fromMillisecondsSinceEpoch(
-          0,
-        );
+    return DateTime.tryParse(value?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0);
   }
 
-  int? _notificationId(
-    Map<String, dynamic> notification,
-  ) {
-    final value =
-        HomeState.firstValue(
-      notification,
-      const [
-        'id',
-        'Id',
-        'notificacionId',
-        'NotificacionId',
-      ],
-    );
+  int? _notificationId(Map<String, dynamic> notification) {
+    final value = HomeState.firstValue(notification, const [
+      'id',
+      'Id',
+      'notificacionId',
+      'NotificacionId',
+    ]);
 
     if (value is int) {
       return value;
@@ -573,43 +563,22 @@ class HomeController extends ChangeNotifier {
       return value.toInt();
     }
 
-    return int.tryParse(
-      value?.toString() ?? '',
-    );
+    return int.tryParse(value?.toString() ?? '');
   }
 
-  String _messageFrom(
-    Map<String, dynamic> result,
-    String fallback,
-  ) {
-    final message =
-        result['message']
-            ?.toString()
-            .trim();
+  String _messageFrom(Map<String, dynamic> result, String fallback) {
+    final message = result['message']?.toString().trim();
 
-    return message != null &&
-            message.isNotEmpty
-        ? message
-        : fallback;
+    return message != null && message.isNotEmpty ? message : fallback;
   }
 
   String _cleanError(Object error) {
-    final message = error
-        .toString()
-        .replaceFirst(
-          'Exception: ',
-          '',
-        )
-        .trim();
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
 
-    return message.isEmpty
-        ? 'Ocurrió un error inesperado.'
-        : message;
+    return message.isEmpty ? 'Ocurrió un error inesperado.' : message;
   }
 
-  String _normalizeText(
-    String value,
-  ) {
+  String _normalizeText(String value) {
     return value
         .trim()
         .toLowerCase()
@@ -620,15 +589,10 @@ class HomeController extends ChangeNotifier {
         .replaceAll('ú', 'u')
         .replaceAll('ü', 'u')
         .replaceAll('ñ', 'n')
-        .replaceAll(
-          RegExp(r'[\s_\-]'),
-          '',
-        );
+        .replaceAll(RegExp(r'[\s_\-]'), '');
   }
 
-  void _setState(
-    HomeState newState,
-  ) {
+  void _setState(HomeState newState) {
     if (_disposed) {
       return;
     }

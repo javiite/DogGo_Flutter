@@ -13,6 +13,7 @@ class HomeState {
   final String userName;
   final String role;
   final String? baseUrl;
+  final String? userPhotoUrl;
 
   final String? petsError;
   final String? walksError;
@@ -29,6 +30,7 @@ class HomeState {
     this.userName = 'Usuario',
     this.role = 'Usuario',
     this.baseUrl,
+    this.userPhotoUrl,
     this.petsError,
     this.walksError,
     this.pets = const [],
@@ -56,32 +58,29 @@ class HomeState {
   bool get isAdmin {
     final normalized = _normalize(role);
 
-    return normalized == 'admin' ||
-        normalized == 'administrador';
+    return normalized == 'admin' || normalized == 'administrador';
   }
 
   int get unreadNotifications {
     return notifications.where((notification) {
-      final value = firstValue(
-        notification,
-        const ['leida', 'Leida', 'read', 'Read'],
-      );
+      final value = firstValue(notification, const [
+        'leida',
+        'Leida',
+        'read',
+        'Read',
+      ]);
 
       return !_toBool(value);
     }).length;
   }
 
   List<HomeActivityItem> get recentActivities {
-    final activities = notifications
-        .map(HomeActivityItem.fromMap)
-        .toList();
+    final activities = notifications.map(HomeActivityItem.fromMap).toList();
 
     activities.sort((a, b) {
-      final dateA = a.occurredAt ??
-          DateTime.fromMillisecondsSinceEpoch(0);
+      final dateA = a.occurredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
-      final dateB = b.occurredAt ??
-          DateTime.fromMillisecondsSinceEpoch(0);
+      final dateB = b.occurredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
       return dateB.compareTo(dateA);
     });
@@ -107,9 +106,7 @@ class HomeState {
         return true;
       }
 
-      return date.isAfter(
-        now.subtract(const Duration(hours: 12)),
-      );
+      return date.isAfter(now.subtract(const Duration(hours: 12)));
     }).toList();
 
     result.sort((a, b) {
@@ -145,6 +142,12 @@ class HomeState {
   }
 
   HomeWalk? get priorityWalk {
+    final routeAlert = routeAlertWalk;
+
+    if (routeAlert != null) {
+      return routeAlert;
+    }
+
     const priority = [
       HomeWalkStatus.inProgress,
       HomeWalkStatus.accepted,
@@ -165,10 +168,30 @@ class HomeState {
     return upcoming.isEmpty ? null : upcoming.first;
   }
 
+  HomeWalk? get routeAlertWalk {
+    for (final walk in upcomingWalks) {
+      if (walk.isInProgress && walk.isOutsideAllowedRoute) {
+        return walk;
+      }
+    }
+
+    return null;
+  }
+
+  int get activeWalkCount {
+    return walks.where((walk) => walk.isInProgress).length;
+  }
+
+  int get pendingWalkCount {
+    return walks.where((walk) => walk.isPending).length;
+  }
+
+  int get confirmedWalkCount {
+    return walks.where((walk) => walk.isAccepted).length;
+  }
+
   HomeSummary get weeklySummary {
-    return HomeSummary.fromWalks(
-      walks.map((walk) => walk.rawData),
-    );
+    return HomeSummary.fromWalks(walks.map((walk) => walk.rawData));
   }
 
   HomeState copyWith({
@@ -180,6 +203,8 @@ class HomeState {
     String? role,
     String? baseUrl,
     bool clearBaseUrl = false,
+    String? userPhotoUrl,
+    bool clearUserPhotoUrl = false,
     String? petsError,
     bool clearPetsError = false,
     String? walksError,
@@ -192,25 +217,22 @@ class HomeState {
       initialLoading: initialLoading ?? this.initialLoading,
       petsLoading: petsLoading ?? this.petsLoading,
       walksLoading: walksLoading ?? this.walksLoading,
-      notificationsLoading:
-          notificationsLoading ?? this.notificationsLoading,
+      notificationsLoading: notificationsLoading ?? this.notificationsLoading,
       userName: userName ?? this.userName,
       role: role ?? this.role,
       baseUrl: clearBaseUrl ? null : baseUrl ?? this.baseUrl,
-      petsError:
-          clearPetsError ? null : petsError ?? this.petsError,
-      walksError:
-          clearWalksError ? null : walksError ?? this.walksError,
+      userPhotoUrl: clearUserPhotoUrl
+          ? null
+          : userPhotoUrl ?? this.userPhotoUrl,
+      petsError: clearPetsError ? null : petsError ?? this.petsError,
+      walksError: clearWalksError ? null : walksError ?? this.walksError,
       pets: pets ?? this.pets,
       walks: walks ?? this.walks,
       notifications: notifications ?? this.notifications,
     );
   }
 
-  static dynamic firstValue(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
+  static dynamic firstValue(Map<String, dynamic> map, List<String> keys) {
     for (final key in keys) {
       if (map.containsKey(key) && map[key] != null) {
         return map[key];
@@ -263,7 +285,7 @@ class HomeState {
     }
 
     return candidate
-        .where((item) => item is Map)
+        .whereType<Map>()
         .map(safeMap)
         .where((item) => item.isNotEmpty)
         .toList(growable: false);
@@ -278,8 +300,7 @@ class HomeState {
       return value != 0;
     }
 
-    final normalized =
-        value?.toString().trim().toLowerCase() ?? '';
+    final normalized = value?.toString().trim().toLowerCase() ?? '';
 
     return normalized == 'true' ||
         normalized == '1' ||

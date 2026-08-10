@@ -13,6 +13,11 @@ class HomeWalk {
   final double? price;
   final String pickupAddress;
   final String notes;
+  final String ownerName;
+  final bool hasPlannedRoute;
+  final bool isOutsideAllowedRoute;
+  final DateTime? firstRouteDeviationAt;
+  final DateTime? lastRouteReadingAt;
   final HomePet? pet;
   final List<HomePet> pets;
   final HomeWalker? walker;
@@ -29,6 +34,11 @@ class HomeWalk {
     this.price,
     this.pickupAddress = '',
     this.notes = '',
+    this.ownerName = '',
+    this.hasPlannedRoute = false,
+    this.isOutsideAllowedRoute = false,
+    this.firstRouteDeviationAt,
+    this.lastRouteReadingAt,
     this.pet,
     this.pets = const [],
     this.walker,
@@ -42,9 +52,7 @@ class HomeWalk {
 
     final primaryPet = pet;
 
-    return primaryPet == null
-        ? const []
-        : [primaryPet];
+    return primaryPet == null ? const [] : [primaryPet];
   }
 
   int get petCount {
@@ -66,20 +74,15 @@ class HomeWalk {
       return currentPets.first.name;
     }
 
-    return currentPets
-        .map((pet) => pet.name)
-        .join(', ');
+    return currentPets.map((pet) => pet.name).join(', ');
   }
 
   String get petCountLabel {
-    return petCount == 1
-        ? '1 mascota'
-        : '$petCount mascotas';
+    return petCount == 1 ? '1 mascota' : '$petCount mascotas';
   }
 
   String get walkerName {
-    return walker?.name ??
-        'paseador por confirmar';
+    return walker?.name ?? 'paseador por confirmar';
   }
 
   // En las tarjetas del paseo debe aparecer
@@ -97,11 +100,7 @@ class HomeWalk {
   List<String> get petImageUrls {
     return effectivePets
         .map((pet) => pet.imageUrl)
-        .where(
-          (url) =>
-              url.startsWith('http://') ||
-              url.startsWith('https://'),
-        )
+        .where((url) => url.startsWith('http://') || url.startsWith('https://'))
         .toSet()
         .toList(growable: false);
   }
@@ -111,19 +110,102 @@ class HomeWalk {
   }
 
   bool get isInProgress {
-    return status ==
-        HomeWalkStatus.inProgress;
+    return status == HomeWalkStatus.inProgress;
+  }
+
+  bool get isPending {
+    return status == HomeWalkStatus.pending;
+  }
+
+  bool get isAccepted {
+    return status == HomeWalkStatus.accepted;
+  }
+
+  bool get isCompleted {
+    return status == HomeWalkStatus.completed;
+  }
+
+  String get ownerDisplayName {
+    return ownerName.isEmpty ? 'Dueño DogGo' : ownerName;
+  }
+
+  String get routeStatusMessage {
+    if (!hasPlannedRoute) {
+      return 'Este paseo no tiene una ruta planificada.';
+    }
+
+    if (isOutsideAllowedRoute) {
+      return 'El recorrido salió de la zona permitida. Regresa a la ruta indicada.';
+    }
+
+    return 'El recorrido se mantiene dentro de la ruta permitida.';
+  }
+
+  String routeDeviationTimeLabel({DateTime? from}) {
+    final deviation = firstRouteDeviationAt;
+
+    if (deviation == null) {
+      return 'Atención inmediata';
+    }
+
+    final reference = from ?? DateTime.now();
+    final minutes = reference.difference(deviation).inMinutes;
+
+    if (minutes <= 1) {
+      return 'Desvío reciente';
+    }
+
+    if (minutes < 60) {
+      return 'Fuera hace $minutes min';
+    }
+
+    final hours = minutes ~/ 60;
+    return 'Fuera hace $hours h';
+  }
+
+  String timeUntilLabel({DateTime? from}) {
+    final date = scheduledAt;
+
+    if (date == null) {
+      return 'Horario por confirmar';
+    }
+
+    final reference = from ?? DateTime.now();
+    final difference = date.difference(reference);
+    final absoluteMinutes = difference.inMinutes.abs();
+
+    if (difference.inMinutes >= 24 * 60) {
+      final days = (difference.inMinutes / (24 * 60)).ceil();
+      return days == 1 ? 'Mañana' : 'En $days días';
+    }
+
+    if (difference.inMinutes > 60) {
+      final hours = difference.inHours;
+      final minutes = difference.inMinutes.remainder(60);
+
+      return minutes == 0 ? 'En $hours h' : 'En $hours h $minutes min';
+    }
+
+    if (difference.inMinutes > 1) {
+      return 'En ${difference.inMinutes} min';
+    }
+
+    if (difference.inMinutes >= -10) {
+      return 'Comienza ahora';
+    }
+
+    if (absoluteMinutes < 60) {
+      return 'Hace $absoluteMinutes min';
+    }
+
+    return formattedSchedule;
   }
 
   bool get isUpcoming {
-    return status ==
-            HomeWalkStatus.pending ||
-        status ==
-            HomeWalkStatus.accepted ||
-        status ==
-            HomeWalkStatus.inProgress ||
-        status ==
-            HomeWalkStatus.unknown;
+    return status == HomeWalkStatus.pending ||
+        status == HomeWalkStatus.accepted ||
+        status == HomeWalkStatus.inProgress ||
+        status == HomeWalkStatus.unknown;
   }
 
   String get formattedSchedule {
@@ -134,19 +216,9 @@ class HomeWalk {
     }
 
     final now = DateTime.now();
-    final today = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    );
-    final tomorrow = today.add(
-      const Duration(days: 1),
-    );
-    final walkDay = DateTime(
-      date.year,
-      date.month,
-      date.day,
-    );
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final walkDay = DateTime(date.year, date.month, date.day);
 
     String dayLabel;
 
@@ -160,335 +232,287 @@ class HomeWalk {
           '${date.month.toString().padLeft(2, '0')}';
     }
 
-    final hour = date.hour
-        .toString()
-        .padLeft(2, '0');
-    final minute = date.minute
-        .toString()
-        .padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
 
     return '$dayLabel Â· $hour:$minute';
   }
 
-  factory HomeWalk.fromMap(
-    Map<String, dynamic> map, {
-    String? baseUrl,
-  }) {
+  factory HomeWalk.fromMap(Map<String, dynamic> map, {String? baseUrl}) {
     final petMap = _extractPetMap(map);
-    final walkerMap =
-        _extractWalkerMap(map);
+    final walkerMap = _extractWalkerMap(map);
 
-    final parsedPets = _extractPets(
-      map,
-      baseUrl,
-    );
+    final parsedPets = _extractPets(map, baseUrl);
 
     final legacyPet = petMap.isEmpty
-        ? _petFromFlatWalk(
-            map,
-            baseUrl,
-          )
-        : HomePet.fromMap(
-            petMap,
-            baseUrl: baseUrl,
-          );
+        ? _petFromFlatWalk(map, baseUrl)
+        : HomePet.fromMap(petMap, baseUrl: baseUrl);
 
     final pets = parsedPets.isNotEmpty
         ? parsedPets
         : legacyPet == null
-            ? const <HomePet>[]
-            : <HomePet>[legacyPet];
+        ? const <HomePet>[]
+        : <HomePet>[legacyPet];
 
-    final pet =
-        pets.isEmpty ? legacyPet : pets.first;
+    final pet = pets.isEmpty ? legacyPet : pets.first;
 
     final walker = walkerMap.isEmpty
-        ? _walkerFromFlatWalk(
-            map,
-            baseUrl,
-          )
-        : HomeWalker.fromMap(
-            walkerMap,
-            baseUrl: baseUrl,
-          );
+        ? _walkerFromFlatWalk(map, baseUrl)
+        : HomeWalker.fromMap(walkerMap, baseUrl: baseUrl);
 
     return HomeWalk(
-      id: _toInt(
-        _firstValue(
-          map,
-          const [
-            'id',
-            'Id',
-            'paseoId',
-            'PaseoId',
-          ],
-        ),
-      ),
+      id: _toInt(_firstValue(map, const ['id', 'Id', 'paseoId', 'PaseoId'])),
       status: HomeWalkStatus.fromValue(
-        _firstValue(
-          map,
-          const [
-            'estado',
-            'Estado',
-            'status',
-            'Status',
-          ],
-        ),
+        _firstValue(map, const ['estado', 'Estado', 'status', 'Status']),
       ),
       scheduledAt: _toDateTime(
-        _firstValue(
-          map,
-          const [
-            'fechaProgramada',
-            'FechaProgramada',
-            'scheduledAt',
-            'ScheduledAt',
-            'fecha',
-            'Fecha',
-          ],
-        ),
+        _firstValue(map, const [
+          'fechaProgramada',
+          'FechaProgramada',
+          'scheduledAt',
+          'ScheduledAt',
+          'fecha',
+          'Fecha',
+        ]),
       ),
       startedAt: _toDateTime(
-        _firstValue(
-          map,
-          const [
-            'fechaInicio',
-            'FechaInicio',
-            'startedAt',
-            'StartedAt',
-          ],
-        ),
+        _firstValue(map, const [
+          'fechaInicio',
+          'FechaInicio',
+          'startedAt',
+          'StartedAt',
+        ]),
       ),
       finishedAt: _toDateTime(
-        _firstValue(
-          map,
-          const [
-            'fechaFin',
-            'FechaFin',
-            'finishedAt',
-            'FinishedAt',
-          ],
-        ),
+        _firstValue(map, const [
+          'fechaFin',
+          'FechaFin',
+          'finishedAt',
+          'FinishedAt',
+        ]),
       ),
-      durationMinutes: _toInt(
-            _firstValue(
-              map,
-              const [
-                'duracionMinutos',
-                'DuracionMinutos',
-                'minutos',
-                'Minutos',
-              ],
-            ),
+      durationMinutes:
+          _toInt(
+            _firstValue(map, const [
+              'duracionMinutos',
+              'DuracionMinutos',
+              'minutos',
+              'Minutos',
+            ]),
           ) ??
           0,
-      distanceKilometers: _toDouble(
-            _firstValue(
-              map,
-              const [
-                'distanciaKm',
-                'DistanciaKm',
-                'distanciaKilometros',
-                'DistanciaKilometros',
-              ],
-            ),
+      distanceKilometers:
+          _toDouble(
+            _firstValue(map, const [
+              'distanciaKm',
+              'DistanciaKm',
+              'distanciaKilometros',
+              'DistanciaKilometros',
+            ]),
           ) ??
           0,
       price: _toDouble(
-        _firstValue(
-          map,
-          const [
-            'precioFinal',
-            'PrecioFinal',
-            'precio',
-            'Precio',
-            'total',
-            'Total',
-          ],
-        ),
+        _firstValue(map, const [
+          'precioFinal',
+          'PrecioFinal',
+          'precio',
+          'Precio',
+          'total',
+          'Total',
+        ]),
       ),
       pickupAddress: _text(
-        _firstValue(
-          map,
-          const [
-            'ubicacionTexto',
-            'UbicacionTexto',
-            'direccionRecogida',
-            'DireccionRecogida',
-            'ubicacionRecogidaTexto',
-            'UbicacionRecogidaTexto',
-          ],
-        ),
+        _firstValue(map, const [
+          'ubicacionTexto',
+          'UbicacionTexto',
+          'direccionRecogida',
+          'DireccionRecogida',
+          'ubicacionRecogidaTexto',
+          'UbicacionRecogidaTexto',
+        ]),
       ),
       notes: _text(
-        _firstValue(
-          map,
-          const [
-            'notas',
-            'Notas',
-            'observaciones',
-            'Observaciones',
-          ],
-        ),
+        _firstValue(map, const [
+          'notas',
+          'Notas',
+          'observaciones',
+          'Observaciones',
+        ]),
+      ),
+      ownerName: _ownerNameFromMap(map),
+      hasPlannedRoute: _toBool(
+        _firstValue(map, const [
+          'tieneRutaPlanificada',
+          'TieneRutaPlanificada',
+          'hasPlannedRoute',
+          'HasPlannedRoute',
+        ]),
+      ),
+      isOutsideAllowedRoute: _toBool(
+        _firstValue(map, const [
+          'fueraDeRuta',
+          'FueraDeRuta',
+          'isOutsideRoute',
+          'IsOutsideRoute',
+        ]),
+      ),
+      firstRouteDeviationAt: _toDateTime(
+        _firstValue(map, const [
+          'fechaPrimerDesvio',
+          'FechaPrimerDesvio',
+          'firstRouteDeviationAt',
+          'FirstRouteDeviationAt',
+        ]),
+      ),
+      lastRouteReadingAt: _toDateTime(
+        _firstValue(map, const [
+          'fechaUltimaLecturaRuta',
+          'FechaUltimaLecturaRuta',
+          'lastRouteReadingAt',
+          'LastRouteReadingAt',
+        ]),
       ),
       pet: pet,
-      pets: List<HomePet>.unmodifiable(
-        pets,
-      ),
+      pets: List<HomePet>.unmodifiable(pets),
       walker: walker,
-      rawData:
-          Map<String, dynamic>.unmodifiable(
-        map,
-      ),
+      rawData: Map<String, dynamic>.unmodifiable(map),
     );
   }
 
-  static HomePet? _petFromFlatWalk(
-    Map<String, dynamic> map,
-    String? baseUrl,
-  ) {
-    final name = _firstValue(
-      map,
-      const [
-        'perroNombre',
-        'PerroNombre',
-        'nombrePerro',
-        'NombrePerro',
-        'mascotaNombre',
-        'MascotaNombre',
-      ],
+  static String _ownerNameFromMap(Map<String, dynamic> map) {
+    final fullName = _text(
+      _firstValue(map, const [
+        'duenioNombreCompleto',
+        'DuenioNombreCompleto',
+        'dueñoNombreCompleto',
+        'DueñoNombreCompleto',
+        'ownerName',
+        'OwnerName',
+      ]),
     );
 
-    final petId = _firstValue(
-      map,
-      const [
-        'perroId',
-        'PerroId',
-        'mascotaId',
-        'MascotaId',
-      ],
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+
+    final firstName = _text(
+      _firstValue(map, const [
+        'duenioNombre',
+        'DuenioNombre',
+        'dueñoNombre',
+        'DueñoNombre',
+      ]),
+    );
+    final lastName = _text(
+      _firstValue(map, const [
+        'duenioApellido',
+        'DuenioApellido',
+        'dueñoApellido',
+        'DueñoApellido',
+      ]),
     );
 
-    final image = _firstValue(
-      map,
-      const [
-        // Nombres reales de los DTO del backend.
-        'perroFotoUrl',
-        'PerroFotoUrl',
-        'perroImagenUrl',
-        'PerroImagenUrl',
+    return '$firstName $lastName'.trim();
+  }
 
-        // Variantes conservadas por compatibilidad.
-        'fotoPerroUrl',
-        'FotoPerroUrl',
-        'imagenPerroUrl',
-        'ImagenPerroUrl',
-        'mascotaFotoUrl',
-        'MascotaFotoUrl',
-      ],
-    );
+  static HomePet? _petFromFlatWalk(Map<String, dynamic> map, String? baseUrl) {
+    final name = _firstValue(map, const [
+      'perroNombre',
+      'PerroNombre',
+      'nombrePerro',
+      'NombrePerro',
+      'mascotaNombre',
+      'MascotaNombre',
+    ]);
 
-    if (name == null &&
-        petId == null &&
-        image == null) {
+    final petId = _firstValue(map, const [
+      'perroId',
+      'PerroId',
+      'mascotaId',
+      'MascotaId',
+    ]);
+
+    final image = _firstValue(map, const [
+      // Nombres reales de los DTO del backend.
+      'perroFotoUrl',
+      'PerroFotoUrl',
+      'perroImagenUrl',
+      'PerroImagenUrl',
+
+      // Variantes conservadas por compatibilidad.
+      'fotoPerroUrl',
+      'FotoPerroUrl',
+      'imagenPerroUrl',
+      'ImagenPerroUrl',
+      'mascotaFotoUrl',
+      'MascotaFotoUrl',
+    ]);
+
+    if (name == null && petId == null && image == null) {
       return null;
     }
 
-    return HomePet.fromMap(
-      {
-        'perroId': petId,
-        'nombre':
-            name ?? 'Mascota',
-        'raza': _firstValue(
-          map,
-          const [
-            'perroRaza',
-            'PerroRaza',
-            'razaPerro',
-            'RazaPerro',
-          ],
-        ),
-        'edad': _firstValue(
-          map,
-          const [
-            'perroEdad',
-            'PerroEdad',
-            'edadPerro',
-            'EdadPerro',
-          ],
-        ),
-        'imagenUrl': image,
-      },
-      baseUrl: baseUrl,
-    );
+    return HomePet.fromMap({
+      'perroId': petId,
+      'nombre': name ?? 'Mascota',
+      'raza': _firstValue(map, const [
+        'perroRaza',
+        'PerroRaza',
+        'razaPerro',
+        'RazaPerro',
+      ]),
+      'edad': _firstValue(map, const [
+        'perroEdad',
+        'PerroEdad',
+        'edadPerro',
+        'EdadPerro',
+      ]),
+      'imagenUrl': image,
+    }, baseUrl: baseUrl);
   }
 
-  static HomeWalker?
-      _walkerFromFlatWalk(
+  static HomeWalker? _walkerFromFlatWalk(
     Map<String, dynamic> map,
     String? baseUrl,
   ) {
-    final name = _firstValue(
-      map,
-      const [
-        'paseadorNombreCompleto',
-        'PaseadorNombreCompleto',
-        'nombreCompletoPaseador',
-        'NombreCompletoPaseador',
-        'paseadorNombre',
-        'PaseadorNombre',
-        'nombrePaseador',
-        'NombrePaseador',
-      ],
-    );
+    final name = _firstValue(map, const [
+      'paseadorNombreCompleto',
+      'PaseadorNombreCompleto',
+      'nombreCompletoPaseador',
+      'NombreCompletoPaseador',
+      'paseadorNombre',
+      'PaseadorNombre',
+      'nombrePaseador',
+      'NombrePaseador',
+    ]);
 
-    final walkerId = _firstValue(
-      map,
-      const [
-        'paseadorId',
-        'PaseadorId',
-      ],
-    );
+    final walkerId = _firstValue(map, const ['paseadorId', 'PaseadorId']);
 
-    if (name == null &&
-        walkerId == null) {
+    if (name == null && walkerId == null) {
       return null;
     }
 
-    return HomeWalker.fromMap(
-      {
-        'paseadorId': walkerId,
-        'nombreCompleto':
-            name ?? 'Paseador',
-        'fotoUrl': _firstValue(
-          map,
-          const [
-            'paseadorFotoUrl',
-            'PaseadorFotoUrl',
-            'fotoPaseadorUrl',
-            'FotoPaseadorUrl',
-            'imagenPaseadorUrl',
-            'ImagenPaseadorUrl',
-          ],
-        ),
-      },
-      baseUrl: baseUrl,
-    );
+    return HomeWalker.fromMap({
+      'paseadorId': walkerId,
+      'nombreCompleto': name ?? 'Paseador',
+      'fotoUrl': _firstValue(map, const [
+        'paseadorFotoUrl',
+        'PaseadorFotoUrl',
+        'fotoPaseadorUrl',
+        'FotoPaseadorUrl',
+        'imagenPaseadorUrl',
+        'ImagenPaseadorUrl',
+      ]),
+    }, baseUrl: baseUrl);
   }
 
-  static List<HomePet> _extractPets(
-    Map<String, dynamic> map,
-    String? baseUrl,
-  ) {
-    final value = _firstValue(
-      map,
-      const [
-        'perros',
-        'Perros',
-        'mascotas',
-        'Mascotas',
-      ],
-    );
+  static List<HomePet> _extractPets(Map<String, dynamic> map, String? baseUrl) {
+    final value = _firstValue(map, const [
+      'perros',
+      'Perros',
+      'mascotas',
+      'Mascotas',
+    ]);
 
     if (value is! List) {
       return const [];
@@ -502,50 +526,23 @@ class HomeWalk {
             baseUrl: baseUrl,
           ),
         )
-        .where(
-          (pet) => pet.id != null,
-        )
+        .where((pet) => pet.id != null)
         .toList(growable: false);
   }
 
-  static Map<String, dynamic>
-      _extractPetMap(
-    Map<String, dynamic> map,
-  ) {
+  static Map<String, dynamic> _extractPetMap(Map<String, dynamic> map) {
     return _safeMap(
-      _firstValue(
-        map,
-        const [
-          'perro',
-          'Perro',
-          'mascota',
-          'Mascota',
-        ],
-      ),
+      _firstValue(map, const ['perro', 'Perro', 'mascota', 'Mascota']),
     );
   }
 
-  static Map<String, dynamic>
-      _extractWalkerMap(
-    Map<String, dynamic> map,
-  ) {
+  static Map<String, dynamic> _extractWalkerMap(Map<String, dynamic> map) {
     return _safeMap(
-      _firstValue(
-        map,
-        const [
-          'paseador',
-          'Paseador',
-          'walker',
-          'Walker',
-        ],
-      ),
+      _firstValue(map, const ['paseador', 'Paseador', 'walker', 'Walker']),
     );
   }
 
-  static dynamic _firstValue(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
+  static dynamic _firstValue(Map<String, dynamic> map, List<String> keys) {
     for (final key in keys) {
       if (!map.containsKey(key)) {
         continue;
@@ -558,9 +555,7 @@ class HomeWalk {
       }
 
       if (value is String &&
-          (value.trim().isEmpty ||
-              value.trim().toLowerCase() ==
-                  'null')) {
+          (value.trim().isEmpty || value.trim().toLowerCase() == 'null')) {
         continue;
       }
 
@@ -570,18 +565,13 @@ class HomeWalk {
     return null;
   }
 
-  static Map<String, dynamic> _safeMap(
-    dynamic value,
-  ) {
-    if (value
-        is Map<String, dynamic>) {
+  static Map<String, dynamic> _safeMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
       return value;
     }
 
     if (value is Map) {
-      return Map<String, dynamic>.from(
-        value,
-      );
+      return Map<String, dynamic>.from(value);
     }
 
     return const {};
@@ -596,14 +586,10 @@ class HomeWalk {
       return value.toInt();
     }
 
-    return int.tryParse(
-      value?.toString() ?? '',
-    );
+    return int.tryParse(value?.toString() ?? '');
   }
 
-  static double? _toDouble(
-    dynamic value,
-  ) {
+  static double? _toDouble(dynamic value) {
     if (value is double) {
       return value;
     }
@@ -612,31 +598,38 @@ class HomeWalk {
       return value.toDouble();
     }
 
-    return double.tryParse(
-      value
-              ?.toString()
-              .replaceAll(',', '.') ??
-          '',
-    );
+    return double.tryParse(value?.toString().replaceAll(',', '.') ?? '');
   }
 
-  static DateTime? _toDateTime(
-    dynamic value,
-  ) {
+  static bool _toBool(dynamic value) {
+    if (value is bool) {
+      return value;
+    }
+
+    if (value is num) {
+      return value != 0;
+    }
+
+    final normalized = value?.toString().trim().toLowerCase() ?? '';
+
+    return normalized == 'true' ||
+        normalized == '1' ||
+        normalized == 'si' ||
+        normalized == 'sí';
+  }
+
+  static DateTime? _toDateTime(dynamic value) {
     if (value is DateTime) {
       return value.toLocal();
     }
 
-    final parsed = DateTime.tryParse(
-      value?.toString() ?? '',
-    );
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
 
     return parsed?.toLocal();
   }
 
   static String _text(dynamic value) {
-    final text =
-        value?.toString().trim() ?? '';
+    final text = value?.toString().trim() ?? '';
 
     if (text.toLowerCase() == 'null') {
       return '';
@@ -645,4 +638,3 @@ class HomeWalk {
     return text;
   }
 }
-

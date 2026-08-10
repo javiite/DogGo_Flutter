@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../services/session_service.dart';
@@ -33,9 +35,7 @@ import 'perfil_screen.dart';
 import 'routes/saved_routes_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({
-    super.key,
-  });
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() {
@@ -43,9 +43,10 @@ class HomeScreen extends StatefulWidget {
   }
 }
 
-class _HomeScreenState
-    extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> {
   late final HomeController _controller;
+  Timer? _homeClockTimer;
+  DateTime _homeNow = DateTime.now();
 
   int _navigationIndex = 0;
 
@@ -58,17 +59,22 @@ class _HomeScreenState
     super.initState();
 
     _controller = HomeController();
-    _controller.addListener(
-      _onControllerChanged,
-    );
+    _controller.addListener(_onControllerChanged);
     _controller.initialize();
+
+    _homeClockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _homeNow = DateTime.now();
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
-    _controller.removeListener(
-      _onControllerChanged,
-    );
+    _homeClockTimer?.cancel();
+    _controller.removeListener(_onControllerChanged);
     _controller.dispose();
 
     super.dispose();
@@ -80,14 +86,10 @@ class _HomeScreenState
     }
   }
 
-  Future<void> _open(
-    Widget screen,
-  ) async {
+  Future<void> _open(Widget screen) async {
     await Navigator.push(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => screen,
-      ),
+      MaterialPageRoute<void>(builder: (_) => screen),
     );
 
     if (mounted) {
@@ -95,22 +97,15 @@ class _HomeScreenState
     }
   }
 
-  Future<void>
-      _openNotifications() async {
-    await _open(
-      const NotificacionesScreen(),
-    );
+  Future<void> _openNotifications() async {
+    await _open(const NotificacionesScreen());
 
     if (mounted) {
-      await _controller.loadNotifications(
-        silent: true,
-      );
+      await _controller.loadNotifications(silent: true);
     }
   }
 
-  Future<void> _openWalkDetails(
-    HomeWalk walk,
-  ) async {
+  Future<void> _openWalkDetails(HomeWalk walk) async {
     final id = walk.id;
 
     if (id == null || id <= 0) {
@@ -122,17 +117,11 @@ class _HomeScreenState
     }
 
     await _open(
-      DetallePaseoScreen(
-        paseoId: id,
-        paseo: walk.rawData,
-        rol: _state.role,
-      ),
+      DetallePaseoScreen(paseoId: id, paseo: walk.rawData, rol: _state.role),
     );
   }
 
-  Future<void> _openWalkMap(
-    HomeWalk walk,
-  ) async {
+  Future<void> _openWalkMap(HomeWalk walk) async {
     final id = walk.id;
 
     if (id == null || id <= 0) {
@@ -143,16 +132,10 @@ class _HomeScreenState
       return;
     }
 
-    await _open(
-      MapaPaseoScreen(
-        paseo: walk.rawData,
-      ),
-    );
+    await _open(MapaPaseoScreen(paseo: walk.rawData));
   }
 
-  Future<void> _openWalkChat(
-    HomeWalk walk,
-  ) async {
+  Future<void> _openWalkChat(HomeWalk walk) async {
     final id = walk.id;
 
     if (id == null || id <= 0) {
@@ -167,76 +150,55 @@ class _HomeScreenState
       ChatPaseoScreen(
         paseoId: id,
         nombrePerro: walk.petName,
-        nombreOtroUsuario:
-            _state.isWalker
-                ? 'Dueño de ${walk.petName}'
-                : walk.walkerName,
+        nombreOtroUsuario: _state.isWalker
+            ? 'Dueño de ${walk.petName}'
+            : walk.walkerName,
       ),
     );
   }
 
-  Future<void> _openActivity(
-    HomeActivityItem activity,
-  ) async {
-    if (activity.id != null &&
-        !activity.read) {
-      await _controller
-          .markNotificationAsRead(
-        activity.id!,
-      );
+  Future<void> _openActivity(HomeActivityItem activity) async {
+    if (activity.id != null && !activity.read) {
+      await _controller.markNotificationAsRead(activity.id!);
     }
 
     if (!mounted) {
       return;
     }
 
-    final referenceId =
-        activity.referenceId;
+    final referenceId = activity.referenceId;
 
-    if (activity.type ==
-            HomeActivityType.newMessage &&
+    if (activity.type == HomeActivityType.newMessage &&
         referenceId != null &&
         referenceId > 0) {
       await _open(
         ChatPaseoScreen(
           paseoId: referenceId,
           nombrePerro: 'Mascota',
-          nombreOtroUsuario:
-              'Conversación del paseo',
+          nombreOtroUsuario: 'Conversación del paseo',
         ),
       );
 
       return;
     }
 
-    if (referenceId != null &&
-        referenceId > 0) {
-      await _open(
-        DetallePaseoScreen(
-          paseoId: referenceId,
-          rol: _state.role,
-        ),
-      );
+    if (referenceId != null && referenceId > 0) {
+      await _open(DetallePaseoScreen(paseoId: referenceId, rol: _state.role));
 
       return;
     }
 
-    await _open(
-      const MisPaseosScreen(),
-    );
+    await _open(const MisPaseosScreen());
   }
 
   Future<void> _closeSession() async {
-    final confirmed =
-        await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor:
-              DogGoTheme.card,
+          backgroundColor: DogGoTheme.card,
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(24),
           ),
           icon: const Icon(
             Icons.logout_rounded,
@@ -246,46 +208,29 @@ class _HomeScreenState
           title: Text(
             'Cerrar sesión',
             textAlign: TextAlign.center,
-            style: DogGoTheme.title(
-              size: 22,
-            ),
+            style: DogGoTheme.title(size: 22),
           ),
           content: Text(
             '¿Seguro que quieres salir de tu cuenta?',
             textAlign: TextAlign.center,
-            style: DogGoTheme.subtitle(
-              size: 14,
-            ),
+            style: DogGoTheme.subtitle(size: 14),
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
+                Navigator.pop(dialogContext, false);
               },
-              child: const Text(
-                'Cancelar',
-              ),
+              child: const Text('Cancelar'),
             ),
             FilledButton(
-              style:
-                  FilledButton.styleFrom(
-                backgroundColor:
-                    DogGoTheme.red,
-                foregroundColor:
-                    Colors.white,
+              style: FilledButton.styleFrom(
+                backgroundColor: DogGoTheme.red,
+                foregroundColor: Colors.white,
               ),
               onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
+                Navigator.pop(dialogContext, true);
               },
-              child: const Text(
-                'Salir',
-              ),
+              child: const Text('Salir'),
             ),
           ],
         );
@@ -304,10 +249,7 @@ class _HomeScreenState
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            const LoginScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
       (_) => false,
     );
   }
@@ -317,26 +259,17 @@ class _HomeScreenState
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor:
-          Colors.transparent,
+      backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        final screenHeight =
-            MediaQuery.sizeOf(
-          sheetContext,
-        ).height;
+        final screenHeight = MediaQuery.sizeOf(sheetContext).height;
 
         return Container(
-          constraints: BoxConstraints(
-            maxHeight:
-                screenHeight * 0.86,
-          ),
+          constraints: BoxConstraints(maxHeight: screenHeight * 0.86),
           margin: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: DogGoTheme.card,
-            borderRadius:
-                BorderRadius.circular(26),
-            boxShadow:
-                DogGoTheme.softShadow(),
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: DogGoTheme.softShadow(),
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -347,41 +280,24 @@ class _HomeScreenState
                 width: 46,
                 height: 5,
                 decoration: BoxDecoration(
-                  color:
-                      DogGoTheme.border,
-                  borderRadius:
-                      BorderRadius.circular(
-                    20,
-                  ),
+                  color: DogGoTheme.border,
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
               const SizedBox(height: 10),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 18,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        'Menú',
-                        style:
-                            DogGoTheme.title(
-                          size: 20,
-                        ),
-                      ),
+                      child: Text('Menú', style: DogGoTheme.title(size: 20)),
                     ),
                     IconButton(
                       tooltip: 'Cerrar menú',
                       onPressed: () {
-                        Navigator.pop(
-                          sheetContext,
-                        );
+                        Navigator.pop(sheetContext);
                       },
-                      icon: const Icon(
-                        Icons.close_rounded,
-                      ),
+                      icon: const Icon(Icons.close_rounded),
                     ),
                   ],
                 ),
@@ -390,113 +306,66 @@ class _HomeScreenState
               Flexible(
                 child: ListView(
                   shrinkWrap: true,
-                  physics:
-                      const BouncingScrollPhysics(),
-                  padding:
-                      const EdgeInsets.fromLTRB(
-                    18,
-                    8,
-                    18,
-                    18,
-                  ),
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
                   children: [
                     _HomeMenuItem(
-                      icon: Icons
-                          .notifications_outlined,
-                      title:
-                          'Notificaciones',
+                      icon: Icons.notifications_outlined,
+                      title: 'Notificaciones',
                       onTap: () {
-                        Navigator.pop(
-                          sheetContext,
-                        );
+                        Navigator.pop(sheetContext);
                         _openNotifications();
                       },
                     ),
                     _HomeMenuItem(
-                      icon: Icons
-                          .person_outline_rounded,
+                      icon: Icons.person_outline_rounded,
                       title: 'Mi perfil',
                       onTap: () {
-                        Navigator.pop(
-                          sheetContext,
-                        );
-                        _open(
-                          const PerfilScreen(),
-                        );
+                        Navigator.pop(sheetContext);
+                        _open(const PerfilScreen());
                       },
                     ),
                     _HomeMenuItem(
-                      icon: Icons
-                          .settings_rounded,
-                      title:
-                          'Configuración',
+                      icon: Icons.settings_rounded,
+                      title: 'Configuración',
                       onTap: () {
-                        Navigator.pop(
-                          sheetContext,
-                        );
-                        _open(
-                          const ConfiguracionScreen(),
-                        );
+                        Navigator.pop(sheetContext);
+                        _open(const ConfiguracionScreen());
                       },
                     ),
                     _HomeMenuItem(
-                      icon:
-                          Icons.route_rounded,
+                      icon: Icons.route_rounded,
                       title: 'Mis paseos',
                       onTap: () {
-                        Navigator.pop(
-                          sheetContext,
-                        );
-                        _open(
-                          const MisPaseosScreen(),
-                        );
+                        Navigator.pop(sheetContext);
+                        _open(const MisPaseosScreen());
                       },
                     ),
-                    if (_state.isOwner ||
-                        _state.isAdmin)
+                    if (_state.isOwner || _state.isAdmin)
                       _HomeMenuItem(
-                        icon:
-                            Icons.pets_rounded,
-                        title:
-                            'Mis mascotas',
+                        icon: Icons.pets_rounded,
+                        title: 'Mis mascotas',
                         onTap: () {
-                          Navigator.pop(
-                            sheetContext,
-                          );
-                          _open(
-                            const MisPerrosScreen(),
-                          );
+                          Navigator.pop(sheetContext);
+                          _open(const MisPerrosScreen());
                         },
                       ),
-                    const Divider(
-                      height: 18,
-                    ),
-                    if (_state.isOwner ||
-                        _state.isAdmin)
+                    const Divider(height: 18),
+                    if (_state.isOwner || _state.isAdmin)
                       _HomeMenuItem(
-                        icon:
-                            Icons.alt_route_rounded,
-                        title:
-                            'Mis rutas',
+                        icon: Icons.alt_route_rounded,
+                        title: 'Mis rutas',
                         onTap: () {
-                          Navigator.pop(
-                            sheetContext,
-                          );
-                          _open(
-                            SavedRoutesScreen(),
-                          );
+                          Navigator.pop(sheetContext);
+                          _open(SavedRoutesScreen());
                         },
                       ),
                     _HomeMenuItem(
-                      icon:
-                          Icons.logout_rounded,
-                      title:
-                          'Cerrar sesión',
+                      icon: Icons.logout_rounded,
+                      title: 'Cerrar sesión',
                       danger: true,
                       onTap: () {
-                        Navigator.pop(
-                          sheetContext,
-                        );
+                        Navigator.pop(sheetContext);
                         _closeSession();
                       },
                     ),
@@ -510,9 +379,7 @@ class _HomeScreenState
     );
   }
 
-  void _setNavigationIndex(
-    int index,
-  ) {
+  void _setNavigationIndex(int index) {
     if (_navigationIndex == index) {
       return;
     }
@@ -530,39 +397,27 @@ class _HomeScreenState
     _setNavigationIndex(2);
   }
 
-  void _showMessage(
-    String message, {
-    bool success = true,
-  }) {
+  void _showMessage(String message, {bool success = true}) {
     if (!mounted) {
       return;
     }
 
-    final messenger =
-        ScaffoldMessenger.of(context);
+    final messenger = ScaffoldMessenger.of(context);
 
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          behavior:
-              SnackBarBehavior.floating,
-          backgroundColor: success
-              ? DogGoTheme.teal
-              : DogGoTheme.red,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: success ? DogGoTheme.teal : DogGoTheme.red,
           content: Row(
             children: [
               Icon(
-                success
-                    ? Icons
-                        .check_circle_rounded
-                    : Icons.error_rounded,
+                success ? Icons.check_circle_rounded : Icons.error_rounded,
                 color: Colors.white,
               ),
               const SizedBox(width: 11),
-              Expanded(
-                child: Text(message),
-              ),
+              Expanded(child: Text(message)),
             ],
           ),
         ),
@@ -570,11 +425,11 @@ class _HomeScreenState
   }
 
   String get _walkerPanelKey {
-    final values = _state.walks.map(
-      (walk) {
-        return '${walk.id}-${walk.status.name}';
-      },
-    ).join('|');
+    final values = _state.walks
+        .map((walk) {
+          return '${walk.id}-${walk.status.name}';
+        })
+        .join('|');
 
     return 'walker-panel-$values';
   }
@@ -583,28 +438,19 @@ class _HomeScreenState
   Widget build(BuildContext context) {
     if (_state.initialLoading) {
       return const Scaffold(
-        backgroundColor:
-            DogGoTheme.cream,
-        body: Center(
-          child:
-              CircularProgressIndicator(),
-        ),
+        backgroundColor: DogGoTheme.cream,
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor:
-          DogGoTheme.cream,
+      backgroundColor: DogGoTheme.cream,
       extendBody: true,
-      bottomNavigationBar:
-          HomeBottomNavigation(
+      bottomNavigationBar: HomeBottomNavigation(
         currentIndex: _navigationIndex,
-        thirdLabel: _state.isWalker
-            ? 'Panel'
-            : 'Paseadores',
+        thirdLabel: _state.isWalker ? 'Panel' : 'Paseadores',
         thirdIcon: _state.isWalker
-            ? Icons
-                .dashboard_customize_rounded
+            ? Icons.dashboard_customize_rounded
             : Icons.person_search_rounded,
         fourthLabel: 'Explorar',
         fourthIcon: Icons.explore_rounded,
@@ -614,8 +460,7 @@ class _HomeScreenState
         onAgenda: () {
           _setNavigationIndex(1);
         },
-        onThird:
-            _handleThirdNavigation,
+        onThird: _handleThirdNavigation,
         onFourth: () {
           _setNavigationIndex(3);
         },
@@ -623,59 +468,38 @@ class _HomeScreenState
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh:
-              _controller.refresh,
+          onRefresh: _controller.refresh,
           child: CustomScrollView(
-            key:
-                ValueKey(_navigationIndex),
-            keyboardDismissBehavior:
-                ScrollViewKeyboardDismissBehavior
-                    .onDrag,
-            physics:
-                const AlwaysScrollableScrollPhysics(
-              parent:
-                  BouncingScrollPhysics(),
+            key: ValueKey(_navigationIndex),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
             ),
             slivers: [
               SliverAppBar(
                 pinned: true,
-                automaticallyImplyLeading:
-                    false,
-                backgroundColor:
-                    DogGoTheme.card,
+                automaticallyImplyLeading: false,
+                backgroundColor: DogGoTheme.card,
                 elevation: 0,
-                surfaceTintColor:
-                    Colors.transparent,
+                surfaceTintColor: Colors.transparent,
                 toolbarHeight: 78,
                 titleSpacing: 0,
                 title: HomeTopBar(
                   role: _state.role,
-                  isWalker:
-                      _state.isWalker,
-                  unreadNotifications:
-                      _state
-                          .unreadNotifications,
-                  onNotificationsTap:
-                      _openNotifications,
+                  isWalker: _state.isWalker,
+                  unreadNotifications: _state.unreadNotifications,
+                  onNotificationsTap: _openNotifications,
                   onMenuTap: _showMenu,
                 ),
               ),
               SliverToBoxAdapter(
                 child: AnimatedSwitcher(
-                  duration:
-                      const Duration(
-                    milliseconds: 280,
-                  ),
-                  switchInCurve:
-                      Curves.easeOutCubic,
-                  switchOutCurve:
-                      Curves.easeInCubic,
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
                   child: KeyedSubtree(
-                    key: ValueKey(
-                      _navigationIndex,
-                    ),
-                    child:
-                        _buildSelectedContent(),
+                    key: ValueKey(_navigationIndex),
+                    child: _buildSelectedContent(),
                   ),
                 ),
               ),
@@ -690,49 +514,33 @@ class _HomeScreenState
     switch (_navigationIndex) {
       case 1:
         return HomeAgendaSection(
-          loading:
-              _state.walksLoading,
-          errorMessage:
-              _state.walksError,
-          walks:
-              _state.upcomingWalks,
-          onWalkTap:
-              _openWalkDetails,
+          loading: _state.walksLoading,
+          errorMessage: _state.walksError,
+          walks: _state.upcomingWalks,
+          onWalkTap: _openWalkDetails,
           onSeeAll: () {
-            _open(
-              const MisPaseosScreen(),
-            );
+            _open(const MisPaseosScreen());
           },
-          onRetry:
-              _controller.loadWalks,
+          onRetry: _controller.loadWalks,
         );
 
       case 2:
         if (_state.isWalker) {
           return HomeWalkerPanelSection(
-            key:
-                ValueKey(_walkerPanelKey),
+            key: ValueKey(_walkerPanelKey),
             available: false,
-            loading:
-                _state.walksLoading,
+            loading: _state.walksLoading,
             walks: _state.walks,
-            onAvailabilityChanged:
-                (_) {},
-            onWalkTap:
-                _openWalkDetails,
-            onWalkDetails:
-                _openWalkDetails,
+            onAvailabilityChanged: (_) {},
+            onWalkTap: _openWalkDetails,
+            onWalkDetails: _openWalkDetails,
             onWalkMap: _openWalkMap,
             onWalkChat: _openWalkChat,
             onProfileTap: () {
-              _open(
-                const PerfilScreen(),
-              );
+              _open(const PerfilScreen());
             },
             onWalksTap: () {
-              _open(
-                const MisPaseosScreen(),
-              );
+              _open(const MisPaseosScreen());
             },
           );
         }
@@ -741,22 +549,15 @@ class _HomeScreenState
 
       case 3:
         return HomeExploreTab(
-          onWalkers:
-              _openWalkersTab,
+          onWalkers: _openWalkersTab,
           onPets: () {
-            _open(
-              const MisPerrosScreen(),
-            );
+            _open(const MisPerrosScreen());
           },
           onWalks: () {
-            _open(
-              const MisPaseosScreen(),
-            );
+            _open(const MisPaseosScreen());
           },
           onProfile: () {
-            _open(
-              const PerfilScreen(),
-            );
+            _open(const PerfilScreen());
           },
         );
 
@@ -767,100 +568,67 @@ class _HomeScreenState
   }
 
   Widget _buildHomeOverview() {
-    final priorityWalk =
-        _state.priorityWalk;
+    final priorityWalk = _state.priorityWalk;
 
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 120,
-      ),
+      padding: const EdgeInsets.only(bottom: 120),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           HomeHeaderSection(
             userName: _state.userName,
-            role: _state.role,
-            petCount:
-                _state.pets.length,
-            upcomingWalkCount:
-                _state
-                    .upcomingWalks.length,
+            photoUrl: _state.userPhotoUrl,
+            petCount: _state.pets.length,
+            upcomingWalkCount: _state.upcomingWalks.length,
             isWalker: _state.isWalker,
+            activeWalkCount: _state.activeWalkCount,
+            pendingWalkCount: _state.pendingWalkCount,
           ),
-          _buildWalkSection(
-            priorityWalk,
-          ),
-          if (_state.isOwner ||
-              _state.isAdmin)
-            HomePetsSection(
-              loading:
-                  _state.petsLoading,
-              errorMessage:
-                  _state.petsError,
-              pets: _state.pets
-                  .take(6)
-                  .map(_petItem)
-                  .toList(
-                    growable: false,
-                  ),
-              onSeeAll: () {
-                _open(
-                  const MisPerrosScreen(),
-                );
-              },
-              onAddPet: () {
-                _open(
-                  const MisPerrosScreen(),
-                );
-              },
-              onRetry:
-                  _controller.loadPets,
-            ),
+          _buildWalkSection(priorityWalk),
           HomeShortcutsSection(
             isWalker: _state.isWalker,
             onPetsOrProfile: () {
               if (_state.isWalker) {
-                _open(
-                  const PerfilScreen(),
-                );
+                _open(const PerfilScreen());
               } else {
-                _open(
-                  const MisPerrosScreen(),
-                );
+                _open(const MisPerrosScreen());
               }
             },
             onAgenda: () {
               _setNavigationIndex(1);
             },
             onWalks: () {
-              _open(
-                const MisPaseosScreen(),
-              );
+              _open(const MisPaseosScreen());
             },
             onExplore: () {
               _setNavigationIndex(3);
             },
           ),
-          HomeActivitySection(
-            loading: _state
-                .notificationsLoading,
-            activities:
-                _state.recentActivities,
-            onSeeAll:
-                _openNotifications,
-            onActivityTap:
-                _openActivity,
-          ),
           HomeSummarySection(
-            loading:
-                _state.walksLoading,
-            summary:
-                _state.weeklySummary,
+            loading: _state.walksLoading,
+            summary: _state.weeklySummary,
+          ),
+          if (_state.isOwner || _state.isAdmin)
+            HomePetsSection(
+              loading: _state.petsLoading,
+              errorMessage: _state.petsError,
+              pets: _state.pets.take(6).map(_petItem).toList(growable: false),
+              onSeeAll: () {
+                _open(const MisPerrosScreen());
+              },
+              onAddPet: () {
+                _open(const MisPerrosScreen());
+              },
+              onRetry: _controller.loadPets,
+            ),
+          HomeActivitySection(
+            loading: _state.notificationsLoading,
+            activities: _state.recentActivities,
+            onSeeAll: _openNotifications,
+            onActivityTap: _openActivity,
           ),
           HomeExploreSection(
-            onWalkers:
-                _openWalkersTab,
+            onWalkers: _openWalkersTab,
             onGuides: () {
               _setNavigationIndex(3);
             },
@@ -876,44 +644,27 @@ class _HomeScreenState
     );
   }
 
-  Widget _buildWalkSection(
-    HomeWalk? walk,
-  ) {
+  Widget _buildWalkSection(HomeWalk? walk) {
     if (walk == null) {
-      final firstPet =
-          _state.pets.isEmpty
-              ? null
-              : _state.pets.first;
+      final firstPet = _state.pets.isEmpty ? null : _state.pets.first;
 
-      final petName =
-          firstPet?.name ??
-              'tu mascota';
+      final petName = firstPet?.name ?? 'tu mascota';
 
       return HomeWalkSection(
-        loading:
-            _state.walksLoading,
-        errorMessage:
-            _state.walksError,
-        eyebrow:
-            HomeWalkStatus.none.eyebrow,
+        loading: _state.walksLoading,
+        errorMessage: _state.walksError,
+        eyebrow: HomeWalkStatus.none.eyebrow,
         title: _state.isWalker
             ? 'Revisa tu panel operativo'
             : 'Solicita un paseo para $petName',
         subtitle: _state.isWalker
             ? 'Administra tu disponibilidad, solicitudes y próximos servicios.'
             : 'Encuentra un paseador disponible y agenda en minutos.',
-        statusText:
-            HomeWalkStatus.none.label,
-        statusColor:
-            DogGoTheme.green,
-        imageUrl:
-            firstPet?.imageUrl ?? '',
-        primaryLabel: _state.isWalker
-            ? 'Abrir panel'
-            : 'Solicitar paseo',
-        secondaryLabel: _state.isWalker
-            ? 'Mi perfil'
-            : 'Ver paseadores',
+        statusText: HomeWalkStatus.none.label,
+        statusColor: DogGoTheme.green,
+        imageUrl: firstPet?.imageUrl ?? '',
+        primaryLabel: _state.isWalker ? 'Abrir panel' : 'Solicitar paseo',
+        secondaryLabel: _state.isWalker ? 'Mi perfil' : 'Ver paseadores',
         onPrimary: () {
           if (_state.isWalker) {
             _setNavigationIndex(2);
@@ -923,43 +674,41 @@ class _HomeScreenState
         },
         onSecondary: () {
           if (_state.isWalker) {
-            _open(
-              const PerfilScreen(),
-            );
+            _open(const PerfilScreen());
           } else {
             _openWalkersTab();
           }
         },
-        onRetry:
-            _controller.loadWalks,
+        onRetry: _controller.loadWalks,
+        timingText: '',
+        locationText: '',
       );
     }
 
     return HomeWalkSection(
       loading: _state.walksLoading,
-      errorMessage:
-          _state.walksError,
+      errorMessage: _state.walksError,
       eyebrow: walk.status.eyebrow,
-      title:
-          'Paseo para ${walk.petName}',
-      subtitle:
-          '${walk.formattedSchedule} · ${_walkSubtitle(walk)}',
+      title: 'Paseo para ${walk.petName}',
+      subtitle: '${walk.formattedSchedule} · ${_walkSubtitle(walk)}',
       statusText: walk.status.label,
-      statusColor:
-          _walkStatusColor(
-        walk.status,
-      ),
+      statusColor: _walkStatusColor(walk.status),
       imageUrl: walk.imageUrl,
       imageUrls: walk.petImageUrls,
       petCount: walk.petCount,
-      primaryLabel: walk.isInProgress
-          ? 'Ver recorrido'
-          : 'Ver detalles',
+      routeAlert: walk.isInProgress && walk.isOutsideAllowedRoute,
+      timingText: walk.isInProgress && walk.isOutsideAllowedRoute
+          ? walk.routeDeviationTimeLabel(from: _homeNow)
+          : walk.isInProgress
+          ? ''
+          : walk.timeUntilLabel(from: _homeNow),
+      locationText: walk.pickupAddress,
+      primaryLabel: walk.isInProgress ? 'Ver recorrido' : 'Ver detalles',
       secondaryLabel: walk.isInProgress
           ? 'Abrir chat'
           : _state.isWalker
-              ? 'Abrir panel'
-              : 'Mis paseos',
+          ? 'Abrir panel'
+          : 'Mis paseos',
       onPrimary: () {
         if (walk.isInProgress) {
           _openWalkMap(walk);
@@ -973,22 +722,16 @@ class _HomeScreenState
         } else if (_state.isWalker) {
           _setNavigationIndex(2);
         } else {
-          _open(
-            const MisPaseosScreen(),
-          );
+          _open(const MisPaseosScreen());
         }
       },
-      onRetry:
-          _controller.loadWalks,
+      onRetry: _controller.loadWalks,
     );
   }
 
-  String _walkSubtitle(
-    HomeWalk walk,
-  ) {
+  String _walkSubtitle(HomeWalk walk) {
     if (_state.isWalker) {
-      if (walk.pickupAddress
-          .isNotEmpty) {
+      if (walk.pickupAddress.isNotEmpty) {
         return walk.pickupAddress;
       }
 
@@ -998,25 +741,19 @@ class _HomeScreenState
     return 'Con ${walk.walkerName}';
   }
 
-  HomePetItem _petItem(
-    HomePet pet,
-  ) {
+  HomePetItem _petItem(HomePet pet) {
     return HomePetItem(
       name: pet.name,
       breed: pet.breed,
       age: pet.ageLabel,
       imageUrl: pet.imageUrl,
       onTap: () {
-        _open(
-          const MisPerrosScreen(),
-        );
+        _open(const MisPerrosScreen());
       },
     );
   }
 
-  Color _walkStatusColor(
-    HomeWalkStatus status,
-  ) {
+  Color _walkStatusColor(HomeWalkStatus status) {
     switch (status) {
       case HomeWalkStatus.pending:
         return DogGoTheme.orange;
@@ -1039,8 +776,7 @@ class _HomeScreenState
   }
 }
 
-class _HomeMenuItem
-    extends StatelessWidget {
+class _HomeMenuItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
@@ -1055,40 +791,27 @@ class _HomeMenuItem
 
   @override
   Widget build(BuildContext context) {
-    final color = danger
-        ? DogGoTheme.red
-        : DogGoTheme.ink;
+    final color = danger ? DogGoTheme.red : DogGoTheme.ink;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius:
-            BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(
             children: [
               Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: danger
-                      ? DogGoTheme.redLight
-                      : DogGoTheme.tealLight,
-                  borderRadius:
-                      BorderRadius.circular(
-                    14,
-                  ),
+                  color: danger ? DogGoTheme.redLight : DogGoTheme.tealLight,
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   icon,
-                  color: danger
-                      ? DogGoTheme.red
-                      : DogGoTheme.teal,
+                  color: danger ? DogGoTheme.red : DogGoTheme.teal,
                   size: 21,
                 ),
               ),
@@ -1099,17 +822,13 @@ class _HomeMenuItem
                   style: DogGoTheme.body(
                     size: 14,
                     color: color,
-                    weight:
-                        FontWeight.w800,
+                    weight: FontWeight.w800,
                   ),
                 ),
               ),
               Icon(
-                Icons
-                    .chevron_right_rounded,
-                color: danger
-                    ? DogGoTheme.red
-                    : DogGoTheme.muted,
+                Icons.chevron_right_rounded,
+                color: danger ? DogGoTheme.red : DogGoTheme.muted,
               ),
             ],
           ),

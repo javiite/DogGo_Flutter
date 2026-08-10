@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/doggo_theme.dart';
 
-class HomeShortcutsSection
-    extends StatelessWidget {
+class HomeShortcutsSection extends StatelessWidget {
   final bool isWalker;
   final VoidCallback onPetsOrProfile;
   final VoidCallback onAgenda;
@@ -23,116 +22,73 @@ class HomeShortcutsSection
   Widget build(BuildContext context) {
     final shortcuts = [
       _ShortcutData(
-        icon: isWalker
-            ? Icons.badge_outlined
-            : Icons.pets_rounded,
-        label: isWalker
-            ? 'Mi perfil'
-            : 'Mascotas',
+        icon: isWalker ? Icons.badge_outlined : Icons.pets_rounded,
+        label: isWalker ? 'Mi perfil' : 'Mis mascotas',
+        subtitle: isWalker
+            ? 'Información profesional'
+            : 'Perfiles y fotografías',
         color: DogGoTheme.teal,
-        background:
-            DogGoTheme.tealLight,
+        background: DogGoTheme.tealLight,
         onTap: onPetsOrProfile,
       ),
       _ShortcutData(
-        icon:
-            Icons.calendar_month_rounded,
+        icon: Icons.calendar_month_rounded,
         label: 'Agenda',
+        subtitle: 'Fechas y próximos paseos',
         color: DogGoTheme.purple,
-        background:
-            DogGoTheme.purpleLight,
+        background: DogGoTheme.purpleLight,
         onTap: onAgenda,
       ),
       _ShortcutData(
         icon: Icons.route_rounded,
-        label: 'Paseos',
+        label: 'Mis paseos',
+        subtitle: 'Solicitudes e historial',
         color: DogGoTheme.orange,
-        background:
-            DogGoTheme.orangeLight,
+        background: DogGoTheme.orangeLight,
         onTap: onWalks,
       ),
       _ShortcutData(
         icon: Icons.explore_rounded,
         label: 'Explorar',
+        subtitle: 'Lugares, guías y servicios',
         color: DogGoTheme.green,
-        background:
-            DogGoTheme.greenLight,
+        background: DogGoTheme.greenLight,
         onTap: onExplore,
       ),
     ];
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        24,
-        28,
-        24,
-        0,
-      ),
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 0),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
                 child: Text(
-                  'Todo a la mano',
-                  style: DogGoTheme.title(
-                    size: 20,
-                  ),
+                  'Accesos rápidos',
+                  style: DogGoTheme.title(size: 20),
                 ),
               ),
-              Text(
-                'Accesos rápidos',
-                style: DogGoTheme.subtitle(
-                  size: 11,
-                ),
-              ),
+              Text('Todo a la mano', style: DogGoTheme.subtitle(size: 10.5)),
             ],
           ),
-          const SizedBox(height: 13),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 12,
+          const SizedBox(height: 12),
+          GridView.builder(
+            itemCount: shortcuts.length,
+            padding: EdgeInsets.zero,
+            primary: false,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.92,
             ),
-            decoration: BoxDecoration(
-              color: DogGoTheme.card,
-              borderRadius:
-                  BorderRadius.circular(22),
-              border: Border.all(
-                color: DogGoTheme.border,
-              ),
-              boxShadow:
-                  DogGoTheme.softShadow(
-                opacity: 0.025,
-                blur: 14,
-              ),
-            ),
-            child: Row(
-              children: [
-                for (var index = 0;
-                    index <
-                        shortcuts.length;
-                    index++) ...[
-                  Expanded(
-                    child: _ShortcutButton(
-                      data:
-                          shortcuts[index],
-                    ),
-                  ),
-                  if (index <
-                      shortcuts.length - 1)
-                    Container(
-                      width: 1,
-                      height: 47,
-                      color:
-                          DogGoTheme.border,
-                    ),
-                ],
-              ],
-            ),
+            itemBuilder: (context, index) {
+              return _ShortcutCard(data: shortcuts[index]);
+            },
           ),
         ],
       ),
@@ -140,58 +96,59 @@ class HomeShortcutsSection
   }
 }
 
-class _ShortcutButton
-    extends StatelessWidget {
+class _ShortcutCard extends StatelessWidget {
   final _ShortcutData data;
 
-  const _ShortcutButton({
-    required this.data,
-  });
+  const _ShortcutCard({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: data.label,
+    return Material(
+      color: DogGoTheme.card,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: data.onTap,
-        borderRadius:
-            BorderRadius.circular(16),
-        child: Padding(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 4,
-            vertical: 4,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DogGoTheme.border),
           ),
-          child: Column(
+          child: Row(
             children: [
               Container(
                 width: 43,
                 height: 43,
                 decoration: BoxDecoration(
                   color: data.background,
-                  borderRadius:
-                      BorderRadius.circular(
-                    14,
-                  ),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  data.icon,
-                  color: data.color,
-                  size: 22,
-                ),
+                child: Icon(data.icon, color: data.color, size: 22),
               ),
-              const SizedBox(height: 7),
-              Text(
-                data.label,
-                maxLines: 1,
-                overflow:
-                    TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: DogGoTheme.body(
-                  size: 10.5,
-                  weight:
-                      FontWeight.w800,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DogGoTheme.body(
+                        size: 11.5,
+                        weight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      data.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: DogGoTheme.subtitle(size: 8.5),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -205,6 +162,7 @@ class _ShortcutButton
 class _ShortcutData {
   final IconData icon;
   final String label;
+  final String subtitle;
   final Color color;
   final Color background;
   final VoidCallback onTap;
@@ -212,6 +170,7 @@ class _ShortcutData {
   const _ShortcutData({
     required this.icon,
     required this.label,
+    required this.subtitle,
     required this.color,
     required this.background,
     required this.onTap,

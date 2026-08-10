@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../shared/widgets/doggo_error_view.dart';
 import '../../../shared/widgets/doggo_skeleton_card.dart';
 import '../../../theme/doggo_radius.dart';
-import '../../../theme/doggo_theme.dart';
 import '../widgets/home_walk_pet_images.dart';
 
 class HomeWalkSection extends StatelessWidget {
@@ -14,14 +13,12 @@ class HomeWalkSection extends StatelessWidget {
   final String subtitle;
   final String statusText;
   final Color statusColor;
-
-  // Se conserva para llamadas anteriores.
   final String imageUrl;
-
-  // Nuevos datos para múltiples mascotas.
   final List<String> imageUrls;
   final int petCount;
-
+  final bool routeAlert;
+  final String timingText;
+  final String locationText;
   final String primaryLabel;
   final String secondaryLabel;
   final VoidCallback onPrimary;
@@ -37,13 +34,16 @@ class HomeWalkSection extends StatelessWidget {
     required this.statusText,
     required this.statusColor,
     required this.imageUrl,
-    this.imageUrls = const [],
-    this.petCount = 1,
     required this.primaryLabel,
     required this.secondaryLabel,
     required this.onPrimary,
     required this.onSecondary,
     required this.onRetry,
+    this.imageUrls = const [],
+    this.petCount = 1,
+    this.routeAlert = false,
+    this.timingText = '',
+    this.locationText = '',
     this.errorMessage,
   });
 
@@ -52,20 +52,13 @@ class HomeWalkSection extends StatelessWidget {
       return imageUrls;
     }
 
-    return imageUrl.trim().isEmpty
-        ? const []
-        : [imageUrl];
+    return imageUrl.trim().isEmpty ? const [] : [imageUrl];
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        24,
-        18,
-        24,
-        0,
-      ),
+      padding: const EdgeInsets.fromLTRB(24, 17, 24, 0),
       child: _buildContent(),
     );
   }
@@ -73,16 +66,14 @@ class HomeWalkSection extends StatelessWidget {
   Widget _buildContent() {
     if (loading) {
       return const DogGoSkeletonCard(
-        height: 304,
-        borderRadius:
-            DogGoRadius.extraLarge,
+        height: 350,
+        borderRadius: DogGoRadius.extraLarge,
       );
     }
 
     if (errorMessage != null) {
       return DogGoErrorView(
-        title:
-            'No pudimos cargar tus paseos',
+        title: 'No pudimos cargar tus paseos',
         message: errorMessage!,
         icon: Icons.route_outlined,
         onRetry: onRetry,
@@ -97,6 +88,9 @@ class HomeWalkSection extends StatelessWidget {
       statusColor: statusColor,
       imageUrls: _effectiveImages,
       petCount: petCount,
+      routeAlert: routeAlert,
+      timingText: timingText,
+      locationText: locationText,
       primaryLabel: primaryLabel,
       secondaryLabel: secondaryLabel,
       onPrimary: onPrimary,
@@ -113,6 +107,9 @@ class _WalkCard extends StatelessWidget {
   final Color statusColor;
   final List<String> imageUrls;
   final int petCount;
+  final bool routeAlert;
+  final String timingText;
+  final String locationText;
   final String primaryLabel;
   final String secondaryLabel;
   final VoidCallback onPrimary;
@@ -126,6 +123,9 @@ class _WalkCard extends StatelessWidget {
     required this.statusColor,
     required this.imageUrls,
     required this.petCount,
+    required this.routeAlert,
+    required this.timingText,
+    required this.locationText,
     required this.primaryLabel,
     required this.secondaryLabel,
     required this.onPrimary,
@@ -134,107 +134,238 @@ class _WalkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _WalkPalette.resolve(
+      statusText: statusText,
+      fallback: statusColor,
+      routeAlert: routeAlert,
+    );
+
     return Semantics(
       container: true,
-      label:
-          '$eyebrow. $title. $subtitle. $statusText',
+      label: '$eyebrow. $title. $subtitle. $statusText',
       child: Container(
-        height: 304,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: DogGoTheme.teal,
-          borderRadius: BorderRadius.circular(
-            DogGoRadius.extraLarge,
-          ),
-          boxShadow:
-              DogGoTheme.elevatedShadow(),
+          color: palette.primary,
+          borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
+          boxShadow: [
+            BoxShadow(
+              color: palette.primary.withValues(alpha: 0.23),
+              blurRadius: 28,
+              offset: const Offset(0, 13),
+            ),
+          ],
         ),
         child: Stack(
-          fit: StackFit.expand,
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: FractionallySizedBox(
-                widthFactor: .67,
-                heightFactor: 1,
-                alignment:
-                    Alignment.centerRight,
-                child: HomeWalkPetImages(
-                  imageUrls: imageUrls,
-                  petCount: petCount,
+            Positioned.fill(
+              child: HomeWalkPetImages(
+                imageUrls: imageUrls,
+                petCount: petCount,
+              ),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      palette.primary.withValues(alpha: 0.98),
+                      palette.primary.withValues(alpha: 0.89),
+                      palette.primary.withValues(alpha: 0.37),
+                    ],
+                    stops: const [0, 0.54, 1],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
                 ),
               ),
             ),
-            const _WalkGradient(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                22,
-                22,
-                20,
-                18,
+            Positioned(
+              right: -28,
+              bottom: -38,
+              child: Icon(
+                routeAlert ? Icons.warning_amber_rounded : Icons.pets_rounded,
+                size: 155,
+                color: Colors.white.withValues(alpha: 0.08),
               ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 215,
-                    child: Text(
-                      eyebrow,
-                      maxLines: 1,
-                      overflow:
-                          TextOverflow.ellipsis,
-                      style: DogGoTheme.label(
-                        size: 10.5,
-                        color: DogGoTheme.orange,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(palette.icon, color: Colors.white, size: 15),
+                            const SizedBox(width: 6),
+                            Text(
+                              routeAlert ? 'ALERTA DE RUTA' : eyebrow,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.65,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                      const Spacer(),
+                      if (timingText.isNotEmpty)
+                        Container(
+                          constraints: const BoxConstraints(maxWidth: 140),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            timingText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: palette.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: 220,
+                  const SizedBox(height: 21),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 275),
                     child: Text(
-                      title,
+                      routeAlert ? 'El paseo salió de la ruta' : title,
                       maxLines: 2,
-                      overflow:
-                          TextOverflow.ellipsis,
-                      style: DogGoTheme.title(
-                        size: 25,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
                         color: Colors.white,
+                        fontSize: 27,
+                        height: 1.04,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
                   const SizedBox(height: 9),
-                  SizedBox(
-                    width: 225,
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 290),
                     child: Text(
-                      subtitle,
-                      maxLines: 3,
-                      overflow:
-                          TextOverflow.ellipsis,
-                      style: DogGoTheme.body(
-                        size: 12.7,
-                        color: Colors.white
-                            .withValues(
-                          alpha: .86,
-                        ),
-                        weight: FontWeight.w600,
+                      routeAlert
+                          ? 'El paseador debe regresar a la zona permitida. Puedes revisar el recorrido en tiempo real.'
+                          : subtitle,
+                      maxLines: routeAlert ? 3 : 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFE9F5F2),
+                        fontSize: 12.5,
+                        height: 1.4,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  const Spacer(),
-                  _StatusBadge(
-                    text: statusText,
-                    color: statusColor,
-                  ),
-                  const SizedBox(height: 13),
-                  _Actions(
-                    primaryLabel:
-                        primaryLabel,
-                    secondaryLabel:
-                        secondaryLabel,
-                    onPrimary: onPrimary,
-                    onSecondary: onSecondary,
+                  if (locationText.isNotEmpty) ...[
+                    const SizedBox(height: 15),
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 300),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.13),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            color: Colors.white,
+                            size: 17,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              locationText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: onPrimary,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 49),
+                            backgroundColor: Colors.white,
+                            foregroundColor: palette.primary,
+                          ),
+                          icon: Icon(
+                            routeAlert
+                                ? Icons.map_rounded
+                                : palette.primaryActionIcon,
+                          ),
+                          label: Text(
+                            routeAlert ? 'Ver recorrido' : primaryLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onSecondary,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(0, 49),
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.58),
+                            ),
+                          ),
+                          icon: Icon(
+                            routeAlert
+                                ? Icons.chat_rounded
+                                : Icons.arrow_forward_rounded,
+                          ),
+                          label: Text(
+                            routeAlert ? 'Abrir chat' : secondaryLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -246,146 +377,60 @@ class _WalkCard extends StatelessWidget {
   }
 }
 
-class _WalkGradient extends StatelessWidget {
-  const _WalkGradient();
+class _WalkPalette {
+  final Color primary;
+  final IconData icon;
+  final IconData primaryActionIcon;
 
-  @override
-  Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            DogGoTheme.teal,
-            DogGoTheme.teal,
-            Color(0xEA087D68),
-            Color(0x66087D68),
-            Color(0x22087D68),
-          ],
-          stops: [
-            0,
-            .38,
-            .56,
-            .78,
-            1,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final String text;
-  final Color color;
-
-  const _StatusBadge({
-    required this.text,
-    required this.color,
+  const _WalkPalette({
+    required this.primary,
+    required this.icon,
+    required this.primaryActionIcon,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .23),
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.pill,
-        ),
-        border: Border.all(
-          color: color.withValues(alpha: .68),
-        ),
-      ),
-      child: Text(
-        text,
-        style: DogGoTheme.body(
-          size: 10.5,
-          color: Colors.white,
-          weight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
+  factory _WalkPalette.resolve({
+    required String statusText,
+    required Color fallback,
+    required bool routeAlert,
+  }) {
+    if (routeAlert) {
+      return const _WalkPalette(
+        primary: Color(0xFFB42E2E),
+        icon: Icons.warning_amber_rounded,
+        primaryActionIcon: Icons.map_rounded,
+      );
+    }
 
-class _Actions extends StatelessWidget {
-  final String primaryLabel;
-  final String secondaryLabel;
-  final VoidCallback onPrimary;
-  final VoidCallback onSecondary;
+    final status = statusText.trim().toLowerCase();
 
-  const _Actions({
-    required this.primaryLabel,
-    required this.secondaryLabel,
-    required this.onPrimary,
-    required this.onSecondary,
-  });
+    if (status.contains('pendiente')) {
+      return const _WalkPalette(
+        primary: Color(0xFFD87812),
+        icon: Icons.hourglass_top_rounded,
+        primaryActionIcon: Icons.assignment_outlined,
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 47,
-            child: OutlinedButton(
-              onPressed: onPrimary,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(
-                  color: Colors.white.withValues(
-                    alpha: .82,
-                  ),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.button,
-                  ),
-                ),
-              ),
-              child: Text(
-                primaryLabel,
-                maxLines: 1,
-                overflow:
-                    TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: SizedBox(
-            height: 47,
-            child: ElevatedButton(
-              onPressed: onSecondary,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor:
-                    DogGoTheme.teal,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.button,
-                  ),
-                ),
-              ),
-              child: Text(
-                secondaryLabel,
-                maxLines: 1,
-                overflow:
-                    TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        ),
-      ],
+    if (status.contains('acept') || status.contains('confirm')) {
+      return const _WalkPalette(
+        primary: Color(0xFF5D478F),
+        icon: Icons.event_available_rounded,
+        primaryActionIcon: Icons.receipt_long_outlined,
+      );
+    }
+
+    if (status.contains('curso') || status.contains('progreso')) {
+      return const _WalkPalette(
+        primary: Color(0xFF087D68),
+        icon: Icons.directions_walk_rounded,
+        primaryActionIcon: Icons.map_rounded,
+      );
+    }
+
+    return _WalkPalette(
+      primary: fallback,
+      icon: Icons.pets_rounded,
+      primaryActionIcon: Icons.search_rounded,
     );
   }
 }

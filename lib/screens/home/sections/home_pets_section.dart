@@ -62,7 +62,7 @@ class HomePetsSection extends StatelessWidget {
             actionText: pets.isEmpty ? 'Agregar' : 'Ver todas',
             onAction: pets.isEmpty ? onAddPet : onSeeAll,
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 12),
           _buildContent(),
         ],
       ),
@@ -87,8 +87,7 @@ class HomePetsSection extends StatelessWidget {
     if (pets.isEmpty) {
       return DogGoEmptyView(
         title: 'Agrega a tu primera mascota',
-        message:
-            'Sube su foto y completa sus datos para verla en tu inicio.',
+        message: 'Sube su foto y completa sus datos para verla en tu inicio.',
         icon: Icons.add_a_photo_rounded,
         actionText: 'Agregar mascota',
         onAction: onAddPet,
@@ -99,12 +98,12 @@ class HomePetsSection extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 224,
+      height: 196,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: pets.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 13),
+        separatorBuilder: (_, _) => const SizedBox(width: 11),
         itemBuilder: (context, index) {
           if (index == pets.length) {
             return _AddPetCard(onTap: onAddPet);
@@ -123,12 +122,12 @@ class _PetsLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SizedBox(
-      height: 224,
+      height: 196,
       child: Row(
         children: [
-          Expanded(child: DogGoSkeletonCard(height: 224)),
+          Expanded(child: DogGoSkeletonCard(height: 196)),
           SizedBox(width: 13),
-          Expanded(child: DogGoSkeletonCard(height: 224)),
+          Expanded(child: DogGoSkeletonCard(height: 196)),
         ],
       ),
     );
@@ -138,21 +137,18 @@ class _PetsLoading extends StatelessWidget {
 class _PetCard extends StatelessWidget {
   final HomePetItem pet;
 
-  const _PetCard({
-    required this.pet,
-  });
+  const _PetCard({required this.pet});
 
   bool get _hasImage {
     final value = pet.imageUrl.trim();
 
-    return value.startsWith('http://') ||
-        value.startsWith('https://');
+    return value.startsWith('http://') || value.startsWith('https://');
   }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 176,
+      width: 158,
       child: Semantics(
         button: true,
         label: 'Ver información de ${pet.name}',
@@ -167,20 +163,15 @@ class _PetCard extends StatelessWidget {
                 color: DogGoTheme.card,
                 borderRadius: BorderRadius.circular(DogGoRadius.large),
                 border: Border.all(color: DogGoTheme.border),
-                boxShadow: DogGoTheme.softShadow(
-                  opacity: .04,
-                  blur: 18,
-                ),
+                boxShadow: DogGoTheme.softShadow(opacity: .04, blur: 18),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  DogGoRadius.large - 1,
-                ),
+                borderRadius: BorderRadius.circular(DogGoRadius.large - 1),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(
-                      height: 142,
+                      height: 118,
                       width: double.infinity,
                       child: Stack(
                         fit: StackFit.expand,
@@ -189,7 +180,7 @@ class _PetCard extends StatelessWidget {
                               ? Image.network(
                                   pet.imageUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) {
+                                  errorBuilder: (_, _, _) {
                                     return const _DogPlaceholder();
                                   },
                                 )
@@ -199,10 +190,7 @@ class _PetCard extends StatelessWidget {
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Color(0x8A000000),
-                                ],
+                                colors: [Colors.transparent, Color(0x8A000000)],
                                 stops: [.48, 1],
                               ),
                             ),
@@ -216,7 +204,7 @@ class _PetCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: DogGoTheme.title(
-                                size: 19,
+                                size: 17,
                                 color: Colors.white,
                               ),
                             ),
@@ -228,9 +216,7 @@ class _PetCard extends StatelessWidget {
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(
-                                  alpha: .92,
-                                ),
+                                color: Colors.white.withValues(alpha: .92),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -245,12 +231,7 @@ class _PetCard extends StatelessWidget {
                     ),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          12,
-                          11,
-                          12,
-                          11,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(12, 9, 12, 11),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -261,7 +242,7 @@ class _PetCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: DogGoTheme.body(
-                                size: 12.5,
+                                size: 11.5,
                                 color: DogGoTheme.ink,
                                 weight: FontWeight.w700,
                               ),
@@ -281,7 +262,7 @@ class _PetCard extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: DogGoTheme.body(
-                                      size: 11,
+                                      size: 10,
                                       color: DogGoTheme.muted,
                                       weight: FontWeight.w700,
                                     ),
@@ -307,14 +288,12 @@ class _PetCard extends StatelessWidget {
 class _AddPetCard extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _AddPetCard({
-    required this.onTap,
-  });
+  const _AddPetCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 142,
+      width: 158,
       child: Semantics(
         button: true,
         label: 'Agregar mascota',
@@ -338,8 +317,8 @@ class _AddPetCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 58,
-                      height: 58,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
                         color: DogGoTheme.card,
                         shape: BoxShape.circle,
@@ -351,10 +330,10 @@ class _AddPetCard extends StatelessWidget {
                       child: const Icon(
                         Icons.add_rounded,
                         color: DogGoTheme.teal,
-                        size: 32,
+                        size: 29,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 13),
                     Text(
                       'Agregar\nmascota',
                       textAlign: TextAlign.center,
@@ -388,11 +367,7 @@ class _DogPlaceholder extends StatelessWidget {
     return Container(
       color: DogGoTheme.tealLight,
       alignment: Alignment.center,
-      child: const Icon(
-        Icons.pets_rounded,
-        color: DogGoTheme.teal,
-        size: 48,
-      ),
+      child: const Icon(Icons.pets_rounded, color: DogGoTheme.teal, size: 48),
     );
   }
 }

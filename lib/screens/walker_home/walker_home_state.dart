@@ -30,8 +30,7 @@ class WalkerHomeState {
   });
 
   bool get busy {
-    return availabilitySaving ||
-        actingWalkId != null;
+    return availabilitySaving || actingWalkId != null;
   }
 
   bool get available {
@@ -39,52 +38,28 @@ class WalkerHomeState {
   }
 
   int get pendingCount {
-    return walks
-        .where(
-          (walk) =>
-              walk.status ==
-              HomeWalkStatus.pending,
-        )
-        .length;
+    return walks.where((walk) => walk.status == HomeWalkStatus.pending).length;
   }
 
   int get acceptedCount {
-    return walks
-        .where(
-          (walk) =>
-              walk.status ==
-              HomeWalkStatus.accepted,
-        )
-        .length;
+    return walks.where((walk) => walk.status == HomeWalkStatus.accepted).length;
   }
 
   int get inProgressCount {
     return walks
-        .where(
-          (walk) =>
-              walk.status ==
-              HomeWalkStatus.inProgress,
-        )
+        .where((walk) => walk.status == HomeWalkStatus.inProgress)
         .length;
   }
 
   int get completedCount {
     return walks
-        .where(
-          (walk) =>
-              walk.status ==
-              HomeWalkStatus.completed,
-        )
+        .where((walk) => walk.status == HomeWalkStatus.completed)
         .length;
   }
 
   List<HomeWalk> get pendingRequests {
     final result = walks
-        .where(
-          (walk) =>
-              walk.status ==
-              HomeWalkStatus.pending,
-        )
+        .where((walk) => walk.status == HomeWalkStatus.pending)
         .toList();
 
     result.sort(_sortByDate);
@@ -94,27 +69,20 @@ class WalkerHomeState {
 
   List<HomeWalk> get operationalWalks {
     final result = walks.where((walk) {
-      return walk.status ==
-              HomeWalkStatus.inProgress ||
-          walk.status ==
-              HomeWalkStatus.accepted;
+      return walk.status == HomeWalkStatus.inProgress ||
+          walk.status == HomeWalkStatus.accepted;
     }).toList();
 
     result.sort((first, second) {
-      if (first.status ==
-          HomeWalkStatus.inProgress) {
+      if (first.status == HomeWalkStatus.inProgress) {
         return -1;
       }
 
-      if (second.status ==
-          HomeWalkStatus.inProgress) {
+      if (second.status == HomeWalkStatus.inProgress) {
         return 1;
       }
 
-      return _sortByDate(
-        first,
-        second,
-      );
+      return _sortByDate(first, second);
     });
 
     return result;
@@ -122,33 +90,21 @@ class WalkerHomeState {
 
   List<HomeWalk> get recentCompleted {
     final result = walks
-        .where(
-          (walk) =>
-              walk.status ==
-              HomeWalkStatus.completed,
-        )
+        .where((walk) => walk.status == HomeWalkStatus.completed)
         .toList();
 
     result.sort((first, second) {
       final firstDate =
           first.finishedAt ??
-              first.scheduledAt ??
-              DateTime
-                  .fromMillisecondsSinceEpoch(
-                0,
-              );
+          first.scheduledAt ??
+          DateTime.fromMillisecondsSinceEpoch(0);
 
       final secondDate =
           second.finishedAt ??
-              second.scheduledAt ??
-              DateTime
-                  .fromMillisecondsSinceEpoch(
-                0,
-              );
+          second.scheduledAt ??
+          DateTime.fromMillisecondsSinceEpoch(0);
 
-      return secondDate.compareTo(
-        firstDate,
-      );
+      return secondDate.compareTo(firstDate);
     });
 
     return result.take(3).toList();
@@ -156,19 +112,39 @@ class WalkerHomeState {
 
   HomeWalk? get activeWalk {
     for (final walk in operationalWalks) {
-      if (walk.status ==
-          HomeWalkStatus.inProgress) {
+      if (walk.status == HomeWalkStatus.inProgress) {
         return walk;
       }
     }
 
     return null;
+  }
+
+  HomeWalk? get routeAlertWalk {
+    for (final walk in operationalWalks) {
+      if (walk.isInProgress && walk.isOutsideAllowedRoute) {
+        return walk;
+      }
+    }
+
+    return null;
+  }
+
+  HomeWalk? get priorityWalk {
+    return routeAlertWalk ??
+        activeWalk ??
+        nextAcceptedWalk ??
+        firstPendingRequest;
+  }
+
+  HomeWalk? get firstPendingRequest {
+    final requests = pendingRequests;
+    return requests.isEmpty ? null : requests.first;
   }
 
   HomeWalk? get nextAcceptedWalk {
     for (final walk in operationalWalks) {
-      if (walk.status ==
-          HomeWalkStatus.accepted) {
+      if (walk.status == HomeWalkStatus.accepted) {
         return walk;
       }
     }
@@ -176,9 +152,18 @@ class WalkerHomeState {
     return null;
   }
 
+  bool get hasImmediateWork {
+    return activeWalk != null ||
+        nextAcceptedWalk != null ||
+        pendingRequests.isNotEmpty;
+  }
+
+  int get scheduledCount {
+    return acceptedCount + inProgressCount;
+  }
+
   bool isActingOn(HomeWalk walk) {
-    return walk.id != null &&
-        actingWalkId == walk.id;
+    return walk.id != null && actingWalkId == walk.id;
   }
 
   WalkerHomeState copyWith({
@@ -199,58 +184,27 @@ class WalkerHomeState {
     bool clearMessage = false,
   }) {
     return WalkerHomeState(
-      initialLoading:
-          initialLoading ??
-              this.initialLoading,
-      refreshing:
-          refreshing ?? this.refreshing,
-      profileLoading:
-          profileLoading ??
-              this.profileLoading,
-      walksLoading:
-          walksLoading ??
-              this.walksLoading,
-      availabilitySaving:
-          availabilitySaving ??
-              this.availabilitySaving,
-      actingWalkId: clearActingWalk
-          ? null
-          : actingWalkId ??
-              this.actingWalkId,
+      initialLoading: initialLoading ?? this.initialLoading,
+      refreshing: refreshing ?? this.refreshing,
+      profileLoading: profileLoading ?? this.profileLoading,
+      walksLoading: walksLoading ?? this.walksLoading,
+      availabilitySaving: availabilitySaving ?? this.availabilitySaving,
+      actingWalkId: clearActingWalk ? null : actingWalkId ?? this.actingWalkId,
       baseUrl: baseUrl ?? this.baseUrl,
-      profile: clearProfile
-          ? null
-          : profile ?? this.profile,
+      profile: clearProfile ? null : profile ?? this.profile,
       walks: walks ?? this.walks,
-      error: clearError
-          ? null
-          : error ?? this.error,
-      message: clearMessage
-          ? null
-          : message ?? this.message,
+      error: clearError ? null : error ?? this.error,
+      message: clearMessage ? null : message ?? this.message,
     );
   }
 
-  static int _sortByDate(
-    HomeWalk first,
-    HomeWalk second,
-  ) {
+  static int _sortByDate(HomeWalk first, HomeWalk second) {
     final firstDate =
-        first.scheduledAt ??
-            DateTime
-                .fromMillisecondsSinceEpoch(
-              0,
-            );
+        first.scheduledAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
     final secondDate =
-        second.scheduledAt ??
-            DateTime
-                .fromMillisecondsSinceEpoch(
-              0,
-            );
+        second.scheduledAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
-    return firstDate.compareTo(
-      secondDate,
-    );
+    return firstDate.compareTo(secondDate);
   }
 }
