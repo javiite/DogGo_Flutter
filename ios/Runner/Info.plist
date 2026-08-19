@@ -26,6 +26,21 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>DogGo necesita la cámara para tomar fotografías de perfiles, mascotas y evidencias de los paseos.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>DogGo necesita conectarse a la API de desarrollo disponible en tu red local.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>DogGo necesita continuar usando tu ubicación durante un paseo activo, incluso cuando la aplicación está en segundo plano.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>DogGo utiliza tu ubicación para buscar paseadores cercanos y dar seguimiento a los paseos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DogGo necesita acceder a tus fotografías para seleccionar imágenes de perfiles, mascotas y evidencias.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -49,6 +64,11 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
