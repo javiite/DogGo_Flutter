@@ -1,15 +1,21 @@
 import 'dart:io';
 
-enum PetFormMode {
-  create,
-  edit,
-}
+enum PetFormMode { create, edit }
 
 class PetFormState {
-  static const List<String> availableSizes = [
-    'Pequeño',
-    'Mediano',
-    'Grande',
+  static const List<String> availableSizes = ['Pequeño', 'Mediano', 'Grande'];
+  static const availableSexes = ['Macho', 'Hembra', 'No especificado'];
+  static const availableEnergyLevels = [
+    'No especificado',
+    'Bajo',
+    'Medio',
+    'Alto',
+  ];
+  static const availableLeashBehaviors = [
+    'No especificado',
+    'Tranquilo',
+    'Tira ocasionalmente',
+    'Tira con fuerza',
   ];
 
   final PetFormMode mode;
@@ -18,6 +24,15 @@ class PetFormState {
   final String? error;
   final String? baseUrl;
   final String selectedSize;
+  final String selectedSex;
+  final String selectedEnergyLevel;
+  final String selectedLeashBehavior;
+  final bool? sterilized;
+  final bool? socialWithDogs;
+  final bool? socialWithPeople;
+  final bool? socialWithChildren;
+  final bool? reactive;
+  final bool? escapeRisk;
   final String? currentPhotoUrl;
   final File? selectedPhoto;
 
@@ -28,6 +43,15 @@ class PetFormState {
     this.error,
     this.baseUrl,
     this.selectedSize = 'Mediano',
+    this.selectedSex = 'No especificado',
+    this.selectedEnergyLevel = 'No especificado',
+    this.selectedLeashBehavior = 'No especificado',
+    this.sterilized,
+    this.socialWithDogs,
+    this.socialWithPeople,
+    this.socialWithChildren,
+    this.reactive,
+    this.escapeRisk,
     this.currentPhotoUrl,
     this.selectedPhoto,
   });
@@ -38,8 +62,7 @@ class PetFormState {
 
   bool get hasPhoto {
     return selectedPhoto != null ||
-        (currentPhotoUrl != null &&
-            currentPhotoUrl!.trim().isNotEmpty);
+        (currentPhotoUrl != null && currentPhotoUrl!.trim().isNotEmpty);
   }
 
   String get screenTitle {
@@ -47,9 +70,7 @@ class PetFormState {
   }
 
   String get saveButtonText {
-    return isCreating
-        ? 'Registrar mascota'
-        : 'Guardar cambios';
+    return isCreating ? 'Registrar mascota' : 'Guardar cambios';
   }
 
   PetFormState copyWith({
@@ -60,6 +81,21 @@ class PetFormState {
     bool clearError = false,
     String? baseUrl,
     String? selectedSize,
+    String? selectedSex,
+    String? selectedEnergyLevel,
+    String? selectedLeashBehavior,
+    bool? sterilized,
+    bool clearSterilized = false,
+    bool? socialWithDogs,
+    bool clearSocialWithDogs = false,
+    bool? socialWithPeople,
+    bool clearSocialWithPeople = false,
+    bool? socialWithChildren,
+    bool clearSocialWithChildren = false,
+    bool? reactive,
+    bool clearReactive = false,
+    bool? escapeRisk,
+    bool clearEscapeRisk = false,
     String? currentPhotoUrl,
     bool clearCurrentPhoto = false,
     File? selectedPhoto,
@@ -71,8 +107,23 @@ class PetFormState {
       saving: saving ?? this.saving,
       error: clearError ? null : error ?? this.error,
       baseUrl: baseUrl ?? this.baseUrl,
-      selectedSize:
-          selectedSize ?? this.selectedSize,
+      selectedSize: selectedSize ?? this.selectedSize,
+      selectedSex: selectedSex ?? this.selectedSex,
+      selectedEnergyLevel: selectedEnergyLevel ?? this.selectedEnergyLevel,
+      selectedLeashBehavior:
+          selectedLeashBehavior ?? this.selectedLeashBehavior,
+      sterilized: clearSterilized ? null : sterilized ?? this.sterilized,
+      socialWithDogs: clearSocialWithDogs
+          ? null
+          : socialWithDogs ?? this.socialWithDogs,
+      socialWithPeople: clearSocialWithPeople
+          ? null
+          : socialWithPeople ?? this.socialWithPeople,
+      socialWithChildren: clearSocialWithChildren
+          ? null
+          : socialWithChildren ?? this.socialWithChildren,
+      reactive: clearReactive ? null : reactive ?? this.reactive,
+      escapeRisk: clearEscapeRisk ? null : escapeRisk ?? this.escapeRisk,
       currentPhotoUrl: clearCurrentPhoto
           ? null
           : currentPhotoUrl ?? this.currentPhotoUrl,
@@ -85,14 +136,11 @@ class PetFormState {
   String? publicUrl(dynamic value) {
     final path = value?.toString().trim();
 
-    if (path == null ||
-        path.isEmpty ||
-        path.toLowerCase() == 'null') {
+    if (path == null || path.isEmpty || path.toLowerCase() == 'null') {
       return null;
     }
 
-    if (path.startsWith('http://') ||
-        path.startsWith('https://')) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
@@ -104,8 +152,7 @@ class PetFormState {
         ? server.substring(0, server.length - 1)
         : server;
 
-    final cleanPath =
-        path.startsWith('/') ? path : '/$path';
+    final cleanPath = path.startsWith('/') ? path : '/$path';
 
     return '$cleanServer$cleanPath';
   }

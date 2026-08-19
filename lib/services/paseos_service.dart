@@ -8,10 +8,7 @@ class PaseosService {
     final body = response['body'];
 
     if (statusCode == 200 && body is Map && body['success'] == true) {
-      return {
-        'success': true,
-        'data': body['data'],
-      };
+      return {'success': true, 'data': body['data']};
     }
 
     return {
@@ -30,10 +27,7 @@ class PaseosService {
     final body = response['body'];
 
     if (statusCode == 200 && body is Map && body['success'] == true) {
-      return {
-        'success': true,
-        'data': body['data'],
-      };
+      return {'success': true, 'data': body['data']};
     }
 
     return {
@@ -43,6 +37,74 @@ class PaseosService {
           : 'No se pudo obtener el paseo.',
       'statusCode': statusCode,
     };
+  }
+
+  static Future<Map<String, dynamic>> obtenerProgramacion(int id) async {
+    final response = await ApiService.getAuth('/api/paseos/programaciones/$id');
+    return _normalizarRespuesta(response, 'Programación obtenida.');
+  }
+
+  static Future<Map<String, dynamic>> actualizarPaseoProgramado({
+    required int programacionId,
+    required int paseoId,
+    required DateTime fechaProgramada,
+    required int duracionMinutos,
+    required List<int> perroIds,
+  }) async {
+    final response = await ApiService.putAuth(
+      '/api/paseos/programaciones/$programacionId/paseos/$paseoId',
+      {
+        'fechaProgramada': fechaProgramada.toIso8601String(),
+        'duracionMinutos': duracionMinutos,
+        'perroIds': perroIds,
+      },
+    );
+    return _normalizarRespuesta(response, 'Paseo actualizado correctamente.');
+  }
+
+  static Future<Map<String, dynamic>> cancelarProgramacion(
+    int id, {
+    String? motivo,
+  }) async {
+    final response = await ApiService.putAuth(
+      '/api/paseos/programaciones/$id/cancelar',
+      {'motivo': motivo?.trim()},
+    );
+    return _normalizarRespuesta(
+      response,
+      'Programación cancelada correctamente.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> aceptarProgramacion(int id) async {
+    final response = await ApiService.putAuth(
+      '/api/paseos/programaciones/$id/aceptar',
+    );
+    return _normalizarRespuesta(
+      response,
+      'Programación aceptada correctamente.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> responderPaseoProgramado({
+    required int programacionId,
+    required int paseoId,
+    required bool aceptar,
+    String? motivo,
+  }) async {
+    final response = await ApiService.putAuth(
+      '/api/paseos/programaciones/$programacionId/paseos/$paseoId/respuesta',
+      {
+        'aceptar': aceptar,
+        if (motivo != null && motivo.trim().isNotEmpty) 'motivo': motivo.trim(),
+      },
+    );
+    return _normalizarRespuesta(
+      response,
+      aceptar
+          ? 'Paseo aceptado correctamente.'
+          : 'Paseo rechazado correctamente.',
+    );
   }
 
   static Future<Map<String, dynamic>> crearPaseo({
@@ -92,10 +154,7 @@ class PaseosService {
       data['Observaciones'] = notas.trim();
     }
 
-    final response = await ApiService.postAuth(
-      '/api/paseos',
-      data,
-    );
+    final response = await ApiService.postAuth('/api/paseos', data);
 
     final statusCode = response['statusCode'];
     final body = response['body'];

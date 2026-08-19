@@ -21,12 +21,10 @@ class TrackingPaseoScreen extends StatefulWidget {
   });
 
   @override
-  State<TrackingPaseoScreen> createState() =>
-      _TrackingPaseoScreenState();
+  State<TrackingPaseoScreen> createState() => _TrackingPaseoScreenState();
 }
 
-class _TrackingPaseoScreenState
-    extends State<TrackingPaseoScreen>
+class _TrackingPaseoScreenState extends State<TrackingPaseoScreen>
     with WidgetsBindingObserver {
   late final LiveTrackingController _controller;
 
@@ -53,33 +51,24 @@ class _TrackingPaseoScreenState
   }
 
   @override
-  void didChangeAppLifecycleState(
-    AppLifecycleState state,
-  ) {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _controller.syncStatus();
     }
   }
 
   void _close() {
-    Navigator.pop(
-      context,
-      _controller.shouldReturnUpdated,
-    );
+    Navigator.pop(context, _controller.shouldReturnUpdated);
   }
 
   Future<void> _activate() async {
-    final result = await _controller
-        .activateBackgroundTracking();
+    final result = await _controller.activateBackgroundTracking();
 
     if (!mounted) {
       return;
     }
 
-    _showMessage(
-      result.message,
-      success: result.success,
-    );
+    _showMessage(result.message, success: result.success);
   }
 
   Future<void> _pause() async {
@@ -89,16 +78,9 @@ class _TrackingPaseoScreenState
         return AlertDialog(
           title: const Row(
             children: [
-              Icon(
-                Icons.pause_circle_outline_rounded,
-                color: DogGoTheme.red,
-              ),
+              Icon(Icons.pause_circle_outline_rounded, color: DogGoTheme.red),
               SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Pausar ubicación',
-                ),
-              ),
+              Expanded(child: Text('Pausar ubicación')),
             ],
           ),
           content: const Text(
@@ -107,26 +89,16 @@ class _TrackingPaseoScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                false,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Volver'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                true,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: DogGoTheme.red,
                 foregroundColor: Colors.white,
               ),
-              child: const Text(
-                'Pausar ubicación',
-              ),
+              child: const Text('Pausar ubicación'),
             ),
           ],
         );
@@ -137,45 +109,32 @@ class _TrackingPaseoScreenState
       return;
     }
 
-    final result = await _controller
-        .pauseBackgroundTracking();
+    final result = await _controller.pauseBackgroundTracking();
 
     if (!mounted) {
       return;
     }
 
-    _showMessage(
-      result.message,
-      success: result.success,
-    );
+    _showMessage(result.message, success: result.success);
   }
 
   Future<void> _sendNow() async {
-    final result =
-        await _controller.sendCurrentLocation();
+    final result = await _controller.sendCurrentLocation();
 
     if (!mounted) {
       return;
     }
 
-    _showMessage(
-      result.message,
-      success: result.success,
-    );
+    _showMessage(result.message, success: result.success);
   }
 
-  void _showMessage(
-    String message, {
-    bool success = false,
-  }) {
+  void _showMessage(String message, {bool success = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: success
-              ? DogGoTheme.teal
-              : DogGoTheme.ink,
+          backgroundColor: success ? DogGoTheme.teal : DogGoTheme.ink,
         ),
       );
   }
@@ -193,83 +152,59 @@ class _TrackingPaseoScreenState
             leading: IconButton(
               onPressed: _close,
               tooltip: 'Regresar',
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-              ),
+              icon: const Icon(Icons.arrow_back_rounded),
             ),
-            title: const Text(
-              'Ubicación en vivo',
-            ),
+            title: const Text('Ubicación en vivo'),
             actions: [
               IconButton(
-                onPressed: state.processing
-                    ? null
-                    : _controller.syncStatus,
+                onPressed: state.processing ? null : _controller.syncStatus,
                 tooltip: 'Actualizar estado',
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                ),
+                icon: const Icon(Icons.refresh_rounded),
               ),
               const SizedBox(width: 6),
             ],
           ),
           body: state.loading
               ? const DogGoLoadingView(
-                  message:
-                      'Comprobando el servicio de ubicación...',
+                  message: 'Comprobando el servicio de ubicación...',
                 )
               : RefreshIndicator(
-                  onRefresh:
-                      _controller.syncStatus,
+                  onRefresh: _controller.syncStatus,
                   color: DogGoTheme.teal,
                   child: ListView(
-                    physics:
-                        const AlwaysScrollableScrollPhysics(),
-                    padding:
-                        const EdgeInsets.fromLTRB(
-                      DogGoSpacing
-                          .screenHorizontal,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      DogGoSpacing.screenHorizontal,
                       18,
-                      DogGoSpacing
-                          .screenHorizontal,
+                      DogGoSpacing.screenHorizontal,
                       110,
                     ),
                     children: [
-                      _TrackingHero(
-                        state: state,
-                      ),
+                      _TrackingHero(state: state),
+                      if (state.hasRouteStatus) ...[
+                        const SizedBox(height: 14),
+                        _RouteMonitoringCard(state: state),
+                      ],
                       if (state.error != null) ...[
                         const SizedBox(height: 14),
                         DogGoErrorView(
-                          title:
-                              'Problema con la ubicación',
+                          title: 'Problema con la ubicación',
                           message: state.error!,
-                          icon:
-                              Icons.location_off_outlined,
-                          onRetry:
-                              _controller.syncStatus,
+                          icon: Icons.location_off_outlined,
+                          onRetry: _controller.syncStatus,
                           compact: true,
                         ),
                       ],
-                      if (state
-                          .anotherWalkIsActive) ...[
+                      if (state.anotherWalkIsActive) ...[
                         const SizedBox(height: 14),
-                        _AnotherWalkWarning(
-                          state: state,
-                        ),
+                        _AnotherWalkWarning(state: state),
                       ],
                       const SizedBox(height: 16),
-                      _TrackingStatistics(
-                        state: state,
-                      ),
+                      _TrackingStatistics(state: state),
                       const SizedBox(height: 14),
-                      _CurrentLocationCard(
-                        state: state,
-                      ),
+                      _CurrentLocationCard(state: state),
                       const SizedBox(height: 14),
-                      _BackgroundServiceCard(
-                        state: state,
-                      ),
+                      _BackgroundServiceCard(state: state),
                       const SizedBox(height: 14),
                       const _TrackingSafetyCard(),
                       const SizedBox(height: 22),
@@ -288,12 +223,168 @@ class _TrackingPaseoScreenState
   }
 }
 
+class _RouteMonitoringCard extends StatelessWidget {
+  const _RouteMonitoringCard({required this.state});
+
+  final LiveTrackingState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final outside = state.outsideRoute;
+    final reentered = state.reentryDetected && !outside;
+    final color = outside
+        ? DogGoTheme.red
+        : reentered
+        ? DogGoTheme.green
+        : DogGoTheme.teal;
+    final background = outside
+        ? const Color(0xFFFFECEC)
+        : reentered
+        ? const Color(0xFFE8F6ED)
+        : DogGoTheme.tealLight;
+    final title = outside
+        ? 'Fuera de la ruta permitida'
+        : reentered
+        ? 'Regresaste a la ruta'
+        : state.checkpointsReached.isNotEmpty
+        ? 'Punto del recorrido alcanzado'
+        : 'Dentro del recorrido permitido';
+    final icon = outside
+        ? Icons.warning_amber_rounded
+        : reentered
+        ? Icons.add_location_alt_outlined
+        : state.checkpointsReached.isNotEmpty
+        ? Icons.flag_circle_outlined
+        : Icons.verified_user_outlined;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: color.withValues(alpha: .38)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
+                ),
+                child: Icon(icon, color: Colors.white, size: 23),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: DogGoTheme.title(size: 16, color: color),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      state.routeMessage?.trim().isNotEmpty == true
+                          ? state.routeMessage!.trim()
+                          : 'DogGo está verificando el recorrido con cada lectura GPS.',
+                      style: DogGoTheme.subtitle(size: 11.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (state.distanceRouteMeters != null ||
+              state.allowedRadiusMeters != null) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _RouteMetric(
+                    label: 'Distancia a la ruta',
+                    value: state.routeDistanceLabel,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _RouteMetric(
+                    label: 'Margen permitido',
+                    value: state.allowedRadiusMeters == null
+                        ? 'N/D'
+                        : '${state.allowedRadiusMeters!.round()} m',
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (state.checkpointsReached.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: state.checkpointsReached
+                  .map(
+                    (checkpoint) => Chip(
+                      avatar: Icon(Icons.check_rounded, size: 16, color: color),
+                      label: Text(checkpoint),
+                      backgroundColor: Colors.white.withValues(alpha: .72),
+                      side: BorderSide(color: color.withValues(alpha: .22)),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RouteMetric extends StatelessWidget {
+  const _RouteMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .68),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: DogGoTheme.caption(size: 9)),
+          const SizedBox(height: 2),
+          Text(value, style: DogGoTheme.title(size: 14, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
 class _TrackingHero extends StatelessWidget {
   final LiveTrackingState state;
 
-  const _TrackingHero({
-    required this.state,
-  });
+  const _TrackingHero({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -302,25 +393,16 @@ class _TrackingHero extends StatelessWidget {
     final color = active
         ? DogGoTheme.green
         : state.hasLocation
-            ? DogGoTheme.orange
-            : DogGoTheme.muted;
+        ? DogGoTheme.orange
+        : DogGoTheme.muted;
 
     return AnimatedContainer(
-      duration:
-          const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: active
-            ? DogGoTheme.teal
-            : DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
-        border: Border.all(
-          color: active
-              ? DogGoTheme.teal
-              : DogGoTheme.border,
-        ),
+        color: active ? DogGoTheme.teal : DogGoTheme.card,
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
+        border: Border.all(color: active ? DogGoTheme.teal : DogGoTheme.border),
         boxShadow: active
             ? DogGoTheme.elevatedShadow()
             : DogGoTheme.softShadow(
@@ -330,39 +412,25 @@ class _TrackingHero extends StatelessWidget {
               ),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _LiveIndicator(
-                active: active,
-              ),
+              _LiveIndicator(active: active),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 decoration: BoxDecoration(
                   color: active
-                      ? Colors.white.withValues(
-                          alpha: .13,
-                        )
+                      ? Colors.white.withValues(alpha: .13)
                       : DogGoTheme.tealLight,
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.pill,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.pill),
                 ),
                 child: Text(
                   'Paseo #${state.walkId}',
                   style: DogGoTheme.caption(
                     size: 9,
-                    color: active
-                        ? Colors.white
-                        : DogGoTheme.teal,
+                    color: active ? Colors.white : DogGoTheme.teal,
                     weight: FontWeight.w800,
                   ),
                 ),
@@ -377,43 +445,30 @@ class _TrackingHero extends StatelessWidget {
                 height: 61,
                 decoration: BoxDecoration(
                   color: active
-                      ? Colors.white.withValues(
-                          alpha: .13,
-                        )
+                      ? Colors.white.withValues(alpha: .13)
                       : DogGoTheme.tealLight,
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.large,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.large),
                 ),
                 child: Icon(
                   active
-                      ? Icons
-                          .location_searching_rounded
-                      : Icons
-                          .location_on_outlined,
-                  color: active
-                      ? Colors.white
-                      : color,
+                      ? Icons.location_searching_rounded
+                      : Icons.location_on_outlined,
+                  color: active ? Colors.white : color,
                   size: 29,
                 ),
               ),
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       state.petName,
                       maxLines: 1,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: DogGoTheme.title(
                         size: 23,
-                        color: active
-                            ? Colors.white
-                            : DogGoTheme.ink,
+                        color: active ? Colors.white : DogGoTheme.ink,
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -422,12 +477,9 @@ class _TrackingHero extends StatelessWidget {
                       style: DogGoTheme.body(
                         size: 11.5,
                         color: active
-                            ? Colors.white
-                                .withValues(
-                                    alpha: .82)
+                            ? Colors.white.withValues(alpha: .82)
                             : color,
-                        weight:
-                            FontWeight.w800,
+                        weight: FontWeight.w800,
                       ),
                     ),
                   ],
@@ -441,9 +493,7 @@ class _TrackingHero extends StatelessWidget {
             style: DogGoTheme.subtitle(
               size: 11.5,
               color: active
-                  ? Colors.white.withValues(
-                      alpha: .82,
-                    )
+                  ? Colors.white.withValues(alpha: .82)
                   : DogGoTheme.muted,
             ),
           ),
@@ -456,24 +506,17 @@ class _TrackingHero extends StatelessWidget {
 class _LiveIndicator extends StatelessWidget {
   final bool active;
 
-  const _LiveIndicator({
-    required this.active,
-  });
+  const _LiveIndicator({required this.active});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: active
             ? Colors.white.withValues(alpha: .13)
             : DogGoTheme.purpleLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.pill,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.pill),
       ),
       child: Row(
         children: [
@@ -481,9 +524,7 @@ class _LiveIndicator extends StatelessWidget {
             width: 7,
             height: 7,
             decoration: BoxDecoration(
-              color: active
-                  ? const Color(0xFF9BE4D2)
-                  : DogGoTheme.muted,
+              color: active ? const Color(0xFF9BE4D2) : DogGoTheme.muted,
               shape: BoxShape.circle,
             ),
           ),
@@ -492,9 +533,7 @@ class _LiveIndicator extends StatelessWidget {
             active ? 'EN VIVO' : 'PAUSADO',
             style: DogGoTheme.label(
               size: 8.5,
-              color: active
-                  ? Colors.white
-                  : DogGoTheme.muted,
+              color: active ? Colors.white : DogGoTheme.muted,
             ),
           ),
         ],
@@ -506,25 +545,16 @@ class _LiveIndicator extends StatelessWidget {
 class _TrackingStatistics extends StatelessWidget {
   final LiveTrackingState state;
 
-  const _TrackingStatistics({
-    required this.state,
-  });
+  const _TrackingStatistics({required this.state});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 7,
-        vertical: 17,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Row(
         children: [
@@ -549,8 +579,7 @@ class _TrackingStatistics extends StatelessWidget {
           Expanded(
             child: _StatisticItem(
               icon: Icons.cloud_upload_outlined,
-              value:
-                  '${state.successfulUpdates}',
+              value: '${state.successfulUpdates}',
               label: 'Actualizaciones',
               color: DogGoTheme.orange,
             ),
@@ -578,27 +607,19 @@ class _StatisticItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 21,
-        ),
+        Icon(icon, color: color, size: 21),
         const SizedBox(height: 7),
         Text(
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: DogGoTheme.body(
-            size: 11,
-            weight: FontWeight.w900,
-          ),
+          style: DogGoTheme.body(size: 11, weight: FontWeight.w900),
         ),
         const SizedBox(height: 3),
         Text(
           label,
           textAlign: TextAlign.center,
-          style:
-              DogGoTheme.caption(size: 8.8),
+          style: DogGoTheme.caption(size: 8.8),
         ),
       ],
     );
@@ -610,20 +631,14 @@ class _StatisticDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 52,
-      color: DogGoTheme.divider,
-    );
+    return Container(width: 1, height: 52, color: DogGoTheme.divider);
   }
 }
 
 class _CurrentLocationCard extends StatelessWidget {
   final LiveTrackingState state;
 
-  const _CurrentLocationCard({
-    required this.state,
-  });
+  const _CurrentLocationCard({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -664,13 +679,10 @@ class _CurrentLocationCard extends StatelessWidget {
   }
 }
 
-class _BackgroundServiceCard
-    extends StatelessWidget {
+class _BackgroundServiceCard extends StatelessWidget {
   final LiveTrackingState state;
 
-  const _BackgroundServiceCard({
-    required this.state,
-  });
+  const _BackgroundServiceCard({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -680,17 +692,14 @@ class _BackgroundServiceCard
       subtitle: state.serviceRunning
           ? 'El servicio está ejecutándose'
           : 'El servicio está detenido',
-      iconColor: state.serviceRunning
-          ? DogGoTheme.green
-          : DogGoTheme.muted,
+      iconColor: state.serviceRunning ? DogGoTheme.green : DogGoTheme.muted,
       iconBackground: state.serviceRunning
           ? DogGoTheme.greenLight
           : DogGoTheme.purpleLight,
       child: Column(
         children: [
           _ServiceCheck(
-            completed:
-                state.serviceRunning,
+            completed: state.serviceRunning,
             title: 'Servicio de Android',
             description: state.serviceRunning
                 ? 'Activo en primer plano'
@@ -698,14 +707,11 @@ class _BackgroundServiceCard
           ),
           const SizedBox(height: 13),
           _ServiceCheck(
-            completed:
-                state.isCurrentWalkActive,
-            title:
-                'Paseo vinculado',
-            description:
-                state.isCurrentWalkActive
-                    ? 'Paseo #${state.walkId}'
-                    : 'Sin vínculo activo',
+            completed: state.isCurrentWalkActive,
+            title: 'Paseo vinculado',
+            description: state.isCurrentWalkActive
+                ? 'Paseo #${state.walkId}'
+                : 'Sin vínculo activo',
           ),
           const SizedBox(height: 13),
           _ServiceCheck(
@@ -719,8 +725,7 @@ class _BackgroundServiceCard
           const _ServiceCheck(
             completed: true,
             title: 'Frecuencia',
-            description:
-                'Aproximadamente cada 5 segundos',
+            description: 'Aproximadamente cada 5 segundos',
           ),
         ],
       ),
@@ -747,39 +752,25 @@ class _ServiceCheck extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: completed
-                ? DogGoTheme.greenLight
-                : DogGoTheme.purpleLight,
+            color: completed ? DogGoTheme.greenLight : DogGoTheme.purpleLight,
             shape: BoxShape.circle,
           ),
           child: Icon(
-            completed
-                ? Icons.check_rounded
-                : Icons.remove_rounded,
-            color: completed
-                ? DogGoTheme.green
-                : DogGoTheme.muted,
+            completed ? Icons.check_rounded : Icons.remove_rounded,
+            color: completed ? DogGoTheme.green : DogGoTheme.muted,
             size: 17,
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: DogGoTheme.body(
-                  size: 11.5,
-                  weight: FontWeight.w800,
-                ),
+                style: DogGoTheme.body(size: 11.5, weight: FontWeight.w800),
               ),
-              Text(
-                description,
-                style:
-                    DogGoTheme.caption(size: 9.5),
-              ),
+              Text(description, style: DogGoTheme.caption(size: 9.5)),
             ],
           ),
         ),
@@ -796,16 +787,13 @@ class _TrackingSafetyCard extends StatelessWidget {
     return _InformationCard(
       icon: Icons.shield_outlined,
       title: 'Privacidad y seguridad',
-      subtitle:
-          'La ubicación pertenece únicamente a este paseo',
+      subtitle: 'La ubicación pertenece únicamente a este paseo',
       iconColor: DogGoTheme.purple,
       iconBackground: DogGoTheme.purpleLight,
       child: Text(
         'El seguimiento debe permanecer activo solamente durante el servicio. '
         'Al finalizar o cancelar el paseo, DogGo detendrá el envío.',
-        style: DogGoTheme.subtitle(
-          size: 11.5,
-        ),
+        style: DogGoTheme.subtitle(size: 11.5),
       ),
     );
   }
@@ -834,22 +822,17 @@ class _TrackingActions extends StatelessWidget {
       children: [
         if (state.isCurrentWalkActive)
           ElevatedButton.icon(
-            onPressed: state.processing
-                ? null
-                : onSendNow,
+            onPressed: state.processing ? null : onSendNow,
             icon: state.processing
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child:
-                        CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
-                : const Icon(
-                    Icons.gps_fixed_rounded,
-                  ),
+                : const Icon(Icons.gps_fixed_rounded),
             label: Text(
               state.processing
                   ? 'Obteniendo ubicación...'
@@ -858,22 +841,17 @@ class _TrackingActions extends StatelessWidget {
           )
         else
           ElevatedButton.icon(
-            onPressed: state.processing
-                ? null
-                : onActivate,
+            onPressed: state.processing ? null : onActivate,
             icon: state.processing
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child:
-                        CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
-                : const Icon(
-                    Icons.play_circle_outline_rounded,
-                  ),
+                : const Icon(Icons.play_circle_outline_rounded),
             label: Text(
               state.processing
                   ? 'Activando servicio...'
@@ -883,20 +861,12 @@ class _TrackingActions extends StatelessWidget {
         if (state.isCurrentWalkActive) ...[
           const SizedBox(height: 10),
           OutlinedButton.icon(
-            onPressed: state.processing
-                ? null
-                : onPause,
-            icon: const Icon(
-              Icons.pause_circle_outline_rounded,
-            ),
-            label: const Text(
-              'Pausar ubicación',
-            ),
+            onPressed: state.processing ? null : onPause,
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            label: const Text('Pausar ubicación'),
             style: OutlinedButton.styleFrom(
               foregroundColor: DogGoTheme.red,
-              side: const BorderSide(
-                color: DogGoTheme.red,
-              ),
+              side: const BorderSide(color: DogGoTheme.red),
             ),
           ),
         ],
@@ -908,27 +878,18 @@ class _TrackingActions extends StatelessWidget {
 class _AnotherWalkWarning extends StatelessWidget {
   final LiveTrackingState state;
 
-  const _AnotherWalkWarning({
-    required this.state,
-  });
+  const _AnotherWalkWarning({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final otherWalk =
-        state.session?.walkId;
+    final otherWalk = state.session?.walkId;
 
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: DogGoTheme.orangeLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.orange.withValues(
-            alpha: .2,
-          ),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.orange.withValues(alpha: .2)),
       ),
       child: Row(
         children: [
@@ -979,16 +940,11 @@ class _InformationCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -997,36 +953,18 @@ class _InformationCard extends StatelessWidget {
                 height: 43,
                 decoration: BoxDecoration(
                   color: iconBackground,
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 21,
-                ),
+                child: Icon(icon, color: iconColor, size: 21),
               ),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: DogGoTheme.title(
-                        size: 16,
-                      ),
-                    ),
+                    Text(title, style: DogGoTheme.title(size: 16)),
                     const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: DogGoTheme.caption(
-                        size: 9.5,
-                      ),
-                    ),
+                    Text(subtitle, style: DogGoTheme.caption(size: 9.5)),
                   ],
                 ),
               ),
@@ -1054,22 +992,14 @@ class _InformationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: DogGoTheme.muted,
-          size: 18,
-        ),
+        Icon(icon, color: DogGoTheme.muted, size: 18),
         const SizedBox(width: 9),
         Expanded(
           child: Text(
             label,
-            style: DogGoTheme.body(
-              size: 10.5,
-              color: DogGoTheme.muted,
-            ),
+            style: DogGoTheme.body(size: 10.5, color: DogGoTheme.muted),
           ),
         ),
         const SizedBox(width: 10),
@@ -1077,10 +1007,7 @@ class _InformationRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: DogGoTheme.body(
-              size: 10.5,
-              weight: FontWeight.w800,
-            ),
+            style: DogGoTheme.body(size: 10.5, weight: FontWeight.w800),
           ),
         ),
       ],

@@ -10,6 +10,7 @@ import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
 import 'profile/edit_walker_profile_controller.dart';
 import 'profile/edit_walker_profile_state.dart';
+import 'profile/widgets/walker_coverage_map.dart';
 
 class EditarPerfilPaseadorScreen extends StatefulWidget {
   const EditarPerfilPaseadorScreen({super.key});
@@ -21,8 +22,7 @@ class EditarPerfilPaseadorScreen extends StatefulWidget {
 
 class _EditarPerfilPaseadorScreenState
     extends State<EditarPerfilPaseadorScreen> {
-  final GlobalKey<FormState> _formKey =
-      GlobalKey<FormState>();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   late final EditWalkerProfileController _controller;
 
@@ -34,36 +34,20 @@ class _EditarPerfilPaseadorScreenState
 
     _controller = EditWalkerProfileController();
 
-    _controller.descriptionController.addListener(
-      _refreshForm,
-    );
-    _controller.zoneController.addListener(
-      _refreshForm,
-    );
-    _controller.rateController.addListener(
-      _refreshForm,
-    );
-    _controller.experienceController.addListener(
-      _refreshForm,
-    );
+    _controller.descriptionController.addListener(_refreshForm);
+    _controller.zoneController.addListener(_refreshForm);
+    _controller.rateController.addListener(_refreshForm);
+    _controller.experienceController.addListener(_refreshForm);
 
     _controller.initialize();
   }
 
   @override
   void dispose() {
-    _controller.descriptionController.removeListener(
-      _refreshForm,
-    );
-    _controller.zoneController.removeListener(
-      _refreshForm,
-    );
-    _controller.rateController.removeListener(
-      _refreshForm,
-    );
-    _controller.experienceController.removeListener(
-      _refreshForm,
-    );
+    _controller.descriptionController.removeListener(_refreshForm);
+    _controller.zoneController.removeListener(_refreshForm);
+    _controller.rateController.removeListener(_refreshForm);
+    _controller.experienceController.removeListener(_refreshForm);
 
     _controller.dispose();
     super.dispose();
@@ -75,18 +59,14 @@ class _EditarPerfilPaseadorScreenState
     }
   }
 
-  void _showMessage(
-    String message, {
-    bool error = false,
-  }) {
+  void _showMessage(String message, {bool error = false}) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          backgroundColor:
-              error ? DogGoTheme.red : DogGoTheme.ink,
+          backgroundColor: error ? DogGoTheme.red : DogGoTheme.ink,
           content: Row(
             children: [
               Icon(
@@ -137,10 +117,7 @@ class _EditarPerfilPaseadorScreenState
                   title: 'Tomar fotografía',
                   subtitle: 'Usar la cámara del teléfono',
                   onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                      ImageSource.camera,
-                    );
+                    Navigator.pop(sheetContext, ImageSource.camera);
                   },
                 ),
                 const SizedBox(height: DogGoSpacing.sm),
@@ -149,10 +126,7 @@ class _EditarPerfilPaseadorScreenState
                   title: 'Elegir de la galería',
                   subtitle: 'Seleccionar una imagen guardada',
                   onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                      ImageSource.gallery,
-                    );
+                    Navigator.pop(sheetContext, ImageSource.gallery);
                   },
                 ),
               ],
@@ -164,20 +138,14 @@ class _EditarPerfilPaseadorScreenState
 
     if (source == null) return;
 
-    final selected =
-        await _controller.selectPhoto(source);
+    final selected = await _controller.selectPhoto(source);
 
     if (!mounted) return;
 
     if (selected) {
-      _showMessage(
-        'Fotografía seleccionada. Se subirá al guardar.',
-      );
+      _showMessage('Fotografía seleccionada. Se subirá al guardar.');
     } else if (_controller.state.error != null) {
-      _showMessage(
-        _controller.state.error!,
-        error: true,
-      );
+      _showMessage(_controller.state.error!, error: true);
     }
   }
 
@@ -189,10 +157,7 @@ class _EditarPerfilPaseadorScreenState
     });
 
     if (!(_formKey.currentState?.validate() ?? false)) {
-      _showMessage(
-        'Revisa los campos marcados.',
-        error: true,
-      );
+      _showMessage('Revisa los campos marcados.', error: true);
       return;
     }
 
@@ -202,20 +167,15 @@ class _EditarPerfilPaseadorScreenState
 
     if (!saved) {
       _showMessage(
-        _controller.state.error ??
-            'No se pudo guardar el perfil.',
+        _controller.state.error ?? 'No se pudo guardar el perfil.',
         error: true,
       );
       return;
     }
 
-    _showMessage(
-      'Perfil de paseador actualizado correctamente.',
-    );
+    _showMessage('Perfil de paseador actualizado correctamente.');
 
-    await Future<void>.delayed(
-      const Duration(milliseconds: 600),
-    );
+    await Future<void>.delayed(const Duration(milliseconds: 600));
 
     if (mounted) {
       Navigator.pop(context, true);
@@ -251,17 +211,13 @@ class _EditarPerfilPaseadorScreenState
 
   Widget _buildBody(EditWalkerProfileState state) {
     if (state.loading) {
-      return const DogGoLoadingView(
-        message: 'Cargando perfil profesional...',
-      );
+      return const DogGoLoadingView(message: 'Cargando perfil profesional...');
     }
 
     if (state.error != null && !state.profileLoaded) {
       return Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(
-            DogGoSpacing.screenHorizontal,
-          ),
+          padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
           child: DogGoErrorView(
             title: 'No pudimos cargar tu perfil',
             message: state.error!,
@@ -277,8 +233,7 @@ class _EditarPerfilPaseadorScreenState
           ? AutovalidateMode.onUserInteraction
           : AutovalidateMode.disabled,
       child: ListView(
-        keyboardDismissBehavior:
-            ScrollViewKeyboardDismissBehavior.onDrag,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           DogGoSpacing.screenHorizontal,
@@ -312,25 +267,16 @@ class _EditarPerfilPaseadorScreenState
     );
   }
 
-  Widget _buildProgressCard(
-    EditWalkerProfileState state,
-  ) {
-    final percentage =
-        _controller.completionPercentage;
+  Widget _buildProgressCard(EditWalkerProfileState state) {
+    final percentage = _controller.completionPercentage;
 
     final complete = _controller.profileComplete;
 
     return Container(
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
-        color: complete
-            ? DogGoTheme.greenLight
-            : DogGoTheme.orangeLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
+        color: complete ? DogGoTheme.greenLight : DogGoTheme.orangeLight,
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
         border: Border.all(
           color: complete
               ? DogGoTheme.green.withValues(alpha: 0.18)
@@ -346,29 +292,22 @@ class _EditarPerfilPaseadorScreenState
                 height: 46,
                 decoration: BoxDecoration(
                   color: DogGoTheme.card,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
                 child: Icon(
                   complete
                       ? Icons.verified_rounded
                       : Icons.pending_actions_rounded,
-                  color: complete
-                      ? DogGoTheme.green
-                      : DogGoTheme.orange,
+                  color: complete ? DogGoTheme.green : DogGoTheme.orange,
                 ),
               ),
               const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      complete
-                          ? 'Perfil completo'
-                          : 'Completa tu perfil',
+                      complete ? 'Perfil completo' : 'Completa tu perfil',
                       style: DogGoTheme.title(size: 17),
                     ),
                     const SizedBox(height: 3),
@@ -376,9 +315,7 @@ class _EditarPerfilPaseadorScreenState
                       complete
                           ? 'Tu información profesional está lista.'
                           : 'Llevas $percentage% completado.',
-                      style: DogGoTheme.subtitle(
-                        size: 12.5,
-                      ),
+                      style: DogGoTheme.subtitle(size: 12.5),
                     ),
                   ],
                 ),
@@ -388,26 +325,19 @@ class _EditarPerfilPaseadorScreenState
                 style: DogGoTheme.body(
                   size: 15,
                   weight: FontWeight.w800,
-                  color: complete
-                      ? DogGoTheme.green
-                      : DogGoTheme.orange,
+                  color: complete ? DogGoTheme.green : DogGoTheme.orange,
                 ),
               ),
             ],
           ),
           const SizedBox(height: DogGoSpacing.md),
           ClipRRect(
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.pill,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.pill),
             child: LinearProgressIndicator(
               value: percentage / 100,
               minHeight: 8,
-              color: complete
-                  ? DogGoTheme.green
-                  : DogGoTheme.orange,
-              backgroundColor:
-                  Colors.white.withValues(alpha: 0.8),
+              color: complete ? DogGoTheme.green : DogGoTheme.orange,
+              backgroundColor: Colors.white.withValues(alpha: 0.8),
             ),
           ),
         ],
@@ -415,13 +345,10 @@ class _EditarPerfilPaseadorScreenState
     );
   }
 
-  Widget _buildPhotoCard(
-    EditWalkerProfileState state,
-  ) {
+  Widget _buildPhotoCard(EditWalkerProfileState state) {
     return _WalkerCard(
       title: 'Fotografía profesional',
-      subtitle:
-          'Ayuda a que los dueños puedan identificarte.',
+      subtitle: 'Ayuda a que los dueños puedan identificarte.',
       icon: Icons.account_circle_outlined,
       child: Column(
         children: [
@@ -434,21 +361,15 @@ class _EditarPerfilPaseadorScreenState
             onPressed: state.saving ? null : _selectPhoto,
             icon: const Icon(Icons.add_a_photo_outlined),
             label: Text(
-              state.hasPhoto
-                  ? 'Cambiar fotografía'
-                  : 'Agregar fotografía',
+              state.hasPhoto ? 'Cambiar fotografía' : 'Agregar fotografía',
             ),
           ),
           if (state.selectedPhoto != null) ...[
             const SizedBox(height: DogGoSpacing.sm),
             TextButton.icon(
-              onPressed: state.saving
-                  ? null
-                  : _controller.removeSelectedPhoto,
+              onPressed: state.saving ? null : _controller.removeSelectedPhoto,
               icon: const Icon(Icons.undo_rounded),
-              label: const Text(
-                'Mantener fotografía anterior',
-              ),
+              label: const Text('Mantener fotografía anterior'),
             ),
           ],
         ],
@@ -459,43 +380,142 @@ class _EditarPerfilPaseadorScreenState
   Widget _buildProfessionalInformation() {
     return _WalkerCard(
       title: 'Información profesional',
-      subtitle:
-          'Esta información será visible para los dueños.',
+      subtitle: 'Esta información será visible para los dueños.',
       icon: Icons.badge_outlined,
       child: Column(
         children: [
           _WalkerField(
-            controller:
-                _controller.descriptionController,
+            controller: _controller.descriptionController,
             label: 'Descripción',
-            hint:
-                'Describe tu experiencia y forma de trabajar',
+            hint: 'Describe tu experiencia y forma de trabajar',
             icon: Icons.description_outlined,
             minLines: 4,
             maxLines: 6,
             textInputAction: TextInputAction.newline,
-            validator:
-                _controller.validateDescription,
+            validator: _controller.validateDescription,
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
-          _WalkerField(
-            controller: _controller.zoneController,
-            label: 'Zona de servicio',
-            hint: 'Colonias, sectores o municipios',
-            icon: Icons.location_on_outlined,
-            textInputAction: TextInputAction.next,
-            validator: _controller.validateZone,
+          DropdownButtonFormField<String>(
+            initialValue: _controller.state.selectedStateCode,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Estado',
+              prefixIcon: Icon(Icons.map_outlined),
+            ),
+            items: _controller.state.states
+                .map(
+                  (item) => DropdownMenuItem(
+                    value: item.code,
+                    child: Text(item.name, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged: _controller.state.saving
+                ? null
+                : _controller.selectState,
+            validator: (value) =>
+                value == null ? 'Selecciona tu estado.' : null,
           ),
+          const SizedBox(height: DogGoSpacing.fieldGap),
+          DropdownButtonFormField<String>(
+            initialValue: _controller.state.selectedMunicipalityCode,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Municipio',
+              prefixIcon: const Icon(Icons.location_city_outlined),
+              suffixIcon: _controller.state.loadingMunicipalities
+                  ? const Padding(
+                      padding: EdgeInsets.all(13),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+            ),
+            items: _controller.state.municipalities
+                .map(
+                  (item) => DropdownMenuItem(
+                    value: item.code,
+                    child: Text(item.name, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged:
+                _controller.state.loadingMunicipalities ||
+                    _controller.state.saving
+                ? null
+                : _controller.selectMunicipality,
+            validator: (value) =>
+                value == null ? 'Selecciona tu municipio.' : null,
+          ),
+          const SizedBox(height: DogGoSpacing.fieldGap),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cobertura: ${_controller.state.serviceRadiusKm} km',
+                style: DogGoTheme.body(weight: FontWeight.w800),
+              ),
+              const SizedBox(height: DogGoSpacing.xs),
+              Text(
+                'Distancia máxima desde tu zona para recibir solicitudes.',
+                style: DogGoTheme.subtitle(size: 12.5),
+              ),
+              Slider(
+                value: _controller.state.serviceRadiusKm.toDouble(),
+                min: 1,
+                max: 50,
+                divisions: 49,
+                label: '${_controller.state.serviceRadiusKm} km',
+                onChanged: _controller.state.saving
+                    ? null
+                    : _controller.setServiceRadius,
+              ),
+            ],
+          ),
+          if (_controller.state.locatingCoverage) ...[
+            const SizedBox(height: DogGoSpacing.sm),
+            const LinearProgressIndicator(),
+            const SizedBox(height: DogGoSpacing.sm),
+            Text(
+              'Ubicando el municipio en el mapa...',
+              style: DogGoTheme.subtitle(size: 12),
+            ),
+          ] else if (_controller.state.latitude != null &&
+              _controller.state.longitude != null) ...[
+            const SizedBox(height: DogGoSpacing.md),
+            WalkerCoverageMap(
+              latitude: _controller.state.latitude!,
+              longitude: _controller.state.longitude!,
+              radiusKm: _controller.state.serviceRadiusKm,
+              onCenterChanged: (point) {
+                _controller.setCoverageCenter(point.latitude, point.longitude);
+              },
+            ),
+            const SizedBox(height: DogGoSpacing.sm),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.touch_app_outlined,
+                  size: 18,
+                  color: DogGoTheme.teal,
+                ),
+                const SizedBox(width: DogGoSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Toca el mapa para mover el centro. El círculo muestra dónde recibirás solicitudes.',
+                    style: DogGoTheme.subtitle(size: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: DogGoSpacing.fieldGap),
           _WalkerField(
             controller: _controller.rateController,
             label: 'Tarifa por hora',
             hint: 'Ejemplo: 120',
             icon: Icons.payments_outlined,
-            keyboardType:
-                const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.next,
             validator: _controller.validateRate,
             prefixText: '\$ ',
@@ -503,15 +523,13 @@ class _EditarPerfilPaseadorScreenState
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
           _WalkerField(
-            controller:
-                _controller.experienceController,
+            controller: _controller.experienceController,
             label: 'Años de experiencia',
             hint: 'Ejemplo: 2',
             icon: Icons.workspace_premium_outlined,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
-            validator:
-                _controller.validateExperience,
+            validator: _controller.validateExperience,
             suffixText: 'años',
           ),
         ],
@@ -519,20 +537,15 @@ class _EditarPerfilPaseadorScreenState
     );
   }
 
-  Widget _buildAvailabilityCard(
-    EditWalkerProfileState state,
-  ) {
+  Widget _buildAvailabilityCard(EditWalkerProfileState state) {
     return _WalkerCard(
       title: 'Disponibilidad',
-      subtitle:
-          'Indica si actualmente puedes recibir solicitudes.',
+      subtitle: 'Indica si actualmente puedes recibir solicitudes.',
       icon: Icons.event_available_outlined,
       child: SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         value: state.available,
-        onChanged: state.saving
-            ? null
-            : _controller.setAvailable,
+        onChanged: state.saving ? null : _controller.setAvailable,
         secondary: Container(
           width: 44,
           height: 44,
@@ -540,26 +553,18 @@ class _EditarPerfilPaseadorScreenState
             color: state.available
                 ? DogGoTheme.greenLight
                 : DogGoTheme.redLight,
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.medium,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.medium),
           ),
           child: Icon(
             state.available
                 ? Icons.check_circle_outline_rounded
                 : Icons.pause_circle_outline_rounded,
-            color: state.available
-                ? DogGoTheme.green
-                : DogGoTheme.red,
+            color: state.available ? DogGoTheme.green : DogGoTheme.red,
           ),
         ),
         title: Text(
-          state.available
-              ? 'Disponible para paseos'
-              : 'No disponible',
-          style: DogGoTheme.body(
-            weight: FontWeight.w800,
-          ),
+          state.available ? 'Disponible para paseos' : 'No disponible',
+          style: DogGoTheme.body(weight: FontWeight.w800),
         ),
         subtitle: Text(
           state.available
@@ -571,9 +576,7 @@ class _EditarPerfilPaseadorScreenState
     );
   }
 
-  Widget _buildSaveButton(
-    EditWalkerProfileState state,
-  ) {
+  Widget _buildSaveButton(EditWalkerProfileState state) {
     return SizedBox(
       height: 54,
       child: ElevatedButton.icon(
@@ -588,18 +591,12 @@ class _EditarPerfilPaseadorScreenState
                 ),
               )
             : const Icon(Icons.save_outlined),
-        label: Text(
-          state.saving
-              ? 'Guardando perfil...'
-              : 'Guardar perfil',
-        ),
+        label: Text(state.saving ? 'Guardando perfil...' : 'Guardar perfil'),
       ),
     );
   }
 
-  Widget _buildCancelButton(
-    EditWalkerProfileState state,
-  ) {
+  Widget _buildCancelButton(EditWalkerProfileState state) {
     return SizedBox(
       height: 50,
       child: TextButton(
@@ -631,17 +628,11 @@ class _WalkerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
         boxShadow: DogGoTheme.softShadow(),
       ),
       child: Column(
@@ -655,41 +646,24 @@ class _WalkerCard extends StatelessWidget {
                 height: 43,
                 decoration: BoxDecoration(
                   color: DogGoTheme.purpleLight,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  icon,
-                  color: DogGoTheme.purple,
-                  size: 22,
-                ),
+                child: Icon(icon, color: DogGoTheme.purple, size: 22),
               ),
               const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: DogGoTheme.title(size: 17),
-                    ),
+                    Text(title, style: DogGoTheme.title(size: 17)),
                     const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: DogGoTheme.subtitle(
-                        size: 12.5,
-                      ),
-                    ),
+                    Text(subtitle, style: DogGoTheme.subtitle(size: 12.5)),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(
-            height: DogGoSpacing.largeGap,
-          ),
+          const SizedBox(height: DogGoSpacing.largeGap),
           child,
         ],
       ),
@@ -716,10 +690,7 @@ class _WalkerPhoto extends StatelessWidget {
         decoration: BoxDecoration(
           color: DogGoTheme.purpleLight,
           shape: BoxShape.circle,
-          border: Border.all(
-            color: DogGoTheme.card,
-            width: 4,
-          ),
+          border: Border.all(color: DogGoTheme.card, width: 4),
           boxShadow: DogGoTheme.elevatedShadow(),
         ),
         child: _buildImage(),
@@ -732,7 +703,7 @@ class _WalkerPhoto extends StatelessWidget {
       return Image.file(
         selectedPhoto!,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) {
+        errorBuilder: (_, _, _) {
           return const _WalkerPlaceholder();
         },
       );
@@ -741,12 +712,11 @@ class _WalkerPhoto extends StatelessWidget {
     final url = currentPhotoUrl?.trim();
 
     if (url != null &&
-        (url.startsWith('http://') ||
-            url.startsWith('https://'))) {
+        (url.startsWith('http://') || url.startsWith('https://'))) {
       return Image.network(
         url,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) {
+        errorBuilder: (_, _, _) {
           return const _WalkerPlaceholder();
         },
       );
@@ -761,11 +731,7 @@ class _WalkerPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Icon(
-      Icons.person_rounded,
-      color: DogGoTheme.purple,
-      size: 64,
-    );
+    return const Icon(Icons.person_rounded, color: DogGoTheme.purple, size: 64);
   }
 }
 
@@ -812,9 +778,7 @@ class _WalkerField extends StatelessWidget {
         prefixText: prefixText,
         suffixText: suffixText,
         prefixIcon: Padding(
-          padding: EdgeInsets.only(
-            bottom: maxLines > 1 ? 52 : 0,
-          ),
+          padding: EdgeInsets.only(bottom: maxLines > 1 ? 52 : 0),
           child: Icon(icon),
         ),
       ),
@@ -838,20 +802,14 @@ class _PhotoOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(
-        DogGoRadius.medium,
-      ),
+      borderRadius: BorderRadius.circular(DogGoRadius.medium),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(DogGoSpacing.md),
         decoration: BoxDecoration(
           color: DogGoTheme.cream,
-          borderRadius: BorderRadius.circular(
-            DogGoRadius.medium,
-          ),
-          border: Border.all(
-            color: DogGoTheme.border,
-          ),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
+          border: Border.all(color: DogGoTheme.border),
         ),
         child: Row(
           children: [
@@ -860,41 +818,22 @@ class _PhotoOption extends StatelessWidget {
               height: 43,
               decoration: BoxDecoration(
                 color: DogGoTheme.purpleLight,
-                borderRadius: BorderRadius.circular(
-                  DogGoRadius.medium,
-                ),
+                borderRadius: BorderRadius.circular(DogGoRadius.medium),
               ),
-              child: Icon(
-                icon,
-                color: DogGoTheme.purple,
-              ),
+              child: Icon(icon, color: DogGoTheme.purple),
             ),
             const SizedBox(width: DogGoSpacing.compactGap),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: DogGoTheme.body(
-                      weight: FontWeight.w800,
-                    ),
-                  ),
+                  Text(title, style: DogGoTheme.body(weight: FontWeight.w800)),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: DogGoTheme.subtitle(
-                      size: 12,
-                    ),
-                  ),
+                  Text(subtitle, style: DogGoTheme.subtitle(size: 12)),
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: DogGoTheme.muted,
-            ),
+            const Icon(Icons.chevron_right_rounded, color: DogGoTheme.muted),
           ],
         ),
       ),

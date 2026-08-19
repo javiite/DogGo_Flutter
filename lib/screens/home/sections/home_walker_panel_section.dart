@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/navigation/app_routes.dart';
 import '../../../theme/doggo_theme.dart';
 import '../../walker_home/walker_home_controller.dart';
 import '../../walker_home/walker_home_state.dart';
@@ -59,14 +60,11 @@ class _HomeWalkerPanelSectionState extends State<HomeWalkerPanelSection>
     _controller.addListener(_handleControllerChange);
     _controller.initialize();
 
-    _clockTimer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) {
-        if (mounted) {
-          setState(() => _now = DateTime.now());
-        }
-      },
-    );
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        setState(() => _now = DateTime.now());
+      }
+    });
   }
 
   void _handleControllerChange() {
@@ -103,7 +101,8 @@ class _HomeWalkerPanelSectionState extends State<HomeWalkerPanelSection>
   }
 
   void _openChat(HomeWalk walk) {
-    final action = widget.onWalkChat ?? widget.onWalkDetails ?? widget.onWalkTap;
+    final action =
+        widget.onWalkChat ?? widget.onWalkDetails ?? widget.onWalkTap;
     action(walk);
   }
 
@@ -242,10 +241,7 @@ class _HomeWalkerPanelSectionState extends State<HomeWalkerPanelSection>
           ),
           if (state.error != null) ...[
             const SizedBox(height: 14),
-            _ErrorBanner(
-              message: state.error!,
-              onRetry: _controller.refresh,
-            ),
+            _ErrorBanner(message: state.error!, onRetry: _controller.refresh),
           ],
           const SizedBox(height: 18),
           WalkerHomePriorityCard(
@@ -269,6 +265,14 @@ class _HomeWalkerPanelSectionState extends State<HomeWalkerPanelSection>
             onAvailabilityChanged: _changeAvailability,
             onProfileTap: widget.onProfileTap,
             onWalksTap: widget.onWalksTap,
+          ),
+          const SizedBox(height: 14),
+          _AvailabilityShortcut(
+            available: state.profile?.available ?? false,
+            onTap: () => Navigator.pushNamed(
+              context,
+              AppRoutes.availability,
+            ).then((_) => _controller.refresh()),
           ),
           if (state.pendingRequests.isNotEmpty) ...[
             const SizedBox(height: 27),
@@ -295,14 +299,75 @@ class _HomeWalkerPanelSectionState extends State<HomeWalkerPanelSection>
   }
 }
 
+class _AvailabilityShortcut extends StatelessWidget {
+  final bool available;
+  final VoidCallback onTap;
+
+  const _AvailabilityShortcut({required this.available, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: DogGoTheme.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: DogGoTheme.tealLight,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(
+                  Icons.event_available_rounded,
+                  color: DogGoTheme.teal,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Horarios y disponibilidad',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      available
+                          ? 'Disponible · administra tu semana'
+                          : 'Pausada · revisa tu agenda',
+                      style: const TextStyle(
+                        color: DogGoTheme.muted,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PanelHeader extends StatelessWidget {
   final WalkerHomeState state;
   final VoidCallback? onRefresh;
 
-  const _PanelHeader({
-    required this.state,
-    required this.onRefresh,
-  });
+  const _PanelHeader({required this.state, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -317,8 +382,8 @@ class _PanelHeader extends StatelessWidget {
                 state.activeWalk != null
                     ? 'Tu paseo está activo'
                     : state.nextAcceptedWalk != null
-                        ? 'Tu jornada DogGo'
-                        : 'Panel del paseador',
+                    ? 'Tu jornada DogGo'
+                    : 'Panel del paseador',
                 style: DogGoTheme.title(size: 27),
               ),
               const SizedBox(height: 5),
@@ -326,8 +391,8 @@ class _PanelHeader extends StatelessWidget {
                 state.activeWalk != null
                     ? 'Mantén el seguimiento activo y revisa el recorrido.'
                     : state.hasImmediateWork
-                        ? 'Lo más importante aparece primero.'
-                        : 'Organiza tu disponibilidad y próximos servicios.',
+                    ? 'Lo más importante aparece primero.'
+                    : 'Organiza tu disponibilidad y próximos servicios.',
                 style: DogGoTheme.subtitle(size: 12.5),
               ),
             ],
@@ -359,10 +424,7 @@ class _ErrorBanner extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorBanner({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorBanner({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {

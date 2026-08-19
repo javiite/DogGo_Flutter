@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/errors/api_exception.dart';
 import '../../services/storage_service.dart';
+import '../../services/location_catalog_service.dart';
 import '../../services/usuario_service.dart';
 import 'edit_profile_state.dart';
 import 'profile_state.dart';
@@ -13,6 +14,7 @@ import 'profile_state.dart';
 class EditProfileController extends ChangeNotifier {
   final UsuarioService _usuarioService;
   final ImagePicker _imagePicker;
+  final LocationCatalogService _locationCatalogService;
   final Map<String, dynamic> initialProfile;
 
   late final TextEditingController nameController;
@@ -31,50 +33,44 @@ class EditProfileController extends ChangeNotifier {
     required this.initialProfile,
     UsuarioService? usuarioService,
     ImagePicker? imagePicker,
-  })  : _usuarioService = usuarioService ?? UsuarioService(),
-        _imagePicker = imagePicker ?? ImagePicker() {
+    LocationCatalogService? locationCatalogService,
+  }) : _usuarioService = usuarioService ?? UsuarioService(),
+       _locationCatalogService =
+           locationCatalogService ?? LocationCatalogService(),
+       _imagePicker = imagePicker ?? ImagePicker() {
     nameController = TextEditingController(
       text: _text(
-        _value(
-          initialProfile,
-          const [
-            'nombre',
-            'Nombre',
-            'name',
-            'Name',
-            'firstName',
-            'FirstName',
-          ],
-        ),
+        _value(initialProfile, const [
+          'nombre',
+          'Nombre',
+          'name',
+          'Name',
+          'firstName',
+          'FirstName',
+        ]),
       ),
     );
 
     lastNameController = TextEditingController(
       text: _text(
-        _value(
-          initialProfile,
-          const [
-            'apellido',
-            'Apellido',
-            'lastName',
-            'LastName',
-          ],
-        ),
+        _value(initialProfile, const [
+          'apellido',
+          'Apellido',
+          'lastName',
+          'LastName',
+        ]),
       ),
     );
 
     phoneController = TextEditingController(
       text: _text(
-        _value(
-          initialProfile,
-          const [
-            'telefono',
-            'Telefono',
-            'teléfono',
-            'phone',
-            'Phone',
-          ],
-        ),
+        _value(initialProfile, const [
+          'telefono',
+          'Telefono',
+          'teléfono',
+          'phone',
+          'Phone',
+        ]),
       ),
     );
 
@@ -102,51 +98,34 @@ class EditProfileController extends ChangeNotifier {
   String get fullName {
     final fullName =
         '${nameController.text.trim()} '
-        '${lastNameController.text.trim()}'
+                '${lastNameController.text.trim()}'
             .trim();
 
     return fullName.isEmpty ? 'Usuario DogGo' : fullName;
   }
 
   Future<void> initialize() async {
-    _setState(
-      _state.copyWith(
-        loading: true,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(loading: true, clearError: true));
 
     try {
       final baseUrl = await StorageService.obtenerBaseUrl();
 
       if (_disposed) return;
 
-      _setState(
-        _state.copyWith(
-          baseUrl: baseUrl,
-        ),
-      );
+      _setState(_state.copyWith(baseUrl: baseUrl));
 
       if (isOwner) {
+        await _loadStates();
         await _loadOwnerProfile();
       }
 
       if (_disposed) return;
 
-      _setState(
-        _state.copyWith(
-          loading: false,
-        ),
-      );
+      _setState(_state.copyWith(loading: false));
     } catch (error) {
       if (_disposed) return;
 
-      _setState(
-        _state.copyWith(
-          loading: false,
-          error: _cleanError(error),
-        ),
-      );
+      _setState(_state.copyWith(loading: false, error: _cleanError(error)));
     }
   }
 
@@ -156,109 +135,83 @@ class EditProfileController extends ChangeNotifier {
 
   Future<void> _loadOwnerProfile() async {
     try {
-      final profile =
-          await _usuarioService.obtenerPerfilDuenio();
+      final profile = await _usuarioService.obtenerPerfilDuenio();
 
       if (_disposed) return;
 
       addressController.text = _text(
-        _value(
-          profile,
-          const [
-            'direccion',
-            'Direccion',
-            'address',
-            'Address',
-          ],
-        ),
+        _value(profile, const ['direccion', 'Direccion', 'address', 'Address']),
       );
 
       referencesController.text = _text(
-        _value(
-          profile,
-          const [
-            'referenciasDireccion',
-            'ReferenciasDireccion',
-            'referencias',
-            'Referencias',
-          ],
-        ),
+        _value(profile, const [
+          'referenciasDireccion',
+          'ReferenciasDireccion',
+          'referencias',
+          'Referencias',
+        ]),
       );
 
       zoneController.text = _text(
-        _value(
-          profile,
-          const [
-            'zona',
-            'Zona',
-            'zone',
-            'Zone',
-          ],
-        ),
+        _value(profile, const ['zona', 'Zona', 'zone', 'Zone']),
       );
 
       descriptionController.text = _text(
-        _value(
-          profile,
-          const [
-            'descripcion',
-            'Descripcion',
-            'descripción',
-            'description',
-            'Description',
-          ],
-        ),
+        _value(profile, const [
+          'descripcion',
+          'Descripcion',
+          'descripción',
+          'description',
+          'Description',
+        ]),
       );
 
       preferencesController.text = _text(
-        _value(
-          profile,
-          const [
-            'preferenciasPaseo',
-            'PreferenciasPaseo',
-            'preferencias',
-            'Preferencias',
-          ],
-        ),
+        _value(profile, const [
+          'preferenciasPaseo',
+          'PreferenciasPaseo',
+          'preferencias',
+          'Preferencias',
+        ]),
       );
 
-      final photo = _value(
-        profile,
-        const [
-          'fotoUrl',
-          'FotoUrl',
-          'fotoPerfilUrl',
-          'FotoPerfilUrl',
-          'imagenUrl',
-          'ImagenUrl',
-          'foto',
-          'Foto',
-        ],
-      );
+      final photo = _value(profile, const [
+        'fotoUrl',
+        'FotoUrl',
+        'fotoPerfilUrl',
+        'FotoPerfilUrl',
+        'imagenUrl',
+        'ImagenUrl',
+        'foto',
+        'Foto',
+      ]);
 
       final latitude = EditProfileState.safeDouble(
-        _value(
-          profile,
-          const [
-            'latitud',
-            'Latitud',
-            'latitude',
-            'Latitude',
-          ],
-        ),
+        _value(profile, const ['latitud', 'Latitud', 'latitude', 'Latitude']),
       );
 
       final longitude = EditProfileState.safeDouble(
-        _value(
-          profile,
-          const [
-            'longitud',
-            'Longitud',
-            'longitude',
-            'Longitude',
-          ],
-        ),
+        _value(profile, const [
+          'longitud',
+          'Longitud',
+          'longitude',
+          'Longitude',
+        ]),
       );
+
+      final stateCode = _text(
+        _value(profile, const ['estadoClave', 'EstadoClave']),
+      );
+      final municipalityCode = _text(
+        _value(profile, const ['municipioClave', 'MunicipioClave']),
+      );
+
+      if (stateCode.isNotEmpty) {
+        await _loadMunicipalities(
+          stateCode,
+          selectedMunicipalityCode: municipalityCode,
+        );
+      }
 
       _setState(
         _state.copyWith(
@@ -266,14 +219,79 @@ class EditProfileController extends ChangeNotifier {
           latitude: latitude,
           longitude: longitude,
           ownerProfileLoaded: true,
+          selectedStateCode: stateCode.isEmpty ? null : stateCode,
+          selectedMunicipalityCode: municipalityCode.isEmpty
+              ? null
+              : municipalityCode,
         ),
       );
     } catch (error) {
       if (_disposed) return;
 
       _setState(
+        _state.copyWith(ownerProfileLoaded: false, error: _cleanError(error)),
+      );
+    }
+  }
+
+  Future<void> _loadStates() async {
+    final states = await _locationCatalogService.getStates();
+    if (!_disposed) _setState(_state.copyWith(states: states));
+  }
+
+  Future<void> selectState(String? code) async {
+    if (code == null || code == _state.selectedStateCode) return;
+    _setState(
+      _state.copyWith(
+        selectedStateCode: code,
+        clearSelectedMunicipality: true,
+        municipalities: const [],
+        loadingMunicipalities: true,
+        clearError: true,
+      ),
+    );
+    await _loadMunicipalities(code);
+  }
+
+  void selectMunicipality(String? code) {
+    if (code == null) return;
+    final municipality = _state.municipalities
+        .where((item) => item.code == code)
+        .firstOrNull;
+    if (municipality != null) zoneController.text = municipality.name;
+    _setState(
+      _state.copyWith(selectedMunicipalityCode: code, clearError: true),
+    );
+  }
+
+  Future<void> _loadMunicipalities(
+    String stateCode, {
+    String? selectedMunicipalityCode,
+  }) async {
+    try {
+      final municipalities = await _locationCatalogService.getMunicipalities(
+        stateCode,
+      );
+      if (_disposed) return;
+      final validSelection =
+          municipalities.any((item) => item.code == selectedMunicipalityCode)
+          ? selectedMunicipalityCode
+          : null;
+      _setState(
         _state.copyWith(
-          ownerProfileLoaded: false,
+          municipalities: municipalities,
+          selectedStateCode: stateCode,
+          selectedMunicipalityCode: validSelection,
+          clearSelectedMunicipality: validSelection == null,
+          loadingMunicipalities: false,
+          clearError: true,
+        ),
+      );
+    } catch (error) {
+      if (_disposed) return;
+      _setState(
+        _state.copyWith(
+          loadingMunicipalities: false,
           error: _cleanError(error),
         ),
       );
@@ -296,20 +314,13 @@ class EditProfileController extends ChangeNotifier {
       }
 
       _setState(
-        _state.copyWith(
-          selectedPhoto: File(image.path),
-          clearError: true,
-        ),
+        _state.copyWith(selectedPhoto: File(image.path), clearError: true),
       );
 
       return true;
     } catch (error) {
       if (!_disposed) {
-        _setState(
-          _state.copyWith(
-            error: _cleanError(error),
-          ),
-        );
+        _setState(_state.copyWith(error: _cleanError(error)));
       }
 
       return false;
@@ -317,11 +328,7 @@ class EditProfileController extends ChangeNotifier {
   }
 
   void removeSelectedPhoto() {
-    _setState(
-      _state.copyWith(
-        clearSelectedPhoto: true,
-      ),
-    );
+    _setState(_state.copyWith(clearSelectedPhoto: true));
   }
 
   void setLocation({
@@ -334,9 +341,7 @@ class EditProfileController extends ChangeNotifier {
         longitude < -180 ||
         longitude > 180) {
       _setState(
-        _state.copyWith(
-          error: 'La ubicación seleccionada no es válida.',
-        ),
+        _state.copyWith(error: 'La ubicación seleccionada no es válida.'),
       );
       return;
     }
@@ -357,32 +362,19 @@ class EditProfileController extends ChangeNotifier {
   }
 
   void clearLocation() {
-    _setState(
-      _state.copyWith(
-        clearLocation: true,
-      ),
-    );
+    _setState(_state.copyWith(clearLocation: true));
   }
 
   void clearError() {
     if (_state.error == null) return;
 
-    _setState(
-      _state.copyWith(
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(clearError: true));
   }
 
   Future<bool> save() async {
     if (_state.saving) return false;
 
-    _setState(
-      _state.copyWith(
-        saving: true,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(saving: true, clearError: true));
 
     try {
       await _usuarioService.actualizarPerfil(
@@ -395,43 +387,31 @@ class EditProfileController extends ChangeNotifier {
         final selectedPhoto = _state.selectedPhoto;
 
         if (selectedPhoto != null) {
-          await _usuarioService.subirFotoPerfilDuenio(
-            selectedPhoto,
-          );
+          await _usuarioService.subirFotoPerfilDuenio(selectedPhoto);
         }
 
         await _usuarioService.actualizarPerfilDuenio(
           direccion: addressController.text.trim(),
-          referenciasDireccion:
-              referencesController.text.trim(),
+          referenciasDireccion: referencesController.text.trim(),
           zona: zoneController.text.trim(),
           latitud: _state.latitude,
           longitud: _state.longitude,
           descripcion: descriptionController.text.trim(),
-          preferenciasPaseo:
-              preferencesController.text.trim(),
+          preferenciasPaseo: preferencesController.text.trim(),
+          estadoClave: _state.selectedStateCode,
+          municipioClave: _state.selectedMunicipalityCode,
         );
       }
 
       if (_disposed) return false;
 
-      _setState(
-        _state.copyWith(
-          saving: false,
-          clearError: true,
-        ),
-      );
+      _setState(_state.copyWith(saving: false, clearError: true));
 
       return true;
     } catch (error) {
       if (_disposed) return false;
 
-      _setState(
-        _state.copyWith(
-          saving: false,
-          error: _cleanError(error),
-        ),
-      );
+      _setState(_state.copyWith(saving: false, error: _cleanError(error)));
 
       return false;
     }
@@ -480,8 +460,7 @@ class EditProfileController extends ChangeNotifier {
       return 'El teléfono es obligatorio.';
     }
 
-    final digits =
-        text.replaceAll(RegExp(r'[^0-9]'), '');
+    final digits = text.replaceAll(RegExp(r'[^0-9]'), '');
 
     if (digits.length < 8) {
       return 'El teléfono es demasiado corto.';
@@ -494,10 +473,7 @@ class EditProfileController extends ChangeNotifier {
     return null;
   }
 
-  String? validateOptionalText(
-    String? value, {
-    int maximumLength = 500,
-  }) {
+  String? validateOptionalText(String? value, {int maximumLength = 500}) {
     final text = value?.trim() ?? '';
 
     if (text.length > maximumLength) {
@@ -508,10 +484,7 @@ class EditProfileController extends ChangeNotifier {
     return null;
   }
 
-  dynamic _value(
-    Map<String, dynamic> source,
-    List<String> keys,
-  ) {
+  dynamic _value(Map<String, dynamic> source, List<String> keys) {
     for (final key in keys) {
       final value = source[key];
 
@@ -546,9 +519,7 @@ class EditProfileController extends ChangeNotifier {
         .replaceFirst('ApiException: ', '')
         .trim();
 
-    return message.isEmpty
-        ? 'No se pudo actualizar el perfil.'
-        : message;
+    return message.isEmpty ? 'No se pudo actualizar el perfil.' : message;
   }
 
   void _setState(EditProfileState newState) {

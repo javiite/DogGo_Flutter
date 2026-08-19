@@ -3,18 +3,22 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/offline/offline_tracking_models.dart';
+import '../core/offline/offline_tracking_repository.dart';
+import '../core/offline/offline_tracking_sync_service.dart';
 import 'storage_service.dart';
 
 class BackgroundTrackingService {
   static const String notificationChannelId = 'doggo_tracking_channel';
   static const String notificationChannelName = 'DogGo tracking';
   static const int notificationId = 8801;
+  static const String routeAlertChannelId = 'doggo_route_alerts';
+  static const String routeAlertChannelName = 'Alertas de ruta DogGo';
+  static const String _routeStateKey = 'doggo_tracking_estado_ruta';
   static const Duration intervaloEnvio = Duration(seconds: 5);
 
   static Future<void> inicializarServicio() async {
@@ -22,9 +26,7 @@ class BackgroundTrackingService {
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const initSettings = InitializationSettings(
-      android: androidInit,
-    );
+    const initSettings = InitializationSettings(android: androidInit);
 
     await localNotifications.initialize(initSettings);
 
@@ -37,8 +39,22 @@ class BackgroundTrackingService {
 
     await localNotifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
+
+    const routeChannel = AndroidNotificationChannel(
+      routeAlertChannelId,
+      routeAlertChannelName,
+      description: 'Desvíos, reingresos y puntos alcanzados durante el paseo.',
+      importance: Importance.high,
+    );
+
+    await localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(routeChannel);
 
     final service = FlutterBackgroundService();
 
@@ -51,9 +67,7 @@ class BackgroundTrackingService {
         initialNotificationTitle: 'DogGo · Paseo en curso',
         initialNotificationContent: 'Preparando ubicación en vivo...',
         foregroundServiceNotificationId: notificationId,
-        foregroundServiceTypes: const [
-          AndroidForegroundType.location,
-        ],
+        foregroundServiceTypes: const [AndroidForegroundType.location],
       ),
       iosConfiguration: IosConfiguration(
         autoStart: false,
@@ -73,6 +87,9 @@ class BackgroundTrackingService {
     required String nombrePerro,
     required String nombrePaseador,
   }) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_routeStateKey);
+
     await StorageService.guardarTrackingActivo(
       paseoId: paseoId,
       nombrePerro: nombrePerro,
@@ -111,6 +128,23 @@ class BackgroundTrackingService {
   static Future<Map<String, dynamic>?> obtenerTrackingActivo() async {
     return StorageService.obtenerTrackingActivo();
   }
+
+  static Future<Map<String, dynamic>?> obtenerEstadoRuta() async {
+    final preferences = await SharedPreferences.getInstance();
+    final value = preferences.getString(_routeStateKey);
+    if (value == null || value.trim().isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(value);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Stream<Map<String, dynamic>?> get cambiosEstadoRuta {
+    return FlutterBackgroundService().on('estadoRutaActualizado');
+  }
 }
 
 @pragma('vm:entry-point')
@@ -125,9 +159,97 @@ void _onStart(ServiceInstance service) async {
 
   int? paseoId;
   String nombrePerro = 'Perro';
-  String nombrePaseador = 'Paseador';
   bool activo = false;
+  bool procesando = false;
   Timer? timer;
+
+  final offlineRepository = OfflineTrackingRepository();
+  final syncService = OfflineTrackingSyncService(repository: offlineRepository);
+  final routeNotifications = FlutterLocalNotificationsPlugin();
+
+  await syncService.initialize();
+  await routeNotifications.initialize(
+    const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ),
+  );
+
+  Future<RouteMonitoringEvent?> procesarMonitoreoRuta(
+    List<RouteMonitoringEvent> events,
+  ) async {
+    if (events.isEmpty) return null;
+
+    final latest = events.last;
+    final prefs = await SharedPreferences.getInstance();
+    final previousRaw = prefs.getString(
+      BackgroundTrackingService._routeStateKey,
+    );
+    final accumulatedCheckpoints = <String>{...latest.checkpointsReached};
+
+    if (previousRaw != null) {
+      try {
+        final previous = jsonDecode(previousRaw);
+        if (previous is Map) {
+          final previousCheckpoints = previous['checkpointsAlcanzados'];
+          if (previousCheckpoints is List) {
+            accumulatedCheckpoints.addAll(
+              previousCheckpoints.map((item) => item.toString()),
+            );
+          }
+        }
+      } catch (_) {
+        // El nuevo estado reemplazará cualquier valor local inválido.
+      }
+    }
+
+    final persistedMap = latest.toMap()
+      ..['checkpointsAlcanzados'] = accumulatedCheckpoints.toList();
+    final persistedEvent = RouteMonitoringEvent.fromMap(
+      paseoId: latest.paseoId,
+      map: persistedMap,
+    );
+
+    await prefs.setString(
+      BackgroundTrackingService._routeStateKey,
+      jsonEncode(persistedMap),
+    );
+
+    service.invoke('estadoRutaActualizado', persistedMap);
+
+    final significant = events.where((event) => event.significant).toList();
+
+    for (final event in significant.reversed.take(3).toList().reversed) {
+      final title = event.outsideRoute
+          ? 'DogGo · Fuera de la ruta'
+          : event.reentryDetected
+          ? 'DogGo · Regresaste a la ruta'
+          : 'DogGo · Punto alcanzado';
+      final message = event.message.isNotEmpty
+          ? event.message
+          : event.hasCheckpoint
+          ? 'Llegaste a ${event.checkpointsReached.join(', ')}.'
+          : 'Se actualizó el estado del recorrido.';
+
+      await routeNotifications.show(
+        8900 + DateTime.now().millisecondsSinceEpoch.remainder(1000),
+        title,
+        message,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            BackgroundTrackingService.routeAlertChannelId,
+            BackgroundTrackingService.routeAlertChannelName,
+            channelDescription:
+                'Desvíos, reingresos y puntos alcanzados durante el paseo.',
+            importance: Importance.high,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.status,
+          ),
+        ),
+      );
+    }
+
+    return persistedEvent;
+  }
 
   Future<void> cargarTrackingGuardado() async {
     final prefs = await SharedPreferences.getInstance();
@@ -139,8 +261,6 @@ void _onStart(ServiceInstance service) async {
       activo = true;
       paseoId = paseoIdPrefs;
       nombrePerro = prefs.getString('doggo_tracking_nombre_perro') ?? 'Perro';
-      nombrePaseador =
-          prefs.getString('doggo_tracking_nombre_paseador') ?? 'Paseador';
     }
   }
 
@@ -164,23 +284,8 @@ void _onStart(ServiceInstance service) async {
         permiso == LocationPermission.whileInUse;
   }
 
-  Future<bool> enviarUbicacion() async {
-    if (!activo || paseoId == null) return false;
-
-    final prefs = await SharedPreferences.getInstance();
-
-    final baseUrl = prefs.getString('doggo_base_url');
-    final token = prefs.getString('doggo_token');
-
-    if (baseUrl == null || baseUrl.trim().isEmpty) {
-      await actualizarNotificacion('Falta configurar servidor.');
-      return false;
-    }
-
-    if (token == null || token.trim().isEmpty) {
-      await actualizarNotificacion('Sesión no disponible.');
-      return false;
-    }
+  Future<bool> capturarYSincronizarUbicacion() async {
+    if (!activo || paseoId == null || procesando) return false;
 
     final permisoCorrecto = await permisosOk();
 
@@ -189,63 +294,89 @@ void _onStart(ServiceInstance service) async {
       return false;
     }
 
+    procesando = true;
+
     try {
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 12),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 12),
+        ),
       );
 
-      final body = {
-        'paseoId': paseoId,
-        'PaseoId': paseoId,
-        'latitud': pos.latitude,
-        'Latitud': pos.latitude,
-        'longitud': pos.longitude,
-        'Longitud': pos.longitude,
-        'latitudActual': pos.latitude,
-        'LatitudActual': pos.latitude,
-        'longitudActual': pos.longitude,
-        'LongitudActual': pos.longitude,
-        'precisionGpsMetros': pos.accuracy,
-        'PrecisionGpsMetros': pos.accuracy,
-        'fechaLectura':
-            pos.timestamp.toUtc().toIso8601String(),
-        'FechaLectura':
-            pos.timestamp.toUtc().toIso8601String(),
-      };
+      final capturedAt = pos.timestamp.toUtc();
 
-      final endpoint = Uri.parse('$baseUrl/api/paseos/$paseoId/ubicacion');
-
-      final response = await http.post(
-        endpoint,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(body),
+      await offlineRepository.saveTrackingPoint(
+        OfflineTrackingPointDraft(
+          paseoId: paseoId!,
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          accuracy: pos.accuracy >= 0 ? pos.accuracy : null,
+          altitude: pos.altitude >= -1000 && pos.altitude <= 20000
+              ? pos.altitude
+              : null,
+          speed: pos.speed >= 0 && pos.speed <= 200 ? pos.speed : null,
+          heading: pos.heading >= 0 && pos.heading <= 360 ? pos.heading : null,
+          capturedAt: capturedAt,
+        ),
       );
-
-      final ok = response.statusCode >= 200 && response.statusCode < 300;
-
-      if (!ok) {
-        await actualizarNotificacion(
-          '$nombrePerro · Error al enviar ubicación',
-        );
-        return false;
-      }
 
       final fecha = DateTime.now();
+      final prefs = await SharedPreferences.getInstance();
 
       await prefs.setDouble('doggo_tracking_ultima_latitud', pos.latitude);
       await prefs.setDouble('doggo_tracking_ultima_longitud', pos.longitude);
       await prefs.setString(
-        'doggo_tracking_ultimo_envio',
+        'doggo_tracking_ultima_captura',
         fecha.toIso8601String(),
       );
 
-      await actualizarNotificacion(
-        '$nombrePerro · GPS actualizado ${_hora(fecha)}',
+      final syncResult = await syncService.syncPending();
+      if (syncResult.hasIrrecoverable) {
+        activo = false;
+        paseoId = null;
+        timer?.cancel();
+        timer = null;
+        await StorageService.limpiarTrackingActivo();
+        await actualizarNotificacion(
+          '$nombrePerro · Seguimiento detenido: el paseo ya no acepta GPS',
+        );
+        return false;
+      }
+      final routeEvent = await procesarMonitoreoRuta(
+        syncResult.monitoringEvents,
       );
+
+      if (syncResult.synced > 0) {
+        await prefs.setString(
+          'doggo_tracking_ultimo_envio',
+          fecha.toIso8601String(),
+        );
+      }
+
+      if (routeEvent?.outsideRoute == true) {
+        final distance = routeEvent?.distanceRouteMeters;
+        await actualizarNotificacion(
+          distance == null
+              ? '$nombrePerro · Fuera de la ruta permitida'
+              : '$nombrePerro · Fuera de ruta · ${distance.round()} m',
+        );
+      } else if (routeEvent?.reentryDetected == true) {
+        await actualizarNotificacion('$nombrePerro · Regresó a la ruta');
+      } else if (routeEvent?.hasCheckpoint == true) {
+        await actualizarNotificacion(
+          '$nombrePerro · ${routeEvent!.checkpointsReached.last}',
+        );
+      } else if (syncResult.pending > 0) {
+        await actualizarNotificacion(
+          '$nombrePerro · GPS guardado · '
+          '${syncResult.pending} por sincronizar',
+        );
+      } else {
+        await actualizarNotificacion(
+          '$nombrePerro · GPS actualizado ${_hora(fecha)}',
+        );
+      }
 
       service.invoke('ubicacionEnviada', {
         'paseoId': paseoId,
@@ -253,15 +384,17 @@ void _onStart(ServiceInstance service) async {
         'longitud': pos.longitude,
         'precisionGpsMetros': pos.accuracy,
         'fecha': fecha.toIso8601String(),
+        'sincronizada': syncResult.pending == 0,
+        'pendientes': syncResult.pending,
       });
 
       return true;
     } catch (_) {
-      await actualizarNotificacion(
-        '$nombrePerro · No se pudo obtener GPS',
-      );
+      await actualizarNotificacion('$nombrePerro · No se pudo guardar el GPS');
 
       return false;
+    } finally {
+      procesando = false;
     }
   }
 
@@ -269,7 +402,7 @@ void _onStart(ServiceInstance service) async {
     timer?.cancel();
 
     timer = Timer.periodic(BackgroundTrackingService.intervaloEnvio, (_) async {
-      await enviarUbicacion();
+      await capturarYSincronizarUbicacion();
     });
   }
 
@@ -285,7 +418,6 @@ void _onStart(ServiceInstance service) async {
     }
 
     nombrePerro = data['nombrePerro']?.toString() ?? 'Perro';
-    nombrePaseador = data['nombrePaseador']?.toString() ?? 'Paseador';
     activo = paseoId != null;
 
     if (service is AndroidServiceInstance) {
@@ -295,7 +427,7 @@ void _onStart(ServiceInstance service) async {
     if (activo) {
       await actualizarNotificacion('$nombrePerro · Enviando ubicación');
 
-      await enviarUbicacion();
+      await capturarYSincronizarUbicacion();
 
       iniciarTimer();
     }
@@ -308,6 +440,9 @@ void _onStart(ServiceInstance service) async {
     timer?.cancel();
     timer = null;
 
+    // Si no hay conexión, los puntos permanecen en SQLite.
+    await syncService.syncPending(maxBatches: 10);
+
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.remove('doggo_tracking_activo');
@@ -317,6 +452,8 @@ void _onStart(ServiceInstance service) async {
     await prefs.remove('doggo_tracking_ultima_latitud');
     await prefs.remove('doggo_tracking_ultima_longitud');
     await prefs.remove('doggo_tracking_ultimo_envio');
+    await prefs.remove('doggo_tracking_ultima_captura');
+    await prefs.remove(BackgroundTrackingService._routeStateKey);
 
     service.stopSelf();
   });
@@ -335,7 +472,7 @@ void _onStart(ServiceInstance service) async {
 
   if (activo && paseoId != null) {
     await actualizarNotificacion('$nombrePerro · Enviando ubicación');
-    await enviarUbicacion();
+    await capturarYSincronizarUbicacion();
     iniciarTimer();
   } else {
     await actualizarNotificacion('Sin paseo activo.');

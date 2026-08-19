@@ -1,21 +1,17 @@
 import 'api_service.dart';
 
 class TrackingService {
-  Map<String, dynamic> _normalizarRespuesta(
-    Map<String, dynamic> respuesta,
-  ) {
-    final statusCode =
-        respuesta['statusCode'];
+  Map<String, dynamic> _normalizarRespuesta(Map<String, dynamic> respuesta) {
+    final statusCode = respuesta['statusCode'];
 
     final body = respuesta['body'];
 
-    if (statusCode is int &&
-        statusCode >= 200 &&
-        statusCode < 300) {
+    if (statusCode is int && statusCode >= 200 && statusCode < 300) {
       dynamic data = body;
 
       if (body is Map) {
-        data = body['data'] ??
+        data =
+            body['data'] ??
             body['ubicacion'] ??
             body['tracking'] ??
             body['ultimaUbicacion'] ??
@@ -25,24 +21,22 @@ class TrackingService {
             body;
       }
 
-      if (data is Map<String, dynamic>) {
-        return data;
+      final normalized = data is Map
+          ? Map<String, dynamic>.from(data)
+          : <String, dynamic>{'success': true, 'data': data};
+
+      if (body is Map) {
+        final monitoring = body['monitoreoRuta'] ?? body['MonitoreoRuta'];
+        if (monitoring != null) {
+          normalized['monitoreoRuta'] = monitoring;
+        }
+        normalized['success'] = body['success'] ?? body['Success'] ?? true;
       }
 
-      if (data is Map) {
-        return Map<String, dynamic>.from(
-          data,
-        );
-      }
-
-      return {
-        'success': true,
-        'data': data,
-      };
+      return normalized;
     }
 
-    String mensaje =
-        'Error al procesar tracking.';
+    String mensaje = 'Error al procesar tracking.';
 
     if (body is Map) {
       mensaje =
@@ -54,27 +48,20 @@ class TrackingService {
       mensaje = body.toString();
     }
 
-    throw Exception(
-      '$mensaje Código: $statusCode',
-    );
+    throw Exception('$mensaje Código: $statusCode');
   }
 
-  List<Map<String, dynamic>>
-      _normalizarLista(
-    Map<String, dynamic> respuesta,
-  ) {
-    final statusCode =
-        respuesta['statusCode'];
+  List<Map<String, dynamic>> _normalizarLista(Map<String, dynamic> respuesta) {
+    final statusCode = respuesta['statusCode'];
 
     final body = respuesta['body'];
 
-    if (statusCode is int &&
-        statusCode >= 200 &&
-        statusCode < 300) {
+    if (statusCode is int && statusCode >= 200 && statusCode < 300) {
       dynamic data = body;
 
       if (body is Map) {
-        data = body['data'] ??
+        data =
+            body['data'] ??
             body['ubicaciones'] ??
             body['historial'] ??
             body['ruta'] ??
@@ -86,21 +73,15 @@ class TrackingService {
 
       if (data is List) {
         return data
-            .where((item) => item is Map)
-            .map(
-              (item) =>
-                  Map<String, dynamic>.from(
-                item as Map,
-              ),
-            )
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
             .toList();
       }
 
       return [];
     }
 
-    String mensaje =
-        'Error al obtener historial de ubicaciones.';
+    String mensaje = 'Error al obtener historial de ubicaciones.';
 
     if (body is Map) {
       mensaje =
@@ -112,13 +93,10 @@ class TrackingService {
       mensaje = body.toString();
     }
 
-    throw Exception(
-      '$mensaje Código: $statusCode',
-    );
+    throw Exception('$mensaje Código: $statusCode');
   }
 
-  Future<Map<String, dynamic>>
-      enviarUbicacion({
+  Future<Map<String, dynamic>> enviarUbicacion({
     required int paseoId,
     required double latitud,
     required double longitud,
@@ -141,25 +119,15 @@ class TrackingService {
       'longitudActual': longitud,
       'LongitudActual': longitud,
 
-      if (precisionGpsMetros != null)
-        'precisionGpsMetros':
-            precisionGpsMetros,
+      'precisionGpsMetros': ?precisionGpsMetros,
 
-      if (precisionGpsMetros != null)
-        'PrecisionGpsMetros':
-            precisionGpsMetros,
+      'PrecisionGpsMetros': ?precisionGpsMetros,
 
       if (fechaLectura != null)
-        'fechaLectura':
-            fechaLectura
-                .toUtc()
-                .toIso8601String(),
+        'fechaLectura': fechaLectura.toUtc().toIso8601String(),
 
       if (fechaLectura != null)
-        'FechaLectura':
-            fechaLectura
-                .toUtc()
-                .toIso8601String(),
+        'FechaLectura': fechaLectura.toUtc().toIso8601String(),
     };
 
     final endpoints = [
@@ -173,32 +141,39 @@ class TrackingService {
 
     for (final endpoint in endpoints) {
       try {
-        final respuesta =
-            await ApiService.postAuth(
-          endpoint,
-          body,
-        );
+        final respuesta = await ApiService.postAuth(endpoint, body);
 
-        return _normalizarRespuesta(
-          respuesta,
-        );
+        return _normalizarRespuesta(respuesta);
       } catch (error) {
-        ultimoError = Exception(
-          error.toString(),
-        );
+        ultimoError = Exception(error.toString());
       }
     }
 
-    throw ultimoError ??
-        Exception(
-          'No se pudo enviar la ubicación.',
-        );
+    throw ultimoError ?? Exception('No se pudo enviar la ubicación.');
   }
 
-  Future<Map<String, dynamic>>
-      obtenerUltimaUbicacion(
-    int paseoId,
-  ) async {
+  Future<Map<String, dynamic>> enviarUbicacionesLote({
+    required int paseoId,
+    required List<Map<String, dynamic>> puntos,
+  }) async {
+    if (puntos.isEmpty) {
+      return <String, dynamic>{
+        'paseoId': paseoId,
+        'aceptadas': const <dynamic>[],
+        'duplicadas': const <dynamic>[],
+        'rechazadas': const <dynamic>[],
+      };
+    }
+
+    final respuesta = await ApiService.postAuth(
+      '/api/paseos/$paseoId/ubicaciones/lote',
+      <String, dynamic>{'puntos': puntos},
+    );
+
+    return _normalizarRespuesta(respuesta);
+  }
+
+  Future<Map<String, dynamic>> obtenerUltimaUbicacion(int paseoId) async {
     final endpoints = [
       '/api/paseos/$paseoId/ubicacion',
       '/api/Paseos/$paseoId/ubicacion',
@@ -210,29 +185,18 @@ class TrackingService {
 
     for (final endpoint in endpoints) {
       try {
-        final respuesta =
-            await ApiService.getAuth(
-          endpoint,
-        );
+        final respuesta = await ApiService.getAuth(endpoint);
 
-        return _normalizarRespuesta(
-          respuesta,
-        );
+        return _normalizarRespuesta(respuesta);
       } catch (error) {
-        ultimoError = Exception(
-          error.toString(),
-        );
+        ultimoError = Exception(error.toString());
       }
     }
 
-    throw ultimoError ??
-        Exception(
-          'No se pudo obtener la última ubicación.',
-        );
+    throw ultimoError ?? Exception('No se pudo obtener la última ubicación.');
   }
 
-  Future<List<Map<String, dynamic>>>
-      obtenerHistorialUbicaciones(
+  Future<List<Map<String, dynamic>>> obtenerHistorialUbicaciones(
     int paseoId,
   ) async {
     final endpoints = [
@@ -248,18 +212,11 @@ class TrackingService {
 
     for (final endpoint in endpoints) {
       try {
-        final respuesta =
-            await ApiService.getAuth(
-          endpoint,
-        );
+        final respuesta = await ApiService.getAuth(endpoint);
 
-        return _normalizarLista(
-          respuesta,
-        );
+        return _normalizarLista(respuesta);
       } catch (error) {
-        ultimoError = Exception(
-          error.toString(),
-        );
+        ultimoError = Exception(error.toString());
       }
     }
 

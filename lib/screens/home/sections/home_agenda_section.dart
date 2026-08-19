@@ -27,12 +27,10 @@ class HomeAgendaSection extends StatefulWidget {
   });
 
   @override
-  State<HomeAgendaSection> createState() =>
-      _HomeAgendaSectionState();
+  State<HomeAgendaSection> createState() => _HomeAgendaSectionState();
 }
 
-class _HomeAgendaSectionState
-    extends State<HomeAgendaSection> {
+class _HomeAgendaSectionState extends State<HomeAgendaSection> {
   late DateTime _selectedDate;
 
   @override
@@ -46,6 +44,7 @@ class _HomeAgendaSectionState
     final selectedWalks = _walksForDay(_selectedDate);
     final weeklyWalks = _walksForWeek(_selectedDate);
     final nextWalk = _findNextWalk();
+    final programCounts = _programCounts(widget.walks);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -57,9 +56,7 @@ class _HomeAgendaSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _AgendaHeader(
-            onSeeAll: widget.onSeeAll,
-          ),
+          _AgendaHeader(onSeeAll: widget.onSeeAll),
           const SizedBox(height: 24),
           _MonthSelector(
             selectedDate: _selectedDate,
@@ -82,6 +79,7 @@ class _HomeAgendaSectionState
             selectedWalks: selectedWalks,
             weeklyWalks: weeklyWalks,
             nextWalk: nextWalk,
+            programCounts: programCounts,
           ),
         ],
       ),
@@ -92,6 +90,7 @@ class _HomeAgendaSectionState
     required List<HomeWalk> selectedWalks,
     required List<HomeWalk> weeklyWalks,
     required HomeWalk? nextWalk,
+    required Map<int, int> programCounts,
   }) {
     if (widget.loading) {
       return const Column(
@@ -122,13 +121,14 @@ class _HomeAgendaSectionState
         if (nextWalk != null) ...[
           _NextWalkCard(
             walk: nextWalk,
+            programCount: nextWalk.programacionId == null
+                ? 0
+                : programCounts[nextWalk.programacionId] ?? 0,
             onTap: () => widget.onWalkTap(nextWalk),
           ),
           const SizedBox(height: 30),
         ] else ...[
-          _AgendaAvailableCard(
-            onSeeAll: widget.onSeeAll,
-          ),
+          _AgendaAvailableCard(onSeeAll: widget.onSeeAll),
           const SizedBox(height: 30),
         ],
         _DaySectionHeader(
@@ -137,12 +137,11 @@ class _HomeAgendaSectionState
         ),
         const SizedBox(height: 14),
         if (selectedWalks.isEmpty)
-          _FreeDayCard(
-            selectedDate: _selectedDate,
-          )
+          _FreeDayCard(selectedDate: _selectedDate)
         else
           _DayTimeline(
             walks: selectedWalks,
+            programCounts: programCounts,
             onWalkTap: widget.onWalkTap,
           ),
         const SizedBox(height: 30),
@@ -153,9 +152,7 @@ class _HomeAgendaSectionState
 
   void _changeWeek(int days) {
     setState(() {
-      _selectedDate = _selectedDate.add(
-        Duration(days: days),
-      );
+      _selectedDate = _selectedDate.add(Duration(days: days));
     });
   }
 
@@ -169,8 +166,7 @@ class _HomeAgendaSectionState
     final result = widget.walks.where((walk) {
       final scheduled = walk.scheduledAt;
 
-      return scheduled != null &&
-          _sameDay(scheduled, date);
+      return scheduled != null && _sameDay(scheduled, date);
     }).toList();
 
     result.sort(_compareWalks);
@@ -188,8 +184,7 @@ class _HomeAgendaSectionState
         return false;
       }
 
-      return !scheduled.isBefore(start) &&
-          scheduled.isBefore(end);
+      return !scheduled.isBefore(start) && scheduled.isBefore(end);
     }).toList();
   }
 
@@ -203,9 +198,7 @@ class _HomeAgendaSectionState
 
       final scheduled = walk.scheduledAt;
 
-      return walk.isUpcoming &&
-          scheduled != null &&
-          !scheduled.isBefore(now);
+      return walk.isUpcoming && scheduled != null && !scheduled.isBefore(now);
     }).toList();
 
     candidates.sort((first, second) {
@@ -227,9 +220,7 @@ class _HomeAgendaSectionState
 class _AgendaHeader extends StatelessWidget {
   final VoidCallback onSeeAll;
 
-  const _AgendaHeader({
-    required this.onSeeAll,
-  });
+  const _AgendaHeader({required this.onSeeAll});
 
   @override
   Widget build(BuildContext context) {
@@ -240,10 +231,7 @@ class _AgendaHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Agenda',
-                style: DogGoTheme.title(size: 29),
-              ),
+              Text('Agenda', style: DogGoTheme.title(size: 29)),
               const SizedBox(height: 6),
               Text(
                 'Organiza y consulta los paseos de tus mascotas',
@@ -253,10 +241,7 @@ class _AgendaHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        TextButton(
-          onPressed: onSeeAll,
-          child: const Text('Ver todos'),
-        ),
+        TextButton(onPressed: onSeeAll, child: const Text('Ver todos')),
       ],
     );
   }
@@ -289,9 +274,7 @@ class _MonthSelector extends StatelessWidget {
           onPressed: onToday,
           style: TextButton.styleFrom(
             minimumSize: const Size(48, 38),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 13,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 13),
             backgroundColor: DogGoTheme.tealLight,
             foregroundColor: DogGoTheme.teal,
           ),
@@ -338,9 +321,7 @@ class _CalendarArrowButton extends StatelessWidget {
         minimumSize: const Size(38, 38),
         maximumSize: const Size(38, 38),
         backgroundColor: DogGoTheme.card,
-        side: const BorderSide(
-          color: DogGoTheme.border,
-        ),
+        side: const BorderSide(color: DogGoTheme.border),
       ),
     );
   }
@@ -363,26 +344,16 @@ class _AgendaWeekStrip extends StatelessWidget {
 
     return Row(
       children: List.generate(7, (index) {
-        final date = weekStart.add(
-          Duration(days: index),
-        );
+        final date = weekStart.add(Duration(days: index));
 
         return Expanded(
           child: Padding(
-            padding: EdgeInsets.only(
-              right: index == 6 ? 0 : 5,
-            ),
+            padding: EdgeInsets.only(right: index == 6 ? 0 : 5),
             child: _AgendaDay(
               date: date,
               selected: _sameDay(date, selectedDate),
-              isToday: _sameDay(
-                date,
-                DateTime.now(),
-              ),
-              hasWalk: _hasWalkOnDate(
-                walks,
-                date,
-              ),
+              isToday: _sameDay(date, DateTime.now()),
+              hasWalk: _hasWalkOnDate(walks, date),
               onTap: () => onDateSelected(date),
             ),
           ),
@@ -409,49 +380,30 @@ class _AgendaDay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const weekdayLabels = [
-      'L',
-      'M',
-      'M',
-      'J',
-      'V',
-      'S',
-      'D',
-    ];
+    const weekdayLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
-    final foreground = selected
-        ? Colors.white
-        : DogGoTheme.ink;
+    final foreground = selected ? Colors.white : DogGoTheme.ink;
 
     return Semantics(
       button: true,
       selected: selected,
-      label:
-          '${weekdayLabels[date.weekday - 1]} ${date.day}',
+      label: '${weekdayLabels[date.weekday - 1]} ${date.day}',
       child: Material(
-        color: selected
-            ? DogGoTheme.teal
-            : DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
+        color: selected ? DogGoTheme.teal : DogGoTheme.card,
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(
-            DogGoRadius.medium,
-          ),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
           child: Container(
             height: 78,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
               border: Border.all(
                 color: selected
                     ? DogGoTheme.teal
                     : isToday
-                        ? DogGoTheme.teal
-                        : DogGoTheme.border,
+                    ? DogGoTheme.teal
+                    : DogGoTheme.border,
                 width: isToday && !selected ? 1.4 : 1,
               ),
             ),
@@ -463,9 +415,7 @@ class _AgendaDay extends StatelessWidget {
                   style: DogGoTheme.body(
                     size: 10,
                     color: selected
-                        ? Colors.white.withValues(
-                            alpha: .75,
-                          )
+                        ? Colors.white.withValues(alpha: .75)
                         : DogGoTheme.muted,
                     weight: FontWeight.w800,
                   ),
@@ -473,10 +423,7 @@ class _AgendaDay extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   '${date.day}',
-                  style: DogGoTheme.title(
-                    size: 17,
-                    color: foreground,
-                  ),
+                  style: DogGoTheme.title(size: 17, color: foreground),
                 ),
                 const SizedBox(height: 6),
                 Container(
@@ -485,8 +432,8 @@ class _AgendaDay extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: hasWalk
                         ? selected
-                            ? DogGoTheme.orange
-                            : DogGoTheme.teal
+                              ? DogGoTheme.orange
+                              : DogGoTheme.teal
                         : Colors.transparent,
                     shape: BoxShape.circle,
                   ),
@@ -502,10 +449,12 @@ class _AgendaDay extends StatelessWidget {
 
 class _NextWalkCard extends StatelessWidget {
   final HomeWalk walk;
+  final int programCount;
   final VoidCallback onTap;
 
   const _NextWalkCard({
     required this.walk,
+    this.programCount = 0,
     required this.onTap,
   });
 
@@ -516,9 +465,7 @@ class _NextWalkCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: DogGoTheme.teal,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
         boxShadow: DogGoTheme.elevatedShadow(),
       ),
       clipBehavior: Clip.antiAlias,
@@ -536,6 +483,8 @@ class _NextWalkCard extends StatelessWidget {
                     Text(
                       walk.isInProgress
                           ? 'PASEO EN CURSO'
+                          : programCount > 1
+                          ? 'PROGRAMACIÓN · $programCount PASEOS'
                           : 'PRÓXIMO PASEO',
                       style: DogGoTheme.label(
                         size: 10.5,
@@ -549,16 +498,10 @@ class _NextWalkCard extends StatelessWidget {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(
-                          alpha: .14,
-                        ),
-                        borderRadius: BorderRadius.circular(
-                          DogGoRadius.pill,
-                        ),
+                        color: Colors.white.withValues(alpha: .14),
+                        borderRadius: BorderRadius.circular(DogGoRadius.pill),
                         border: Border.all(
-                          color: Colors.white.withValues(
-                            alpha: .18,
-                          ),
+                          color: Colors.white.withValues(alpha: .18),
                         ),
                       ),
                       child: Row(
@@ -595,15 +538,13 @@ class _NextWalkCard extends StatelessWidget {
                       imageUrls: walk.petImageUrls,
                       petCount: walk.petCount,
                       size: 78,
-                      backgroundColor:
-                          Colors.white.withValues(alpha: .14),
+                      backgroundColor: Colors.white.withValues(alpha: .14),
                       iconColor: Colors.white,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             walk.petName,
@@ -648,9 +589,7 @@ class _NextWalkCard extends StatelessWidget {
                       'Toca para consultar los detalles',
                       style: DogGoTheme.caption(
                         size: 10.5,
-                        color: Colors.white.withValues(
-                          alpha: .76,
-                        ),
+                        color: Colors.white.withValues(alpha: .76),
                         weight: FontWeight.w600,
                       ),
                     ),
@@ -675,20 +614,13 @@ class _NextWalkDetail extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _NextWalkDetail({
-    required this.icon,
-    required this.text,
-  });
+  const _NextWalkDetail({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.white.withValues(alpha: .75),
-        ),
+        Icon(icon, size: 16, color: Colors.white.withValues(alpha: .75)),
         const SizedBox(width: 7),
         Expanded(
           child: Text(
@@ -710,9 +642,7 @@ class _NextWalkDetail extends StatelessWidget {
 class _AgendaAvailableCard extends StatelessWidget {
   final VoidCallback onSeeAll;
 
-  const _AgendaAvailableCard({
-    required this.onSeeAll,
-  });
+  const _AgendaAvailableCard({required this.onSeeAll});
 
   @override
   Widget build(BuildContext context) {
@@ -720,19 +650,12 @@ class _AgendaAvailableCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            DogGoTheme.tealLight,
-            DogGoTheme.card,
-          ],
+          colors: [DogGoTheme.tealLight, DogGoTheme.card],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.teal.withValues(alpha: .12),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.teal.withValues(alpha: .12)),
       ),
       child: Row(
         children: [
@@ -770,13 +693,9 @@ class _AgendaAvailableCard extends StatelessWidget {
           IconButton(
             onPressed: onSeeAll,
             tooltip: 'Ver mis paseos',
-            icon: const Icon(
-              Icons.arrow_forward_rounded,
-            ),
+            icon: const Icon(Icons.arrow_forward_rounded),
             color: DogGoTheme.teal,
-            style: IconButton.styleFrom(
-              backgroundColor: DogGoTheme.card,
-            ),
+            style: IconButton.styleFrom(backgroundColor: DogGoTheme.card),
           ),
         ],
       ),
@@ -795,10 +714,7 @@ class _DaySectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isToday = _sameDay(
-      selectedDate,
-      DateTime.now(),
-    );
+    final isToday = _sameDay(selectedDate, DateTime.now());
 
     return Row(
       children: [
@@ -815,8 +731,8 @@ class _DaySectionHeader extends StatelessWidget {
                 walkCount == 0
                     ? 'No tienes servicios programados'
                     : walkCount == 1
-                        ? 'Tienes un paseo programado'
-                        : 'Tienes $walkCount paseos programados',
+                    ? 'Tienes un paseo programado'
+                    : 'Tienes $walkCount paseos programados',
                 style: DogGoTheme.subtitle(size: 12),
               ),
             ],
@@ -847,26 +763,39 @@ class _DaySectionHeader extends StatelessWidget {
 
 class _DayTimeline extends StatelessWidget {
   final List<HomeWalk> walks;
+  final Map<int, int> programCounts;
   final ValueChanged<HomeWalk> onWalkTap;
 
   const _DayTimeline({
     required this.walks,
+    required this.programCounts,
     required this.onWalkTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final visible = <HomeWalk>[];
+    final seenPrograms = <int>{};
+    for (final walk in walks) {
+      final programId = walk.programacionId;
+      if (programId == null || seenPrograms.add(programId)) {
+        visible.add(walk);
+      }
+    }
     return Column(
-      children: List.generate(walks.length, (index) {
-        final walk = walks[index];
+      children: List.generate(visible.length, (index) {
+        final walk = visible[index];
 
         return Padding(
           padding: EdgeInsets.only(
-            bottom: index == walks.length - 1 ? 0 : 12,
+            bottom: index == visible.length - 1 ? 0 : 12,
           ),
           child: _TimelineWalkCard(
             walk: walk,
-            isLast: index == walks.length - 1,
+            isLast: index == visible.length - 1,
+            programCount: walk.programacionId == null
+                ? 0
+                : programCounts[walk.programacionId] ?? 0,
             onTap: () => onWalkTap(walk),
           ),
         );
@@ -877,11 +806,13 @@ class _DayTimeline extends StatelessWidget {
 
 class _TimelineWalkCard extends StatelessWidget {
   final HomeWalk walk;
+  final int programCount;
   final bool isLast;
   final VoidCallback onTap;
 
   const _TimelineWalkCard({
     required this.walk,
+    this.programCount = 0,
     required this.isLast,
     required this.onTap,
   });
@@ -912,10 +843,7 @@ class _TimelineWalkCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: statusColor,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: DogGoTheme.card,
-                    width: 3,
-                  ),
+                  border: Border.all(color: DogGoTheme.card, width: 3),
                   boxShadow: [
                     BoxShadow(
                       color: statusColor.withValues(alpha: .2),
@@ -939,23 +867,15 @@ class _TimelineWalkCard extends StatelessWidget {
         Expanded(
           child: Material(
             color: DogGoTheme.card,
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.large,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.large),
             child: InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.large,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.large),
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.large,
-                  ),
-                  border: Border.all(
-                    color: DogGoTheme.border,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.large),
+                  border: Border.all(color: DogGoTheme.border),
                   boxShadow: DogGoTheme.softShadow(
                     opacity: .025,
                     blur: 16,
@@ -973,23 +893,35 @@ class _TimelineWalkCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            walk.petName,
+                            programCount > 1
+                                ? 'Programación · $programCount paseos'
+                                : walk.petName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: DogGoTheme.title(size: 16),
                           ),
                           const SizedBox(height: 4),
+                          if (programCount > 1) ...[
+                            Text(
+                              'Próximo: ${walk.petName}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: DogGoTheme.caption(
+                                size: 10.5,
+                                color: DogGoTheme.teal,
+                                weight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                          ],
                           Text(
                             'Con ${walk.walkerName}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: DogGoTheme.subtitle(
-                              size: 11.5,
-                            ),
+                            style: DogGoTheme.subtitle(size: 11.5),
                           ),
                           if (walk.pickupAddress.isNotEmpty) ...[
                             const SizedBox(height: 4),
@@ -1005,11 +937,8 @@ class _TimelineWalkCard extends StatelessWidget {
                                   child: Text(
                                     walk.pickupAddress,
                                     maxLines: 1,
-                                    overflow:
-                                        TextOverflow.ellipsis,
-                                    style: DogGoTheme.caption(
-                                      size: 10,
-                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    style: DogGoTheme.caption(size: 10),
                                   ),
                                 ),
                               ],
@@ -1020,8 +949,7 @@ class _TimelineWalkCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -1029,9 +957,7 @@ class _TimelineWalkCard extends StatelessWidget {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: statusColor.withValues(
-                              alpha: .11,
-                            ),
+                            color: statusColor.withValues(alpha: .11),
                             borderRadius: BorderRadius.circular(
                               DogGoRadius.pill,
                             ),
@@ -1067,28 +993,19 @@ class _TimelineWalkCard extends StatelessWidget {
 class _FreeDayCard extends StatelessWidget {
   final DateTime selectedDate;
 
-  const _FreeDayCard({
-    required this.selectedDate,
-  });
+  const _FreeDayCard({required this.selectedDate});
 
   @override
   Widget build(BuildContext context) {
-    final isToday = _sameDay(
-      selectedDate,
-      DateTime.now(),
-    );
+    final isToday = _sameDay(selectedDate, DateTime.now());
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
         children: [
@@ -1107,9 +1024,7 @@ class _FreeDayCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            isToday
-                ? 'Un día tranquilo'
-                : 'Este día está libre',
+            isToday ? 'Un día tranquilo' : 'Este día está libre',
             style: DogGoTheme.title(size: 17),
           ),
           const SizedBox(height: 5),
@@ -1129,9 +1044,7 @@ class _FreeDayCard extends StatelessWidget {
 class _WeeklySummary extends StatelessWidget {
   final List<HomeWalk> walks;
 
-  const _WeeklySummary({
-    required this.walks,
-  });
+  const _WeeklySummary({required this.walks});
 
   @override
   Widget build(BuildContext context) {
@@ -1139,9 +1052,7 @@ class _WeeklySummary extends StatelessWidget {
       return walk.status == HomeWalkStatus.completed;
     }).toList();
 
-    final summarySource = completedWalks.isEmpty
-        ? walks
-        : completedWalks;
+    final summarySource = completedWalks.isEmpty ? walks : completedWalks;
 
     final totalMinutes = summarySource.fold<int>(
       0,
@@ -1150,17 +1061,13 @@ class _WeeklySummary extends StatelessWidget {
 
     final totalDistance = summarySource.fold<double>(
       0,
-      (total, walk) =>
-          total + walk.distanceKilometers,
+      (total, walk) => total + walk.distanceKilometers,
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Esta semana',
-          style: DogGoTheme.title(size: 21),
-        ),
+        Text('Esta semana', style: DogGoTheme.title(size: 21)),
         const SizedBox(height: 4),
         Text(
           completedWalks.isEmpty
@@ -1170,18 +1077,11 @@ class _WeeklySummary extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 18,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 18),
           decoration: BoxDecoration(
             color: DogGoTheme.card,
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.large,
-            ),
-            border: Border.all(
-              color: DogGoTheme.border,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.large),
+            border: Border.all(color: DogGoTheme.border),
             boxShadow: DogGoTheme.softShadow(
               opacity: .025,
               blur: 18,
@@ -1241,11 +1141,7 @@ class _SummaryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 22,
-        ),
+        Icon(icon, color: color, size: 22),
         const SizedBox(height: 8),
         Text(
           value,
@@ -1256,10 +1152,7 @@ class _SummaryItem extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           label,
-          style: DogGoTheme.caption(
-            size: 10.5,
-            weight: FontWeight.w600,
-          ),
+          style: DogGoTheme.caption(size: 10.5, weight: FontWeight.w600),
         ),
       ],
     );
@@ -1271,11 +1164,7 @@ class _SummaryDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 58,
-      color: DogGoTheme.divider,
-    );
+    return Container(width: 1, height: 58, color: DogGoTheme.divider);
   }
 }
 
@@ -1300,16 +1189,12 @@ class _WalkImage extends StatelessWidget {
     final candidates = imageUrls.isNotEmpty
         ? imageUrls
         : imageUrl.trim().isEmpty
-            ? const <String>[]
-            : <String>[imageUrl];
+        ? const <String>[]
+        : <String>[imageUrl];
 
     return candidates
         .map((url) => url.trim())
-        .where(
-          (url) =>
-              url.startsWith('http://') ||
-              url.startsWith('https://'),
-        )
+        .where((url) => url.startsWith('http://') || url.startsWith('https://'))
         .toSet()
         .toList(growable: false);
   }
@@ -1329,27 +1214,17 @@ class _WalkImage extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 color: backgroundColor,
-                borderRadius: BorderRadius.circular(
-                  DogGoRadius.medium,
-                ),
+                borderRadius: BorderRadius.circular(DogGoRadius.medium),
               ),
               clipBehavior: Clip.antiAlias,
               child: images.isEmpty
-                  ? _WalkImagePlaceholder(
-                      iconColor: iconColor,
-                    )
+                  ? _WalkImagePlaceholder(iconColor: iconColor)
                   : Image.network(
                       images.first,
                       fit: BoxFit.cover,
                       gaplessPlayback: true,
-                      errorBuilder: (
-                        context,
-                        error,
-                        stackTrace,
-                      ) {
-                        return _WalkImagePlaceholder(
-                          iconColor: iconColor,
-                        );
+                      errorBuilder: (context, error, stackTrace) {
+                        return _WalkImagePlaceholder(iconColor: iconColor);
                       },
                     ),
             ),
@@ -1364,15 +1239,10 @@ class _WalkImage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: backgroundColor,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 2.5,
-                  ),
+                  border: Border.all(color: Colors.white, width: 2.5),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: .18,
-                      ),
+                      color: Colors.black.withValues(alpha: .18),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -1383,14 +1253,8 @@ class _WalkImage extends StatelessWidget {
                   images[1],
                   fit: BoxFit.cover,
                   gaplessPlayback: true,
-                  errorBuilder: (
-                    context,
-                    error,
-                    stackTrace,
-                  ) {
-                    return _WalkImagePlaceholder(
-                      iconColor: iconColor,
-                    );
+                  errorBuilder: (context, error, stackTrace) {
+                    return _WalkImagePlaceholder(iconColor: iconColor);
                   },
                 ),
               ),
@@ -1400,21 +1264,13 @@ class _WalkImage extends StatelessWidget {
               top: -5,
               right: -5,
               child: Container(
-                constraints: const BoxConstraints(
-                  minWidth: 25,
-                  minHeight: 25,
-                ),
+                constraints: const BoxConstraints(minWidth: 25, minHeight: 25),
                 alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
                   color: DogGoTheme.orange,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 2,
-                  ),
+                  border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: Text(
                   '+${petCount - 2}',
@@ -1435,61 +1291,39 @@ class _WalkImage extends StatelessWidget {
 class _WalkImagePlaceholder extends StatelessWidget {
   final Color iconColor;
 
-  const _WalkImagePlaceholder({
-    required this.iconColor,
-  });
+  const _WalkImagePlaceholder({required this.iconColor});
 
   @override
   Widget build(BuildContext context) {
-    return Icon(
-      Icons.pets_rounded,
-      color: iconColor,
-      size: 27,
-    );
+    return Icon(Icons.pets_rounded, color: iconColor, size: 27);
   }
 }
 
-bool _hasWalkOnDate(
-  List<HomeWalk> walks,
-  DateTime date,
-) {
+bool _hasWalkOnDate(List<HomeWalk> walks, DateTime date) {
   return walks.any((walk) {
     final scheduled = walk.scheduledAt;
 
-    return scheduled != null &&
-        _sameDay(scheduled, date);
+    return scheduled != null && _sameDay(scheduled, date);
   });
 }
 
-bool _sameDay(
-  DateTime first,
-  DateTime second,
-) {
+bool _sameDay(DateTime first, DateTime second) {
   return first.year == second.year &&
       first.month == second.month &&
       first.day == second.day;
 }
 
 DateTime _dateOnly(DateTime date) {
-  return DateTime(
-    date.year,
-    date.month,
-    date.day,
-  );
+  return DateTime(date.year, date.month, date.day);
 }
 
 DateTime _startOfWeek(DateTime date) {
   final day = _dateOnly(date);
 
-  return day.subtract(
-    Duration(days: day.weekday - 1),
-  );
+  return day.subtract(Duration(days: day.weekday - 1));
 }
 
-int _compareWalks(
-  HomeWalk first,
-  HomeWalk second,
-) {
+int _compareWalks(HomeWalk first, HomeWalk second) {
   final firstDate = first.scheduledAt;
   final secondDate = second.scheduledAt;
 
@@ -1576,9 +1410,7 @@ String _distanceLabel(double distance) {
     return '0 km';
   }
 
-  final decimals = distance == distance.roundToDouble()
-      ? 0
-      : 1;
+  final decimals = distance == distance.roundToDouble() ? 0 : 1;
 
   return '${distance.toStringAsFixed(decimals)} km';
 }
@@ -1605,4 +1437,13 @@ Color _statusColor(HomeWalkStatus status) {
     case HomeWalkStatus.unknown:
       return DogGoTheme.muted;
   }
+}
+
+Map<int, int> _programCounts(List<HomeWalk> walks) {
+  final result = <int, int>{};
+  for (final walk in walks) {
+    final id = walk.programacionId;
+    if (id != null && id > 0) result[id] = (result[id] ?? 0) + 1;
+  }
+  return result;
 }

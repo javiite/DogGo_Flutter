@@ -7,9 +7,7 @@ class UsuarioService {
     if (body is Map<String, dynamic>) return body;
     if (body is Map) return Map<String, dynamic>.from(body);
 
-    return {
-      'data': body,
-    };
+    return {'data': body};
   }
 
   String _mensajeError(
@@ -50,7 +48,8 @@ class UsuarioService {
       throw Exception(_mensajeError(body, errorDefault));
     }
 
-    final data = body['data'] ??
+    final data =
+        body['data'] ??
         body['usuario'] ??
         body['perfil'] ??
         body['resultado'] ??
@@ -223,6 +222,8 @@ class UsuarioService {
     double? longitud,
     String? descripcion,
     String? preferenciasPaseo,
+    String? estadoClave,
+    String? municipioClave,
   }) async {
     final body = {
       'direccion': direccion?.trim(),
@@ -239,6 +240,8 @@ class UsuarioService {
       'Descripcion': descripcion?.trim(),
       'preferenciasPaseo': preferenciasPaseo?.trim(),
       'PreferenciasPaseo': preferenciasPaseo?.trim(),
+      'estadoClave': estadoClave,
+      'municipioClave': municipioClave,
     };
 
     final endpoints = [
@@ -274,13 +277,7 @@ class UsuarioService {
       '/api/DuenioPerfil/foto',
     ];
 
-    final nombresCampo = [
-      'foto',
-      'fotoArchivo',
-      'archivo',
-      'file',
-      'imagen',
-    ];
+    final nombresCampo = ['foto', 'fotoArchivo', 'archivo', 'file', 'imagen'];
 
     Exception? ultimoError;
 

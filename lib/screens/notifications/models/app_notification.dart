@@ -9,11 +9,7 @@ enum AppNotificationCategory {
   general,
 }
 
-enum AppNotificationGroup {
-  today,
-  yesterday,
-  earlier,
-}
+enum AppNotificationGroup { today, yesterday, earlier }
 
 class AppNotification {
   final int? id;
@@ -38,126 +34,90 @@ class AppNotification {
     required this.otherUserName,
   });
 
-  factory AppNotification.fromJson(
-    Map<String, dynamic> json,
-  ) {
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
-      id: _readInt(
-        json,
-        const [
-          'id',
-          'Id',
-          'notificacionId',
-          'NotificacionId',
-        ],
-      ),
-      title: _readText(
-        json,
-        const [
-          'titulo',
-          'Titulo',
-          'title',
-          'asunto',
-          'Asunto',
-        ],
-        fallback: 'Notificación',
-      ),
-      message: _readText(
-        json,
-        const [
-          'mensaje',
-          'Mensaje',
-          'descripcion',
-          'Descripcion',
-          'body',
-          'texto',
-          'Texto',
-        ],
-        fallback: 'Tienes una actualización nueva.',
-      ),
-      type: _readText(
-        json,
-        const [
-          'tipo',
-          'Tipo',
-          'type',
-        ],
-        fallback: 'General',
-      ),
-      createdAt: _readDate(
-        json,
-        const [
-          'fecha',
-          'Fecha',
-          'fechaCreacion',
-          'FechaCreacion',
-          'createdAt',
-          'CreatedAt',
-          'timestamp',
-          'Timestamp',
-        ],
-      ),
-      isRead: _readBool(
-        json,
-        const [
-          'leida',
-          'Leida',
-          'vista',
-          'Vista',
-          'read',
-          'isRead',
-        ],
-      ),
-      referenceId: _readInt(
-        json,
-        const [
-          'referenciaId',
-          'ReferenciaId',
-          'paseoId',
-          'PaseoId',
-          'chatId',
-          'ChatId',
-          'idReferencia',
-          'IdReferencia',
-        ],
-      ),
-      dogName: _readText(
-        json,
-        const [
-          'nombrePerro',
-          'NombrePerro',
-          'perroNombre',
-          'PerroNombre',
-        ],
-        fallback: 'Paseo DogGo',
-      ),
-      otherUserName: _readText(
-        json,
-        const [
-          'nombreUsuario',
-          'NombreUsuario',
-          'otroUsuario',
-          'OtroUsuario',
-          'emisorNombre',
-          'EmisorNombre',
-          'remitente',
-          'Remitente',
-        ],
-        fallback: 'Usuario DogGo',
-      ),
+      id: _readInt(json, const [
+        'id',
+        'Id',
+        'notificacionId',
+        'NotificacionId',
+      ]),
+      title: _readText(json, const [
+        'titulo',
+        'Titulo',
+        'title',
+        'asunto',
+        'Asunto',
+      ], fallback: 'Notificación'),
+      message: _readText(json, const [
+        'mensaje',
+        'Mensaje',
+        'descripcion',
+        'Descripcion',
+        'body',
+        'texto',
+        'Texto',
+      ], fallback: 'Tienes una actualización nueva.'),
+      type: _readText(json, const [
+        'tipo',
+        'Tipo',
+        'type',
+      ], fallback: 'General'),
+      createdAt: _readDate(json, const [
+        'fecha',
+        'Fecha',
+        'fechaCreacion',
+        'FechaCreacion',
+        'createdAt',
+        'CreatedAt',
+        'timestamp',
+        'Timestamp',
+      ]),
+      isRead: _readBool(json, const [
+        'leida',
+        'Leida',
+        'vista',
+        'Vista',
+        'read',
+        'isRead',
+      ]),
+      referenceId: _readInt(json, const [
+        'referenciaId',
+        'ReferenciaId',
+        'paseoId',
+        'PaseoId',
+        'chatId',
+        'ChatId',
+        'idReferencia',
+        'IdReferencia',
+      ]),
+      dogName: _readText(json, const [
+        'nombrePerro',
+        'NombrePerro',
+        'perroNombre',
+        'PerroNombre',
+      ], fallback: 'Paseo DogGo'),
+      otherUserName: _readText(json, const [
+        'nombreUsuario',
+        'NombreUsuario',
+        'otroUsuario',
+        'OtroUsuario',
+        'emisorNombre',
+        'EmisorNombre',
+        'remitente',
+        'Remitente',
+      ], fallback: 'Usuario DogGo'),
     );
   }
 
   AppNotificationCategory get category {
     final value = type.toLowerCase();
 
-    if (value.contains('cancel') ||
-        value.contains('rechaz')) {
+    if (value.contains('cancel') || value.contains('rechaz')) {
       return AppNotificationCategory.cancelled;
     }
 
-    if (value.contains('chat') ||
-        value.contains('mensaje')) {
+    if (value.contains('chat') || value.contains('mensaje')) {
       return AppNotificationCategory.message;
     }
 
@@ -165,8 +125,7 @@ class AppNotification {
       return AppNotificationCategory.request;
     }
 
-    if (value.contains('evidencia') ||
-        value.contains('foto')) {
+    if (value.contains('evidencia') || value.contains('foto')) {
       return AppNotificationCategory.evidence;
     }
 
@@ -177,8 +136,7 @@ class AppNotification {
       return AppNotificationCategory.rating;
     }
 
-    if (value.contains('perfil') ||
-        value.contains('cuenta')) {
+    if (value.contains('perfil') || value.contains('cuenta')) {
       return AppNotificationCategory.profile;
     }
 
@@ -200,20 +158,10 @@ class AppNotification {
     }
 
     final now = DateTime.now();
-    final today = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    );
-    final notificationDay = DateTime(
-      date.year,
-      date.month,
-      date.day,
-    );
+    final today = DateTime(now.year, now.month, now.day);
+    final notificationDay = DateTime(date.year, date.month, date.day);
 
-    final difference = today
-        .difference(notificationDay)
-        .inDays;
+    final difference = today.difference(notificationDay).inDays;
 
     if (difference <= 0) {
       return AppNotificationGroup.today;
@@ -231,15 +179,12 @@ class AppNotification {
         referenceId != null &&
         referenceId! > 0;
   }
-  
-    bool get opensRouteMap {
-    final normalizedType = type
-        .trim()
-        .toLowerCase()
-        .replaceAll(
-          RegExp(r'[^a-z0-9]'),
-          '',
-        );
+
+  bool get opensRouteMap {
+    final normalizedType = type.trim().toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9]'),
+      '',
+    );
 
     return normalizedType == 'rutapaseo' &&
         referenceId != null &&
@@ -247,16 +192,21 @@ class AppNotification {
   }
 
   bool get opensWalks {
-    return category ==
-            AppNotificationCategory.walk ||
-        category ==
-            AppNotificationCategory.request ||
-        category ==
-            AppNotificationCategory.cancelled ||
-        category ==
-            AppNotificationCategory.evidence ||
-        category ==
-            AppNotificationCategory.rating;
+    return category == AppNotificationCategory.walk ||
+        category == AppNotificationCategory.request ||
+        category == AppNotificationCategory.cancelled ||
+        category == AppNotificationCategory.evidence ||
+        category == AppNotificationCategory.rating;
+  }
+
+  bool get opensProgram {
+    final normalized = type.trim().toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9]'),
+      '',
+    );
+    return normalized == 'programacion' &&
+        referenceId != null &&
+        referenceId! > 0;
   }
 
   String get formattedDate {
@@ -271,9 +221,8 @@ class AppNotification {
     }
 
     final now = DateTime.now();
-    final isToday = now.year == date.year &&
-        now.month == date.month &&
-        now.day == date.day;
+    final isToday =
+        now.year == date.year && now.month == date.month && now.day == date.day;
 
     if (isToday) {
       return '${twoDigits(date.hour)}:'
@@ -303,11 +252,9 @@ class AppNotification {
       type: type ?? this.type,
       createdAt: createdAt ?? this.createdAt,
       isRead: isRead ?? this.isRead,
-      referenceId:
-          referenceId ?? this.referenceId,
+      referenceId: referenceId ?? this.referenceId,
       dogName: dogName ?? this.dogName,
-      otherUserName:
-          otherUserName ?? this.otherUserName,
+      otherUserName: otherUserName ?? this.otherUserName,
     );
   }
 
@@ -325,8 +272,7 @@ class AppNotification {
 
       final text = value.toString().trim();
 
-      if (text.isNotEmpty &&
-          text.toLowerCase() != 'null') {
+      if (text.isNotEmpty && text.toLowerCase() != 'null') {
         return text;
       }
     }
@@ -334,10 +280,7 @@ class AppNotification {
     return fallback;
   }
 
-  static int? _readInt(
-    Map<String, dynamic> json,
-    List<String> keys,
-  ) {
+  static int? _readInt(Map<String, dynamic> json, List<String> keys) {
     for (final key in keys) {
       final value = json[key];
 
@@ -349,9 +292,7 @@ class AppNotification {
         return value.toInt();
       }
 
-      final parsed = int.tryParse(
-        value?.toString() ?? '',
-      );
+      final parsed = int.tryParse(value?.toString() ?? '');
 
       if (parsed != null) {
         return parsed;
@@ -361,10 +302,7 @@ class AppNotification {
     return null;
   }
 
-  static bool _readBool(
-    Map<String, dynamic> json,
-    List<String> keys,
-  ) {
+  static bool _readBool(Map<String, dynamic> json, List<String> keys) {
     for (final key in keys) {
       final value = json[key];
 
@@ -376,15 +314,9 @@ class AppNotification {
         return value != 0;
       }
 
-      final text = value
-          ?.toString()
-          .trim()
-          .toLowerCase();
+      final text = value?.toString().trim().toLowerCase();
 
-      if (text == 'true' ||
-          text == '1' ||
-          text == 'si' ||
-          text == 'sí') {
+      if (text == 'true' || text == '1' || text == 'si' || text == 'sí') {
         return true;
       }
     }
@@ -392,10 +324,7 @@ class AppNotification {
     return false;
   }
 
-  static DateTime? _readDate(
-    Map<String, dynamic> json,
-    List<String> keys,
-  ) {
+  static DateTime? _readDate(Map<String, dynamic> json, List<String> keys) {
     for (final key in keys) {
       final value = json[key];
 
@@ -408,22 +337,15 @@ class AppNotification {
       }
 
       if (value is int) {
-        final milliseconds =
-            value < 1000000000000
-                ? value * 1000
-                : value;
+        final milliseconds = value < 1000000000000 ? value * 1000 : value;
 
-        return DateTime
-            .fromMillisecondsSinceEpoch(
-              milliseconds,
-              isUtc: true,
-            )
-            .toLocal();
+        return DateTime.fromMillisecondsSinceEpoch(
+          milliseconds,
+          isUtc: true,
+        ).toLocal();
       }
 
-      final parsed = DateTime.tryParse(
-        value.toString(),
-      );
+      final parsed = DateTime.tryParse(value.toString());
 
       if (parsed != null) {
         return parsed.toLocal();

@@ -13,23 +13,19 @@ class HomeWalkersTab extends StatefulWidget {
   const HomeWalkersTab({super.key});
 
   @override
-  State<HomeWalkersTab> createState() =>
-      _HomeWalkersTabState();
+  State<HomeWalkersTab> createState() => _HomeWalkersTabState();
 }
 
-class _HomeWalkersTabState
-    extends State<HomeWalkersTab> {
+class _HomeWalkersTabState extends State<HomeWalkersTab> {
   late final WalkersController _controller;
 
-  final TextEditingController _searchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
 
-    _controller = WalkersController()
-      ..initialize();
+    _controller = WalkersController()..initialize();
   }
 
   @override
@@ -49,9 +45,8 @@ class _HomeWalkersTabState
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => DetallePaseadorScreen(
-          paseador: walker.toNavigationMap(),
-        ),
+        builder: (_) =>
+            DetallePaseadorScreen(paseador: walker.toNavigationMap()),
       ),
     );
 
@@ -66,20 +61,14 @@ class _HomeWalkersTabState
     final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute<bool>(
-        builder: (_) => CrearPaseoScreen(
-          paseador: walker.toNavigationMap(),
-        ),
+        builder: (_) => CrearPaseoScreen(paseador: walker.toNavigationMap()),
       ),
     );
 
     if (!mounted || created != true) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Paseo solicitado correctamente.',
-        ),
-      ),
+      const SnackBar(content: Text('Paseo solicitado correctamente.')),
     );
 
     await _controller.refresh();
@@ -118,19 +107,11 @@ class _HomeWalkersTabState
 
   Widget _buildHeader(WalkersState state) {
     return Container(
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.tealLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.teal.withValues(
-            alpha: 0.13,
-          ),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.teal.withValues(alpha: 0.13)),
       ),
       child: Row(
         children: [
@@ -139,9 +120,7 @@ class _HomeWalkersTabState
             height: 54,
             decoration: BoxDecoration(
               color: DogGoTheme.card,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
             ),
             child: const Icon(
               Icons.person_search_outlined,
@@ -152,8 +131,7 @@ class _HomeWalkersTabState
           const SizedBox(width: DogGoSpacing.md),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Encuentra un paseador',
@@ -164,20 +142,15 @@ class _HomeWalkersTabState
                   state.loading
                       ? 'Buscando paseadores...'
                       : '${state.availableWalkers} disponibles de ${state.totalWalkers}',
-                  style: DogGoTheme.subtitle(
-                    size: 12.5,
-                  ),
+                  style: DogGoTheme.subtitle(size: 12.5),
                 ),
               ],
             ),
           ),
           IconButton(
             tooltip: 'Actualizar',
-            onPressed:
-                state.loading ? null : _controller.refresh,
-            icon: const Icon(
-              Icons.refresh_rounded,
-            ),
+            onPressed: state.loading ? null : _controller.refresh,
+            icon: const Icon(Icons.refresh_rounded),
           ),
         ],
       ),
@@ -191,9 +164,7 @@ class _HomeWalkersTabState
       onChanged: _controller.search,
       decoration: InputDecoration(
         hintText: 'Buscar por nombre o zona',
-        prefixIcon: const Icon(
-          Icons.search_rounded,
-        ),
+        prefixIcon: const Icon(Icons.search_rounded),
         suffixIcon: state.searchQuery.isNotEmpty
             ? IconButton(
                 tooltip: 'Limpiar búsqueda',
@@ -201,9 +172,7 @@ class _HomeWalkersTabState
                   _searchController.clear();
                   _controller.search('');
                 },
-                icon: const Icon(
-                  Icons.close_rounded,
-                ),
+                icon: const Icon(Icons.close_rounded),
               )
             : null,
       ),
@@ -212,35 +181,22 @@ class _HomeWalkersTabState
 
   Widget _buildFilters(WalkersState state) {
     return Container(
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.tune_rounded,
-                color: DogGoTheme.teal,
-              ),
-              const SizedBox(
-                width: DogGoSpacing.compactGap,
-              ),
+              const Icon(Icons.tune_rounded, color: DogGoTheme.teal),
+              const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
                 child: Text(
                   'Filtrar resultados',
-                  style: DogGoTheme.title(
-                    size: 16,
-                  ),
+                  style: DogGoTheme.title(size: 16),
                 ),
               ),
               if (state.hasActiveFilters)
@@ -252,49 +208,38 @@ class _HomeWalkersTabState
           ),
           const SizedBox(height: DogGoSpacing.md),
           DropdownButtonFormField<String>(
-            initialValue: state.availableZones.contains(
-              state.selectedZone,
-            )
+            initialValue: state.availableZones.contains(state.selectedZone)
                 ? state.selectedZone
                 : WalkersState.allZones,
             decoration: const InputDecoration(
               labelText: 'Zona',
-              prefixIcon: Icon(
-                Icons.location_on_outlined,
-              ),
+              prefixIcon: Icon(Icons.location_on_outlined),
             ),
-            items: state.availableZones.map(
-              (zone) {
-                return DropdownMenuItem<String>(
-                  value: zone,
-                  child: Text(
-                    zone,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              },
-            ).toList(growable: false),
+            items: state.availableZones
+                .map((zone) {
+                  return DropdownMenuItem<String>(
+                    value: zone,
+                    child: Text(zone, overflow: TextOverflow.ellipsis),
+                  );
+                })
+                .toList(growable: false),
             onChanged: _controller.selectZone,
           ),
-          const SizedBox(
-            height: DogGoSpacing.fieldGap,
-          ),
+          const SizedBox(height: DogGoSpacing.fieldGap),
           DropdownButtonFormField<WalkerSort>(
             initialValue: state.sort,
             decoration: const InputDecoration(
               labelText: 'Ordenar por',
-              prefixIcon: Icon(
-                Icons.sort_rounded,
-              ),
+              prefixIcon: Icon(Icons.sort_rounded),
             ),
-            items: WalkerSort.values.map(
-              (sort) {
-                return DropdownMenuItem<WalkerSort>(
-                  value: sort,
-                  child: Text(sort.label),
-                );
-              },
-            ).toList(growable: false),
+            items: WalkerSort.values
+                .map((sort) {
+                  return DropdownMenuItem<WalkerSort>(
+                    value: sort,
+                    child: Text(sort.label),
+                  );
+                })
+                .toList(growable: false),
             onChanged: _controller.setSort,
           ),
           SwitchListTile.adaptive(
@@ -307,9 +252,7 @@ class _HomeWalkersTabState
             ),
             title: Text(
               'Solo disponibles',
-              style: DogGoTheme.body(
-                weight: FontWeight.w800,
-              ),
+              style: DogGoTheme.body(weight: FontWeight.w800),
             ),
           ),
         ],
@@ -321,14 +264,11 @@ class _HomeWalkersTabState
     if (state.loading && state.walkers.isEmpty) {
       return const SizedBox(
         height: 260,
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (state.error != null &&
-        state.walkers.isEmpty) {
+    if (state.error != null && state.walkers.isEmpty) {
       return _MessageCard(
         icon: Icons.error_outline_rounded,
         title: 'No pudimos cargar los paseadores',
@@ -346,8 +286,7 @@ class _HomeWalkersTabState
       return _MessageCard(
         icon: Icons.search_off_rounded,
         title: 'Sin coincidencias',
-        message:
-            'No encontramos paseadores con los filtros seleccionados.',
+        message: 'No encontramos paseadores con los filtros seleccionados.',
         color: DogGoTheme.teal,
         background: DogGoTheme.tealLight,
         actionText: 'Limpiar filtros',
@@ -357,13 +296,10 @@ class _HomeWalkersTabState
 
     return Column(
       children: [
-        for (var index = 0;
-            index < walkers.length;
-            index++) ...[
+        for (var index = 0; index < walkers.length; index++) ...[
           _EmbeddedWalkerCard(
             walker: walkers[index],
-            photoUrl:
-                state.photoUrlFor(walkers[index]),
+            photoUrl: state.photoUrlFor(walkers[index]),
             onView: () {
               _openDetail(walkers[index]);
             },
@@ -372,9 +308,7 @@ class _HomeWalkersTabState
             },
           ),
           if (index < walkers.length - 1)
-            const SizedBox(
-              height: DogGoSpacing.md,
-            ),
+            const SizedBox(height: DogGoSpacing.md),
         ],
       ],
     );
@@ -397,24 +331,17 @@ class _EmbeddedWalkerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
         boxShadow: DogGoTheme.softShadow(),
       ),
       child: Column(
         children: [
           Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 76,
@@ -422,9 +349,7 @@ class _EmbeddedWalkerCard extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: DogGoTheme.tealLight,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
                 child: photoUrl == null
                     ? Center(
@@ -439,7 +364,7 @@ class _EmbeddedWalkerCard extends StatelessWidget {
                     : Image.network(
                         photoUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
+                        errorBuilder: (_, _, _) {
                           return Center(
                             child: Text(
                               walker.initials,
@@ -455,8 +380,7 @@ class _EmbeddedWalkerCard extends StatelessWidget {
               const SizedBox(width: DogGoSpacing.md),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -464,11 +388,8 @@ class _EmbeddedWalkerCard extends StatelessWidget {
                           child: Text(
                             walker.name,
                             maxLines: 1,
-                            overflow:
-                                TextOverflow.ellipsis,
-                            style: DogGoTheme.title(
-                              size: 18,
-                            ),
+                            overflow: TextOverflow.ellipsis,
+                            style: DogGoTheme.title(size: 18),
                           ),
                         ),
                         if (walker.verified)
@@ -479,21 +400,14 @@ class _EmbeddedWalkerCard extends StatelessWidget {
                           ),
                       ],
                     ),
-                    const SizedBox(
-                      height: DogGoSpacing.xs,
-                    ),
+                    const SizedBox(height: DogGoSpacing.xs),
                     Text(
-                      walker.serviceZone,
+                      walker.proximityLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: DogGoTheme.subtitle(
-                        size: 12,
-                      ),
+                      style: DogGoTheme.subtitle(size: 12),
                     ),
-                    const SizedBox(
-                      height:
-                          DogGoSpacing.compactGap,
-                    ),
+                    const SizedBox(height: DogGoSpacing.compactGap),
                     Row(
                       children: [
                         Icon(
@@ -505,9 +419,7 @@ class _EmbeddedWalkerCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          walker.available
-                              ? 'Disponible'
-                              : 'No disponible',
+                          walker.available ? 'Disponible' : 'No disponible',
                           style: DogGoTheme.caption(
                             color: walker.available
                                 ? DogGoTheme.green
@@ -552,9 +464,7 @@ class _EmbeddedWalkerCard extends StatelessWidget {
                 child: Text(
                   walker.experienceLabel,
                   textAlign: TextAlign.end,
-                  style: DogGoTheme.caption(
-                    size: 10.5,
-                  ),
+                  style: DogGoTheme.caption(size: 10.5),
                 ),
               ),
             ],
@@ -568,13 +478,10 @@ class _EmbeddedWalkerCard extends StatelessWidget {
                   child: const Text('Ver perfil'),
                 ),
               ),
-              const SizedBox(
-                width: DogGoSpacing.compactGap,
-              ),
+              const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
                 child: ElevatedButton(
-                  onPressed:
-                      walker.available ? onRequest : null,
+                  onPressed: walker.available ? onRequest : null,
                   child: const Text('Solicitar'),
                 ),
               ),
@@ -612,12 +519,8 @@ class _MessageCard extends StatelessWidget {
       padding: const EdgeInsets.all(DogGoSpacing.lg),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
         children: [
@@ -626,15 +529,9 @@ class _MessageCard extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               color: background,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 28,
-            ),
+            child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: DogGoSpacing.md),
           Text(
@@ -646,15 +543,10 @@ class _MessageCard extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: DogGoTheme.subtitle(
-              size: 12.5,
-            ),
+            style: DogGoTheme.subtitle(size: 12.5),
           ),
           const SizedBox(height: DogGoSpacing.md),
-          OutlinedButton(
-            onPressed: onAction,
-            child: Text(actionText),
-          ),
+          OutlinedButton(onPressed: onAction, child: Text(actionText)),
         ],
       ),
     );

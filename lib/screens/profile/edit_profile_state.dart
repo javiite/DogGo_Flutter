@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../location/models/mexico_location.dart';
+
 class EditProfileState {
   final bool loading;
   final bool saving;
@@ -10,6 +12,11 @@ class EditProfileState {
   final double? latitude;
   final double? longitude;
   final bool ownerProfileLoaded;
+  final List<MexicoState> states;
+  final List<MexicoMunicipality> municipalities;
+  final String? selectedStateCode;
+  final String? selectedMunicipalityCode;
+  final bool loadingMunicipalities;
 
   const EditProfileState({
     this.loading = false,
@@ -21,6 +28,11 @@ class EditProfileState {
     this.latitude,
     this.longitude,
     this.ownerProfileLoaded = false,
+    this.states = const [],
+    this.municipalities = const [],
+    this.selectedStateCode,
+    this.selectedMunicipalityCode,
+    this.loadingMunicipalities = false,
   });
 
   bool get hasLocation {
@@ -34,8 +46,7 @@ class EditProfileState {
 
   bool get hasPhoto {
     return selectedPhoto != null ||
-        (currentPhotoUrl != null &&
-            currentPhotoUrl!.trim().isNotEmpty);
+        (currentPhotoUrl != null && currentPhotoUrl!.trim().isNotEmpty);
   }
 
   EditProfileState copyWith({
@@ -52,6 +63,13 @@ class EditProfileState {
     double? longitude,
     bool clearLocation = false,
     bool? ownerProfileLoaded,
+    List<MexicoState>? states,
+    List<MexicoMunicipality>? municipalities,
+    String? selectedStateCode,
+    bool clearSelectedState = false,
+    String? selectedMunicipalityCode,
+    bool clearSelectedMunicipality = false,
+    bool? loadingMunicipalities,
   }) {
     return EditProfileState(
       loading: loading ?? this.loading,
@@ -64,26 +82,30 @@ class EditProfileState {
       selectedPhoto: clearSelectedPhoto
           ? null
           : selectedPhoto ?? this.selectedPhoto,
-      latitude:
-          clearLocation ? null : latitude ?? this.latitude,
-      longitude:
-          clearLocation ? null : longitude ?? this.longitude,
-      ownerProfileLoaded:
-          ownerProfileLoaded ?? this.ownerProfileLoaded,
+      latitude: clearLocation ? null : latitude ?? this.latitude,
+      longitude: clearLocation ? null : longitude ?? this.longitude,
+      ownerProfileLoaded: ownerProfileLoaded ?? this.ownerProfileLoaded,
+      states: states ?? this.states,
+      municipalities: municipalities ?? this.municipalities,
+      selectedStateCode: clearSelectedState
+          ? null
+          : selectedStateCode ?? this.selectedStateCode,
+      selectedMunicipalityCode: clearSelectedMunicipality
+          ? null
+          : selectedMunicipalityCode ?? this.selectedMunicipalityCode,
+      loadingMunicipalities:
+          loadingMunicipalities ?? this.loadingMunicipalities,
     );
   }
 
   String? publicUrl(dynamic value) {
     final path = value?.toString().trim();
 
-    if (path == null ||
-        path.isEmpty ||
-        path.toLowerCase() == 'null') {
+    if (path == null || path.isEmpty || path.toLowerCase() == 'null') {
       return null;
     }
 
-    if (path.startsWith('http://') ||
-        path.startsWith('https://')) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
@@ -95,8 +117,7 @@ class EditProfileState {
         ? server.substring(0, server.length - 1)
         : server;
 
-    final cleanPath =
-        path.startsWith('/') ? path : '/$path';
+    final cleanPath = path.startsWith('/') ? path : '/$path';
 
     return '$cleanServer$cleanPath';
   }
@@ -106,8 +127,6 @@ class EditProfileState {
     if (value is double) return value;
     if (value is int) return value.toDouble();
 
-    return double.tryParse(
-      value.toString().trim().replaceAll(',', '.'),
-    );
+    return double.tryParse(value.toString().trim().replaceAll(',', '.'));
   }
 }

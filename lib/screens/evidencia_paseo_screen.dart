@@ -10,8 +10,7 @@ import 'evidence/evidence_controller.dart';
 import 'evidence/evidence_state.dart';
 import 'evidence/models/evidence_type.dart';
 
-class EvidenciaPaseoScreen
-    extends StatefulWidget {
+class EvidenciaPaseoScreen extends StatefulWidget {
   final int paseoId;
   final String tipo;
   final String nombrePerro;
@@ -26,12 +25,10 @@ class EvidenciaPaseoScreen
   });
 
   @override
-  State<EvidenciaPaseoScreen> createState() =>
-      _EvidenciaPaseoScreenState();
+  State<EvidenciaPaseoScreen> createState() => _EvidenciaPaseoScreenState();
 }
 
-class _EvidenciaPaseoScreenState
-    extends State<EvidenciaPaseoScreen> {
+class _EvidenciaPaseoScreenState extends State<EvidenciaPaseoScreen> {
   late final EvidenceController _controller;
 
   @override
@@ -53,8 +50,7 @@ class _EvidenciaPaseoScreenState
   }
 
   Future<void> _takePhoto() async {
-    final result =
-        await _controller.takePhoto();
+    final result = await _controller.takePhoto();
 
     if (!mounted) {
       return;
@@ -64,8 +60,7 @@ class _EvidenciaPaseoScreenState
   }
 
   Future<void> _chooseFromGallery() async {
-    final result =
-        await _controller.chooseFromGallery();
+    final result = await _controller.chooseFromGallery();
 
     if (!mounted) {
       return;
@@ -74,16 +69,12 @@ class _EvidenciaPaseoScreenState
     await _handleSelectionResult(result);
   }
 
-  Future<void> _handleSelectionResult(
-    EvidenceResult result,
-  ) async {
-    if (result.code ==
-        EvidenceResultCode.cancelled) {
+  Future<void> _handleSelectionResult(EvidenceResult result) async {
+    if (result.code == EvidenceResultCode.cancelled) {
       return;
     }
 
-    if (result.code ==
-        EvidenceResultCode.permissionDenied) {
+    if (result.code == EvidenceResultCode.permissionDenied) {
       await _showPermissionDialog();
       return;
     }
@@ -94,23 +85,15 @@ class _EvidenciaPaseoScreenState
   }
 
   Future<void> _showPermissionDialog() async {
-    final openSettings =
-        await showDialog<bool>(
+    final openSettings = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Row(
             children: [
-              Icon(
-                Icons.camera_alt_outlined,
-                color: DogGoTheme.teal,
-              ),
+              Icon(Icons.camera_alt_outlined, color: DogGoTheme.teal),
               SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Permiso de cámara',
-                ),
-              ),
+              Expanded(child: Text('Permiso de cámara')),
             ],
           ),
           content: const Text(
@@ -118,22 +101,12 @@ class _EvidenciaPaseoScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                false,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                true,
-              ),
-              child: const Text(
-                'Abrir configuración',
-              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Abrir configuración'),
             ),
           ],
         );
@@ -149,32 +122,25 @@ class _EvidenciaPaseoScreenState
     final state = _controller.state;
 
     if (!state.hasFile) {
-      _showMessage(
-        'Selecciona o toma una fotografía primero.',
-      );
+      _showMessage('Selecciona o toma una fotografía primero.');
       return;
     }
 
-    final confirmed =
-        await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: Row(
             children: [
               Icon(
-                state.type ==
-                        EvidenceType.start
-                    ? Icons
-                        .play_circle_outline_rounded
+                state.type == EvidenceType.start
+                    ? Icons.play_circle_outline_rounded
                     : Icons.flag_outlined,
                 color: _typeColor(state.type),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Confirmar ${state.type.shortTitle.toLowerCase()}',
-                ),
+                child: Text('Confirmar ${state.type.shortTitle.toLowerCase()}'),
               ),
             ],
           ),
@@ -184,22 +150,12 @@ class _EvidenciaPaseoScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                false,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Revisar'),
             ),
             ElevatedButton.icon(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                true,
-              ),
-              icon: const Icon(
-                Icons.cloud_upload_outlined,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.cloud_upload_outlined),
               label: const Text('Enviar'),
             ),
           ],
@@ -211,37 +167,28 @@ class _EvidenciaPaseoScreenState
       return;
     }
 
-    final result =
-        await _controller.upload();
+    final result = await _controller.upload();
 
     if (!mounted) {
       return;
     }
 
-    _showMessage(
-      result.message,
-      success: result.success,
-    );
+    _showMessage(result.message, success: result.success);
 
     if (result.success &&
-        result.code ==
-            EvidenceResultCode.uploaded) {
+        (result.code == EvidenceResultCode.uploaded ||
+            result.code == EvidenceResultCode.queued)) {
       Navigator.pop(context, true);
     }
   }
 
-  void _showMessage(
-    String message, {
-    bool success = false,
-  }) {
+  void _showMessage(String message, {bool success = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: success
-              ? DogGoTheme.teal
-              : DogGoTheme.ink,
+          backgroundColor: success ? DogGoTheme.teal : DogGoTheme.ink,
         ),
       );
   }
@@ -255,13 +202,8 @@ class _EvidenciaPaseoScreenState
 
         return Scaffold(
           backgroundColor: DogGoTheme.cream,
-          appBar: AppBar(
-            title: Text(
-              state.type.shortTitle,
-            ),
-          ),
-          bottomNavigationBar:
-              _UploadBottomBar(
+          appBar: AppBar(title: Text(state.type.shortTitle)),
+          bottomNavigationBar: _UploadBottomBar(
             state: state,
             onUpload: _upload,
           ),
@@ -273,41 +215,31 @@ class _EvidenciaPaseoScreenState
               125,
             ),
             children: [
-              _EvidenceHero(
-                state: state,
-              ),
+              _EvidenceHero(state: state),
               if (state.error != null) ...[
                 const SizedBox(height: 14),
                 DogGoErrorView(
-                  title:
-                      'No pudimos procesar la evidencia',
+                  title: 'No pudimos procesar la evidencia',
                   message: state.error!,
-                  icon:
-                      Icons.photo_camera_back_outlined,
+                  icon: Icons.photo_camera_back_outlined,
                   compact: true,
                 ),
               ],
               const SizedBox(height: 18),
               _EvidencePreview(
                 state: state,
-                onRemove:
-                    _controller.removeSelectedFile,
+                onRemove: _controller.removeSelectedFile,
               ),
               const SizedBox(height: 13),
               _SourceButtons(
                 state: state,
                 onCamera: _takePhoto,
-                onGallery:
-                    _chooseFromGallery,
+                onGallery: _chooseFromGallery,
               ),
               const SizedBox(height: 22),
-              _InstructionsCard(
-                type: state.type,
-              ),
+              _InstructionsCard(type: state.type),
               const SizedBox(height: 14),
-              _EvidenceInformation(
-                state: state,
-              ),
+              _EvidenceInformation(state: state),
               const SizedBox(height: 14),
               const _PrivacyCard(),
             ],
@@ -321,9 +253,7 @@ class _EvidenciaPaseoScreenState
 class _EvidenceHero extends StatelessWidget {
   final EvidenceState state;
 
-  const _EvidenceHero({
-    required this.state,
-  });
+  const _EvidenceHero({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -333,9 +263,7 @@ class _EvidenceHero extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: .17),
@@ -354,34 +282,24 @@ class _EvidenceHero extends StatelessWidget {
               width: 145,
               height: 145,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(
-                  alpha: .08,
-                ),
+                color: Colors.white.withValues(alpha: .08),
                 shape: BoxShape.circle,
               ),
             ),
           ),
           Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 62,
                 height: 62,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(
-                    alpha: .14,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.large,
-                  ),
+                  color: Colors.white.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(DogGoRadius.large),
                 ),
                 child: Icon(
-                  state.type ==
-                          EvidenceType.start
-                      ? Icons
-                          .play_circle_outline_rounded
+                  state.type == EvidenceType.start
+                      ? Icons.play_circle_outline_rounded
                       : Icons.flag_outlined,
                   color: Colors.white,
                   size: 31,
@@ -390,23 +308,18 @@ class _EvidenceHero extends StatelessWidget {
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       state.type.title,
-                      style: DogGoTheme.title(
-                        size: 21,
-                        color: Colors.white,
-                      ),
+                      style: DogGoTheme.title(size: 21, color: Colors.white),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       state.type.description,
                       style: DogGoTheme.subtitle(
                         size: 11.5,
-                        color: Colors.white
-                            .withValues(alpha: .84),
+                        color: Colors.white.withValues(alpha: .84),
                       ),
                     ),
                     const SizedBox(height: 9),
@@ -415,15 +328,12 @@ class _EvidenceHero extends StatelessWidget {
                       runSpacing: 7,
                       children: [
                         _HeroChip(
-                          icon:
-                              Icons.pets_rounded,
+                          icon: Icons.pets_rounded,
                           text: state.petName,
                         ),
                         _HeroChip(
-                          icon: Icons
-                              .directions_walk_rounded,
-                          text:
-                              state.walkerName,
+                          icon: Icons.directions_walk_rounded,
+                          text: state.walkerName,
                         ),
                       ],
                     ),
@@ -442,36 +352,21 @@ class _HeroChip extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _HeroChip({
-    required this.icon,
-    required this.text,
-  });
+  const _HeroChip({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(
-        maxWidth: 210,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 5,
-      ),
+      constraints: const BoxConstraints(maxWidth: 210),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color:
-            Colors.white.withValues(alpha: .13),
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.pill,
-        ),
+        color: Colors.white.withValues(alpha: .13),
+        borderRadius: BorderRadius.circular(DogGoRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: Colors.white,
-            size: 14,
-          ),
+          Icon(icon, color: Colors.white, size: 14),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -495,10 +390,7 @@ class _EvidencePreview extends StatelessWidget {
   final EvidenceState state;
   final VoidCallback onRemove;
 
-  const _EvidencePreview({
-    required this.state,
-    required this.onRemove,
-  });
+  const _EvidencePreview({required this.state, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -508,13 +400,10 @@ class _EvidencePreview extends StatelessWidget {
       height: 330,
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
         border: Border.all(
           color: state.hasFile
-              ? _typeColor(state.type)
-                  .withValues(alpha: .25)
+              ? _typeColor(state.type).withValues(alpha: .25)
               : DogGoTheme.border,
         ),
         boxShadow: DogGoTheme.softShadow(
@@ -525,14 +414,8 @@ class _EvidencePreview extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: file == null
-          ? _EmptyPreview(
-              type: state.type,
-            )
-          : _SelectedPreview(
-              file: file,
-              state: state,
-              onRemove: onRemove,
-            ),
+          ? _EmptyPreview(type: state.type)
+          : _SelectedPreview(file: file, state: state, onRemove: onRemove),
     );
   }
 }
@@ -540,15 +423,12 @@ class _EvidencePreview extends StatelessWidget {
 class _EmptyPreview extends StatelessWidget {
   final EvidenceType type;
 
-  const _EmptyPreview({
-    required this.type,
-  });
+  const _EmptyPreview({required this.type});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisAlignment:
-          MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
           width: 78,
@@ -571,14 +451,11 @@ class _EmptyPreview extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 30,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Text(
             'Puedes tomarla ahora o elegir una imagen reciente de tu galería.',
             textAlign: TextAlign.center,
-            style:
-                DogGoTheme.subtitle(size: 11.5),
+            style: DogGoTheme.subtitle(size: 11.5),
           ),
         ),
       ],
@@ -605,7 +482,7 @@ class _SelectedPreview extends StatelessWidget {
         Image.file(
           file,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) {
+          errorBuilder: (_, _, _) {
             return const Center(
               child: Icon(
                 Icons.broken_image_outlined,
@@ -622,12 +499,8 @@ class _SelectedPreview extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(11),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(
-                alpha: .58,
-              ),
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              color: Colors.black.withValues(alpha: .58),
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
             ),
             child: Row(
               children: [
@@ -639,25 +512,21 @@ class _SelectedPreview extends StatelessWidget {
                 const SizedBox(width: 7),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Fotografía lista',
                         style: DogGoTheme.body(
                           size: 10.5,
                           color: Colors.white,
-                          weight:
-                              FontWeight.w800,
+                          weight: FontWeight.w800,
                         ),
                       ),
                       Text(
                         state.fileSizeLabel,
                         style: DogGoTheme.caption(
                           size: 8.5,
-                          color: Colors.white
-                              .withValues(
-                                  alpha: .72),
+                          color: Colors.white.withValues(alpha: .72),
                         ),
                       ),
                     ],
@@ -671,18 +540,12 @@ class _SelectedPreview extends StatelessWidget {
           right: 12,
           top: 12,
           child: IconButton(
-            onPressed:
-                state.busy ? null : onRemove,
+            onPressed: state.busy ? null : onRemove,
             tooltip: 'Eliminar fotografía',
-            icon: const Icon(
-              Icons.close_rounded,
-            ),
+            icon: const Icon(Icons.close_rounded),
             color: Colors.white,
             style: IconButton.styleFrom(
-              backgroundColor:
-                  Colors.black.withValues(
-                alpha: .55,
-              ),
+              backgroundColor: Colors.black.withValues(alpha: .55),
             ),
           ),
         ),
@@ -708,41 +571,26 @@ class _SourceButtons extends StatelessWidget {
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed:
-                state.busy ? null : onCamera,
+            onPressed: state.busy ? null : onCamera,
             icon: state.selecting
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child:
-                        CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
-                : const Icon(
-                    Icons.camera_alt_outlined,
-                  ),
-            label: Text(
-              state.hasFile
-                  ? 'Tomar otra'
-                  : 'Cámara',
-            ),
+                : const Icon(Icons.camera_alt_outlined),
+            label: Text(state.hasFile ? 'Tomar otra' : 'Cámara'),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: OutlinedButton.icon(
-            onPressed:
-                state.busy ? null : onGallery,
-            icon: const Icon(
-              Icons.photo_library_outlined,
-            ),
-            label: Text(
-              state.hasFile
-                  ? 'Cambiar'
-                  : 'Galería',
-            ),
+            onPressed: state.busy ? null : onGallery,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: Text(state.hasFile ? 'Cambiar' : 'Galería'),
           ),
         ),
       ],
@@ -753,9 +601,7 @@ class _SourceButtons extends StatelessWidget {
 class _InstructionsCard extends StatelessWidget {
   final EvidenceType type;
 
-  const _InstructionsCard({
-    required this.type,
-  });
+  const _InstructionsCard({required this.type});
 
   @override
   Widget build(BuildContext context) {
@@ -766,106 +612,73 @@ class _InstructionsCard extends StatelessWidget {
       iconColor: _typeColor(type),
       iconBackground: _typeSurface(type),
       title: 'Antes de tomarla',
-      subtitle:
-          'Revisa estas recomendaciones',
+      subtitle: 'Revisa estas recomendaciones',
       child: Column(
-        children: List.generate(
-          instructions.length,
-          (index) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: index ==
-                        instructions.length - 1
-                    ? 0
-                    : 12,
-              ),
-              child: Row(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 25,
-                    height: 25,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: _typeSurface(type),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '${index + 1}',
-                      style: DogGoTheme.caption(
-                        size: 9,
-                        color: _typeColor(type),
-                        weight:
-                            FontWeight.w900,
-                      ),
+        children: List.generate(instructions.length, (index) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index == instructions.length - 1 ? 0 : 12,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 25,
+                  height: 25,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _typeSurface(type),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '${index + 1}',
+                    style: DogGoTheme.caption(
+                      size: 9,
+                      color: _typeColor(type),
+                      weight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      instructions[index],
-                      style: DogGoTheme.body(
-                        size: 11,
-                        weight:
-                            FontWeight.w600,
-                      ),
-                    ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    instructions[index],
+                    style: DogGoTheme.body(size: 11, weight: FontWeight.w600),
                   ),
-                ],
-              ),
-            );
-          },
-        ),
+                ),
+              ],
+            ),
+          );
+        }),
       ),
     );
   }
 }
 
-class _EvidenceInformation
-    extends StatelessWidget {
+class _EvidenceInformation extends StatelessWidget {
   final EvidenceState state;
 
-  const _EvidenceInformation({
-    required this.state,
-  });
+  const _EvidenceInformation({required this.state});
 
   @override
   Widget build(BuildContext context) {
     return _InformationCard(
       icon: Icons.info_outline_rounded,
       iconColor: DogGoTheme.orange,
-      iconBackground:
-          DogGoTheme.orangeLight,
+      iconBackground: DogGoTheme.orangeLight,
       title: 'Datos del archivo',
-      subtitle:
-          'La imagen se optimiza antes de seleccionarse',
+      subtitle: 'La imagen se optimiza antes de seleccionarse',
       child: Column(
         children: [
-          _InformationRow(
-            label: 'Paseo',
-            value: '#${state.walkId}',
-          ),
+          _InformationRow(label: 'Paseo', value: '#${state.walkId}'),
           const Divider(height: 22),
-          _InformationRow(
-            label: 'Tipo',
-            value: state.type.title,
-          ),
+          _InformationRow(label: 'Tipo', value: state.type.title),
           const Divider(height: 22),
-          _InformationRow(
-            label: 'Archivo',
-            value: state.fileName,
-          ),
+          _InformationRow(label: 'Archivo', value: state.fileName),
           const Divider(height: 22),
-          _InformationRow(
-            label: 'Tamaño',
-            value: state.fileSizeLabel,
-          ),
+          _InformationRow(label: 'Tamaño', value: state.fileSizeLabel),
           const Divider(height: 22),
-          const _InformationRow(
-            label: 'Límite',
-            value: '12 MB',
-          ),
+          const _InformationRow(label: 'Límite', value: '12 MB'),
         ],
       ),
     );
@@ -881,13 +694,10 @@ class _PrivacyCard extends StatelessWidget {
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: DogGoTheme.purpleLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.privacy_tip_outlined,
@@ -915,10 +725,7 @@ class _UploadBottomBar extends StatelessWidget {
   final EvidenceState state;
   final VoidCallback onUpload;
 
-  const _UploadBottomBar({
-    required this.state,
-    required this.onUpload,
-  });
+  const _UploadBottomBar({required this.state, required this.onUpload});
 
   @override
   Widget build(BuildContext context) {
@@ -932,19 +739,11 @@ class _UploadBottomBar extends StatelessWidget {
           12,
         ),
         decoration: BoxDecoration(
-          color: DogGoTheme.card.withValues(
-            alpha: .98,
-          ),
-          border: const Border(
-            top: BorderSide(
-              color: DogGoTheme.border,
-            ),
-          ),
+          color: DogGoTheme.card.withValues(alpha: .98),
+          border: const Border(top: BorderSide(color: DogGoTheme.border)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
-                alpha: .04,
-              ),
+              color: Colors.black.withValues(alpha: .04),
               blurRadius: 17,
               offset: const Offset(0, -5),
             ),
@@ -953,27 +752,23 @@ class _UploadBottomBar extends StatelessWidget {
         child: SizedBox(
           height: 52,
           child: ElevatedButton.icon(
-            onPressed:
-                state.canUpload ? onUpload : null,
+            onPressed: state.canUpload ? onUpload : null,
             icon: state.uploading
                 ? const SizedBox(
                     width: 19,
                     height: 19,
-                    child:
-                        CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
-                : const Icon(
-                    Icons.cloud_upload_outlined,
-                  ),
+                : const Icon(Icons.cloud_upload_outlined),
             label: Text(
               state.uploading
                   ? 'Subiendo evidencia...'
                   : state.hasFile
-                      ? 'Confirmar y enviar'
-                      : 'Selecciona una fotografía',
+                  ? 'Confirmar y enviar'
+                  : 'Selecciona una fotografía',
             ),
           ),
         ),
@@ -1005,16 +800,11 @@ class _InformationCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -1023,36 +813,18 @@ class _InformationCard extends StatelessWidget {
                 height: 43,
                 decoration: BoxDecoration(
                   color: iconBackground,
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 21,
-                ),
+                child: Icon(icon, color: iconColor, size: 21),
               ),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: DogGoTheme.title(
-                        size: 16,
-                      ),
-                    ),
+                    Text(title, style: DogGoTheme.title(size: 16)),
                     const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: DogGoTheme.caption(
-                        size: 9.5,
-                      ),
-                    ),
+                    Text(subtitle, style: DogGoTheme.caption(size: 9.5)),
                   ],
                 ),
               ),
@@ -1070,24 +842,17 @@ class _InformationRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InformationRow({
-    required this.label,
-    required this.value,
-  });
+  const _InformationRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Text(
             label,
-            style: DogGoTheme.body(
-              size: 10.5,
-              color: DogGoTheme.muted,
-            ),
+            style: DogGoTheme.body(size: 10.5, color: DogGoTheme.muted),
           ),
         ),
         const SizedBox(width: 12),
@@ -1097,10 +862,7 @@ class _InformationRow extends StatelessWidget {
             textAlign: TextAlign.right,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: DogGoTheme.body(
-              size: 10.5,
-              weight: FontWeight.w800,
-            ),
+            style: DogGoTheme.body(size: 10.5, weight: FontWeight.w800),
           ),
         ),
       ],

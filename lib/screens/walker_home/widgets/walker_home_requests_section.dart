@@ -27,7 +27,18 @@ class WalkerHomeRequestsSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final visible = requests.take(3).toList(growable: false);
+    final grouped = <HomeWalk>[];
+    final counts = <int, int>{};
+    final seen = <int>{};
+    for (final walk in requests) {
+      final programId = walk.programacionId;
+      if (programId != null) {
+        counts[programId] = (counts[programId] ?? 0) + 1;
+        if (!seen.add(programId)) continue;
+      }
+      grouped.add(walk);
+    }
+    final visible = grouped.take(3).toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,18 +60,12 @@ class WalkerHomeRequestsSection extends StatelessWidget {
                   SizedBox(height: 3),
                   Text(
                     'Responde para que el dueño pueda organizarse.',
-                    style: TextStyle(
-                      color: Color(0xFF74767E),
-                      fontSize: 11.5,
-                    ),
+                    style: TextStyle(color: Color(0xFF74767E), fontSize: 11.5),
                   ),
                 ],
               ),
             ),
-            TextButton(
-              onPressed: onSeeAll,
-              child: const Text('Ver todas'),
-            ),
+            TextButton(onPressed: onSeeAll, child: const Text('Ver todas')),
           ],
         ),
         const SizedBox(height: 12),
@@ -69,6 +74,9 @@ class WalkerHomeRequestsSection extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 11),
             child: _RequestCard(
               walk: walk,
+              programCount: walk.programacionId == null
+                  ? 0
+                  : counts[walk.programacionId] ?? 0,
               loading: isActingOn(walk),
               onDetails: () => onDetails(walk),
               onAccept: () => onAccept(walk),
@@ -83,6 +91,7 @@ class WalkerHomeRequestsSection extends StatelessWidget {
 
 class _RequestCard extends StatelessWidget {
   final HomeWalk walk;
+  final int programCount;
   final bool loading;
   final VoidCallback onDetails;
   final VoidCallback onAccept;
@@ -90,6 +99,7 @@ class _RequestCard extends StatelessWidget {
 
   const _RequestCard({
     required this.walk,
+    this.programCount = 0,
     required this.loading,
     required this.onDetails,
     required this.onAccept,
@@ -131,7 +141,9 @@ class _RequestCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        walk.petName,
+                        programCount > 1
+                            ? 'Programación · $programCount paseos'
+                            : walk.petName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -178,6 +190,15 @@ class _RequestCard extends StatelessWidget {
             const LinearProgressIndicator(
               minHeight: 3,
               color: Color(0xFFD87812),
+            )
+          else if (programCount > 1)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onDetails,
+                icon: const Icon(Icons.event_note_rounded),
+                label: const Text('Revisar programación'),
+              ),
             )
           else
             Row(

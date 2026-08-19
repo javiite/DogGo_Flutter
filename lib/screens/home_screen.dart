@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/session_service.dart';
+import '../shared/widgets/offline_sync_banner.dart';
 import '../theme/doggo_theme.dart';
 import 'chat_paseo_screen.dart';
+import 'availability/availability_screen.dart';
 import 'configuracion_screen.dart';
 import 'detalle_paseo_screen.dart';
 import 'home/home_controller.dart';
@@ -30,6 +32,7 @@ import 'login_screen.dart';
 import 'mapa_paseo_screen.dart';
 import 'mis_perros_screen.dart';
 import 'mis_paseos_screen.dart';
+import 'programacion_paseos_screen.dart';
 import 'notificaciones_screen.dart';
 import 'perfil_screen.dart';
 import 'routes/saved_routes_screen.dart';
@@ -106,6 +109,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openWalkDetails(HomeWalk walk) async {
+    final programacionId = walk.programacionId;
+    if (programacionId != null && programacionId > 0) {
+      await _open(
+        ProgramacionPaseosScreen(
+          programacionId: programacionId,
+          rol: _state.role,
+        ),
+      );
+      return;
+    }
     final id = walk.id;
 
     if (id == null || id <= 0) {
@@ -492,6 +505,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onMenuTap: _showMenu,
                 ),
               ),
+              SliverToBoxAdapter(child: OfflineSyncBanner()),
               SliverToBoxAdapter(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 280),
@@ -549,9 +563,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       case 3:
         return HomeExploreTab(
+          isWalker: _state.isWalker,
           onWalkers: _openWalkersTab,
           onPets: () {
             _open(const MisPerrosScreen());
+          },
+          onAvailability: () {
+            _open(const AvailabilityScreen());
           },
           onWalks: () {
             _open(const MisPaseosScreen());
@@ -685,12 +703,23 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final programCount = walk.programacionId == null
+        ? 0
+        : _state.walks
+              .where((item) => item.programacionId == walk.programacionId)
+              .length;
     return HomeWalkSection(
       loading: _state.walksLoading,
       errorMessage: _state.walksError,
-      eyebrow: walk.status.eyebrow,
-      title: 'Paseo para ${walk.petName}',
-      subtitle: '${walk.formattedSchedule} · ${_walkSubtitle(walk)}',
+      eyebrow: programCount > 1
+          ? 'PROGRAMACIÓN · $programCount PASEOS'
+          : walk.status.eyebrow,
+      title: programCount > 1
+          ? 'Próximo paseo para ${walk.petName}'
+          : 'Paseo para ${walk.petName}',
+      subtitle: programCount > 1
+          ? '${walk.formattedSchedule} · ${_walkSubtitle(walk)} · Toca para ver el paquete'
+          : '${walk.formattedSchedule} · ${_walkSubtitle(walk)}',
       statusText: walk.status.label,
       statusColor: _walkStatusColor(walk.status),
       imageUrl: walk.imageUrl,

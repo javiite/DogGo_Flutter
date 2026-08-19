@@ -6,6 +6,19 @@ class Pet {
   final String breed;
   final int? age;
   final String size;
+  final double? weight;
+  final String? sex;
+  final bool? sterilized;
+  final String? temperament;
+  final String? energyLevel;
+  final bool? socialWithDogs;
+  final bool? socialWithPeople;
+  final bool? socialWithChildren;
+  final String? leashBehavior;
+  final bool? reactive;
+  final bool? escapeRisk;
+  final String? fearsTriggers;
+  final String? knownCommands;
   final String notes;
   final String? photoPath;
   final List<PetPhoto> photos;
@@ -17,144 +30,149 @@ class Pet {
     required this.breed,
     required this.age,
     required this.size,
+    this.weight,
+    this.sex,
+    this.sterilized,
+    this.temperament,
+    this.energyLevel,
+    this.socialWithDogs,
+    this.socialWithPeople,
+    this.socialWithChildren,
+    this.leashBehavior,
+    this.reactive,
+    this.escapeRisk,
+    this.fearsTriggers,
+    this.knownCommands,
     required this.notes,
     required this.photoPath,
     this.photos = const [],
     required this.rawData,
   });
 
-  factory Pet.fromMap(
-    Map<String, dynamic> map,
-  ) {
+  factory Pet.fromMap(Map<String, dynamic> map) {
     final parsedPhotos = PetPhoto.listFrom(
-      _value(
-        map,
-        const [
-          'fotos',
-          'Fotos',
-          'photos',
-          'Photos',
-          'galeria',
-          'Galeria',
-        ],
-      ),
+      _value(map, const [
+        'fotos',
+        'Fotos',
+        'photos',
+        'Photos',
+        'galeria',
+        'Galeria',
+      ]),
     );
 
     final legacyPhoto = _safeNullableText(
-      _value(
-        map,
-        const [
-          'fotoUrl',
-          'FotoUrl',
-          'foto',
-          'Foto',
-          'imagenUrl',
-          'ImagenUrl',
-          'urlFoto',
-          'UrlFoto',
-          'fotoPerroUrl',
-          'FotoPerroUrl',
-          'photoUrl',
-          'PhotoUrl',
-        ],
-      ),
+      _value(map, const [
+        'fotoUrl',
+        'FotoUrl',
+        'foto',
+        'Foto',
+        'imagenUrl',
+        'ImagenUrl',
+        'urlFoto',
+        'UrlFoto',
+        'fotoPerroUrl',
+        'FotoPerroUrl',
+        'photoUrl',
+        'PhotoUrl',
+      ]),
     );
 
-    final primaryGalleryPhoto =
-        parsedPhotos
-            .where((photo) => photo.isPrimary)
-            .firstOrNull;
+    final primaryGalleryPhoto = parsedPhotos
+        .where((photo) => photo.isPrimary)
+        .firstOrNull;
 
     return Pet(
-      id: _safeInt(
-            _value(
-              map,
-              const [
-                'id',
-                'Id',
-                'perroId',
-                'PerroId',
-                'mascotaId',
-                'MascotaId',
-              ],
-            ),
+      id:
+          _safeInt(
+            _value(map, const [
+              'id',
+              'Id',
+              'perroId',
+              'PerroId',
+              'mascotaId',
+              'MascotaId',
+            ]),
           ) ??
           0,
       name: _safeText(
-        _value(
-          map,
-          const [
-            'nombre',
-            'Nombre',
-            'nombrePerro',
-            'NombrePerro',
-            'name',
-            'Name',
-          ],
-        ),
+        _value(map, const [
+          'nombre',
+          'Nombre',
+          'nombrePerro',
+          'NombrePerro',
+          'name',
+          'Name',
+        ]),
         fallback: 'Mascota',
       ),
       breed: _safeText(
-        _value(
-          map,
-          const [
-            'raza',
-            'Raza',
-            'breed',
-            'Breed',
-          ],
-        ),
+        _value(map, const ['raza', 'Raza', 'breed', 'Breed']),
         fallback: 'Sin raza registrada',
       ),
-      age: _safeInt(
-        _value(
-          map,
-          const [
-            'edad',
-            'Edad',
-            'age',
-            'Age',
-          ],
-        ),
-      ),
+      age: _safeInt(_value(map, const ['edad', 'Edad', 'age', 'Age'])),
       size: _safeText(
-        _value(
-          map,
-          const [
-            'tamano',
-            'Tamano',
-            'tamanio',
-            'Tamanio',
-            'tamaño',
-            'Tamaño',
-            'size',
-            'Size',
-          ],
-        ),
+        _value(map, const [
+          'tamano',
+          'Tamano',
+          'tamanio',
+          'Tamanio',
+          'tamaño',
+          'Tamaño',
+          'size',
+          'Size',
+        ]),
         fallback: 'Sin tamaño registrado',
       ),
+      weight: _safeDouble(_value(map, const ['peso', 'Peso'])),
+      sex: _safeNullableText(_value(map, const ['sexo', 'Sexo'])),
+      sterilized: _safeBool(
+        _value(map, const ['esterilizado', 'Esterilizado']),
+      ),
+      temperament: _safeNullableText(
+        _value(map, const ['temperamento', 'Temperamento']),
+      ),
+      energyLevel: _safeNullableText(
+        _value(map, const ['nivelEnergia', 'NivelEnergia']),
+      ),
+      socialWithDogs: _safeBool(
+        _value(map, const ['sociableConPerros', 'SociableConPerros']),
+      ),
+      socialWithPeople: _safeBool(
+        _value(map, const ['sociableConPersonas', 'SociableConPersonas']),
+      ),
+      socialWithChildren: _safeBool(
+        _value(map, const ['sociableConNinos', 'SociableConNinos']),
+      ),
+      leashBehavior: _safeNullableText(
+        _value(map, const ['comportamientoCorrea', 'ComportamientoCorrea']),
+      ),
+      reactive: _safeBool(_value(map, const ['reactivo', 'Reactivo'])),
+      escapeRisk: _safeBool(
+        _value(map, const ['riesgoEscape', 'RiesgoEscape']),
+      ),
+      fearsTriggers: _safeNullableText(
+        _value(map, const ['miedosDetonantes', 'MiedosDetonantes']),
+      ),
+      knownCommands: _safeNullableText(
+        _value(map, const ['comandosConocidos', 'ComandosConocidos']),
+      ),
       notes: _safeText(
-        _value(
-          map,
-          const [
-            'notas',
-            'Notas',
-            'observaciones',
-            'Observaciones',
-            'notes',
-            'Notes',
-          ],
-        ),
+        _value(map, const [
+          'notas',
+          'Notas',
+          'observaciones',
+          'Observaciones',
+          'notes',
+          'Notes',
+        ]),
       ),
       photoPath:
           primaryGalleryPhoto?.url ??
-              legacyPhoto ??
-              (parsedPhotos.isEmpty
-                  ? null
-                  : parsedPhotos.first.url),
+          legacyPhoto ??
+          (parsedPhotos.isEmpty ? null : parsedPhotos.first.url),
       photos: parsedPhotos,
-      rawData:
-          Map<String, dynamic>.unmodifiable(
+      rawData: Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(map),
       ),
     );
@@ -223,9 +241,7 @@ class Pet {
     }
 
     if (words.length == 1) {
-      return words.first
-          .substring(0, 1)
-          .toUpperCase();
+      return words.first.substring(0, 1).toUpperCase();
     }
 
     return '${words.first.substring(0, 1)}'
@@ -236,14 +252,11 @@ class Pet {
   String? publicPhotoUrl(String? baseUrl) {
     final path = photoPath?.trim();
 
-    if (path == null ||
-        path.isEmpty ||
-        path.toLowerCase() == 'null') {
+    if (path == null || path.isEmpty || path.toLowerCase() == 'null') {
       return null;
     }
 
-    if (path.startsWith('http://') ||
-        path.startsWith('https://')) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
@@ -254,21 +267,15 @@ class Pet {
     }
 
     final cleanServer = server.endsWith('/')
-        ? server.substring(
-            0,
-            server.length - 1,
-          )
+        ? server.substring(0, server.length - 1)
         : server;
 
-    final cleanPath =
-        path.startsWith('/') ? path : '/$path';
+    final cleanPath = path.startsWith('/') ? path : '/$path';
 
     return '$cleanServer$cleanPath';
   }
 
-  List<String> publicPhotoUrls(
-    String? baseUrl,
-  ) {
+  List<String> publicPhotoUrls(String? baseUrl) {
     final urls = photos
         .map((photo) => photo.publicUrl(baseUrl))
         .whereType<String>()
@@ -276,8 +283,7 @@ class Pet {
         .toSet()
         .toList(growable: true);
 
-    final principal =
-        publicPhotoUrl(baseUrl);
+    final principal = publicPhotoUrl(baseUrl);
 
     if (principal != null &&
         principal.isNotEmpty &&
@@ -295,6 +301,19 @@ class Pet {
     int? age,
     bool clearAge = false,
     String? size,
+    double? weight,
+    String? sex,
+    bool? sterilized,
+    String? temperament,
+    String? energyLevel,
+    bool? socialWithDogs,
+    bool? socialWithPeople,
+    bool? socialWithChildren,
+    String? leashBehavior,
+    bool? reactive,
+    bool? escapeRisk,
+    String? fearsTriggers,
+    String? knownCommands,
     String? notes,
     String? photoPath,
     bool clearPhoto = false,
@@ -307,10 +326,21 @@ class Pet {
       breed: breed ?? this.breed,
       age: clearAge ? null : age ?? this.age,
       size: size ?? this.size,
+      weight: weight ?? this.weight,
+      sex: sex ?? this.sex,
+      sterilized: sterilized ?? this.sterilized,
+      temperament: temperament ?? this.temperament,
+      energyLevel: energyLevel ?? this.energyLevel,
+      socialWithDogs: socialWithDogs ?? this.socialWithDogs,
+      socialWithPeople: socialWithPeople ?? this.socialWithPeople,
+      socialWithChildren: socialWithChildren ?? this.socialWithChildren,
+      leashBehavior: leashBehavior ?? this.leashBehavior,
+      reactive: reactive ?? this.reactive,
+      escapeRisk: escapeRisk ?? this.escapeRisk,
+      fearsTriggers: fearsTriggers ?? this.fearsTriggers,
+      knownCommands: knownCommands ?? this.knownCommands,
       notes: notes ?? this.notes,
-      photoPath: clearPhoto
-          ? null
-          : photoPath ?? this.photoPath,
+      photoPath: clearPhoto ? null : photoPath ?? this.photoPath,
       photos: photos ?? this.photos,
       rawData: rawData ?? this.rawData,
     );
@@ -323,18 +353,11 @@ class Pet {
 
     return value
         .whereType<Map>()
-        .map(
-          (item) => Pet.fromMap(
-            Map<String, dynamic>.from(item),
-          ),
-        )
+        .map((item) => Pet.fromMap(Map<String, dynamic>.from(item)))
         .toList(growable: false);
   }
 
-  static dynamic _value(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
+  static dynamic _value(Map<String, dynamic> map, List<String> keys) {
     for (final key in keys) {
       final value = map[key];
 
@@ -346,29 +369,20 @@ class Pet {
     return null;
   }
 
-  static String _safeText(
-    dynamic value, {
-    String fallback = '',
-  }) {
-    final text =
-        value?.toString().trim() ?? '';
+  static String _safeText(dynamic value, {String fallback = ''}) {
+    final text = value?.toString().trim() ?? '';
 
-    if (text.isEmpty ||
-        text.toLowerCase() == 'null') {
+    if (text.isEmpty || text.toLowerCase() == 'null') {
       return fallback;
     }
 
     return text;
   }
 
-  static String? _safeNullableText(
-    dynamic value,
-  ) {
+  static String? _safeNullableText(dynamic value) {
     final text = value?.toString().trim();
 
-    if (text == null ||
-        text.isEmpty ||
-        text.toLowerCase() == 'null') {
+    if (text == null || text.isEmpty || text.toLowerCase() == 'null') {
       return null;
     }
 
@@ -380,8 +394,20 @@ class Pet {
     if (value is int) return value;
     if (value is num) return value.toInt();
 
-    return int.tryParse(
-      value.toString().trim(),
-    );
+    return int.tryParse(value.toString().trim());
+  }
+
+  static double? _safeDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString().trim() ?? '');
+  }
+
+  static bool? _safeBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().trim().toLowerCase();
+    if (text == 'true' || text == '1') return true;
+    if (text == 'false' || text == '0') return false;
+    return null;
   }
 }

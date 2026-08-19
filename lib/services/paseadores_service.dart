@@ -4,19 +4,39 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
+import 'storage_service.dart';
 
 class PaseadoresService {
   static Future<Map<String, dynamic>> obtenerPaseadores() async {
-    final response = await ApiService.getAuth('/api/paseadores');
+    Map<String, dynamic> response;
+    try {
+      response = await ApiService.getAuth('/api/paseadores/cercanos');
+      if (response['statusCode'] != 200) {
+        response = await ApiService.getAuth('/api/paseadores');
+      }
+    } catch (_) {
+      response = await ApiService.getAuth('/api/paseadores');
+    }
 
     final statusCode = response['statusCode'];
     final body = response['body'];
 
     if (statusCode == 200 && body is Map && body['success'] == true) {
-      return {
-        'success': true,
-        'data': _normalizarLista(body['data']),
-      };
+      final currentUserId = await StorageService.obtenerUsuarioId();
+      final walkers = _normalizarLista(body['data'])
+          .where((item) {
+            if (currentUserId == null || item is! Map) return true;
+            final user = item['usuario'] ?? item['Usuario'];
+            final userMap = user is Map ? user : const {};
+            final value =
+                item['usuarioId'] ??
+                item['UsuarioId'] ??
+                userMap['id'] ??
+                userMap['Id'];
+            return int.tryParse('$value') != currentUserId;
+          })
+          .toList(growable: false);
+      return {'success': true, 'data': walkers};
     }
 
     return {
@@ -117,6 +137,11 @@ class PaseadoresService {
     required double tarifaPorHora,
     required int experienciaAnios,
     required bool disponible,
+    String? estadoClave,
+    String? municipioClave,
+    int? radioServicioKm,
+    double? latitud,
+    double? longitud,
   }) async {
     final body = {
       'descripcion': descripcion.trim(),
@@ -135,6 +160,11 @@ class PaseadoresService {
       'Experiencia': experienciaAnios,
       'disponible': disponible,
       'Disponible': disponible,
+      ...?estadoClave == null ? null : {'estadoClave': estadoClave},
+      ...?municipioClave == null ? null : {'municipioClave': municipioClave},
+      ...?radioServicioKm == null ? null : {'radioServicioKm': radioServicioKm},
+      ...?latitud == null ? null : {'latitud': latitud},
+      ...?longitud == null ? null : {'longitud': longitud},
     };
 
     final endpoints = [
@@ -221,10 +251,7 @@ class PaseadoresService {
     request.headers['Accept'] = 'application/json';
 
     request.files.add(
-      await http.MultipartFile.fromPath(
-        fieldName,
-        archivo.path,
-      ),
+      await http.MultipartFile.fromPath(fieldName, archivo.path),
     );
 
     final streamedResponse = await request.send();
@@ -233,19 +260,12 @@ class PaseadoresService {
     dynamic responseBody;
 
     try {
-      responseBody =
-          response.body.isNotEmpty ? jsonDecode(response.body) : {};
+      responseBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
     } catch (_) {
-      responseBody = {
-        'success': false,
-        'message': response.body,
-      };
+      responseBody = {'success': false, 'message': response.body};
     }
 
-    return {
-      'statusCode': response.statusCode,
-      'body': responseBody,
-    };
+    return {'statusCode': response.statusCode, 'body': responseBody};
   }
 
   static Map<String, dynamic> _normalizarRespuesta(
@@ -267,7 +287,8 @@ class PaseadoresService {
       throw Exception(_mensajeError(body, errorDefault));
     }
 
-    final data = body['data'] ??
+    final data =
+        body['data'] ??
         body['paseador'] ??
         body['perfil'] ??
         body['resultado'] ??
@@ -283,9 +304,7 @@ class PaseadoresService {
       return Map<String, dynamic>.from(data);
     }
 
-    return {
-      'data': data,
-    };
+    return {'data': data};
   }
 
   static List<dynamic> _normalizarLista(dynamic data) {
@@ -294,7 +313,8 @@ class PaseadoresService {
     }
 
     if (data is Map) {
-      final posibleLista = data['items'] ??
+      final posibleLista =
+          data['items'] ??
           data['paseadores'] ??
           data['data'] ??
           data['result'] ??
@@ -312,9 +332,7 @@ class PaseadoresService {
     if (body is Map<String, dynamic>) return body;
     if (body is Map) return Map<String, dynamic>.from(body);
 
-    return {
-      'data': body,
-    };
+    return {'data': body};
   }
 
   static String _mensajeError(

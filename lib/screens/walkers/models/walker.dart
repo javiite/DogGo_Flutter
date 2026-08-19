@@ -13,6 +13,12 @@ class Walker {
   final bool available;
   final bool verified;
   final String? photoPath;
+  final String? stateName;
+  final String? municipalityName;
+  final double? distanceKm;
+  final int serviceRadiusKm;
+  final bool withinCoverage;
+  final String locationMatch;
   final Map<String, dynamic> rawData;
 
   const Walker({
@@ -30,191 +36,185 @@ class Walker {
     required this.available,
     required this.verified,
     required this.photoPath,
+    required this.stateName,
+    required this.municipalityName,
+    required this.distanceKm,
+    required this.serviceRadiusKm,
+    required this.withinCoverage,
+    required this.locationMatch,
     required this.rawData,
   });
 
   factory Walker.fromMap(Map<String, dynamic> map) {
     final zone = _text(
-      _deepValue(
-        map,
-        const [
-          'zonaServicio',
-          'ZonaServicio',
-          'zona',
-          'Zona',
-          'zonas',
-          'Zonas',
-          'serviceZone',
-          'ServiceZone',
-        ],
-      ),
+      _deepValue(map, const [
+        'zonaServicio',
+        'ZonaServicio',
+        'zona',
+        'Zona',
+        'zonas',
+        'Zonas',
+        'serviceZone',
+        'ServiceZone',
+      ]),
       fallback: 'Sin zona registrada',
     );
 
     return Walker(
-      id: _integer(
-            _deepValue(
-              map,
-              const [
-                'id',
-                'Id',
-                'paseadorId',
-                'PaseadorId',
-                'usuarioId',
-                'UsuarioId',
-                'walkerId',
-                'WalkerId',
-              ],
-            ),
+      id:
+          _integer(
+            _deepValue(map, const [
+              'id',
+              'Id',
+              'paseadorId',
+              'PaseadorId',
+              'usuarioId',
+              'UsuarioId',
+              'walkerId',
+              'WalkerId',
+            ]),
           ) ??
           0,
       name: _walkerName(map),
       email: _text(
-        _deepValue(
-          map,
-          const [
-            'email',
-            'Email',
-            'correo',
-            'Correo',
-          ],
-        ),
+        _deepValue(map, const ['email', 'Email', 'correo', 'Correo']),
         fallback: 'Correo no disponible',
       ),
       description: _text(
-        _deepValue(
-          map,
-          const [
-            'descripcion',
-            'Descripcion',
-            'descripción',
-            'bio',
-            'Bio',
-            'description',
-            'Description',
-          ],
-        ),
+        _deepValue(map, const [
+          'descripcion',
+          'Descripcion',
+          'descripción',
+          'bio',
+          'Bio',
+          'description',
+          'Description',
+        ]),
         fallback: 'Sin descripción registrada.',
       ),
       serviceZone: zone,
       zones: _splitZones(zone),
       hourlyRate: _decimal(
-        _deepValue(
-          map,
-          const [
-            'tarifaPorHora',
-            'TarifaPorHora',
-            'tarifa',
-            'Tarifa',
-            'hourlyRate',
-            'HourlyRate',
-          ],
-        ),
+        _deepValue(map, const [
+          'tarifaPorHora',
+          'TarifaPorHora',
+          'tarifa',
+          'Tarifa',
+          'hourlyRate',
+          'HourlyRate',
+        ]),
       ),
-      rating: _decimal(
-            _deepValue(
-              map,
-              const [
-                'calificacionPromedio',
-                'CalificacionPromedio',
-                'calificaciónPromedio',
-                'rating',
-                'Rating',
-                'calificacion',
-                'Calificacion',
-              ],
-            ),
+      rating:
+          _decimal(
+            _deepValue(map, const [
+              'calificacionPromedio',
+              'CalificacionPromedio',
+              'calificaciónPromedio',
+              'rating',
+              'Rating',
+              'calificacion',
+              'Calificacion',
+            ]),
           ) ??
           0,
-      experienceYears: _integer(
-            _deepValue(
-              map,
-              const [
-                'experienciaAnios',
-                'ExperienciaAnios',
-                'experienciaAños',
-                'ExperienciaAños',
-                'experiencia',
-                'Experiencia',
-                'experienceYears',
-                'ExperienceYears',
-              ],
-            ),
+      experienceYears:
+          _integer(
+            _deepValue(map, const [
+              'experienciaAnios',
+              'ExperienciaAnios',
+              'experienciaAños',
+              'ExperienciaAños',
+              'experiencia',
+              'Experiencia',
+              'experienceYears',
+              'ExperienceYears',
+            ]),
           ) ??
           0,
-      reviewCount: _integer(
-            _deepValue(
-              map,
-              const [
-                'cantidadResenas',
-                'CantidadResenas',
-                'cantidadReseñas',
-                'CantidadReseñas',
-                'totalResenas',
-                'TotalResenas',
-                'reviewCount',
-                'ReviewCount',
-              ],
-            ),
+      reviewCount:
+          _integer(
+            _deepValue(map, const [
+              'cantidadResenas',
+              'CantidadResenas',
+              'cantidadReseñas',
+              'CantidadReseñas',
+              'totalResenas',
+              'TotalResenas',
+              'reviewCount',
+              'ReviewCount',
+            ]),
           ) ??
           0,
-      completedWalks: _integer(
-            _deepValue(
-              map,
-              const [
-                'paseosCompletados',
-                'PaseosCompletados',
-                'cantidadPaseos',
-                'CantidadPaseos',
-                'totalPaseos',
-                'TotalPaseos',
-                'completedWalks',
-                'CompletedWalks',
-              ],
-            ),
+      completedWalks:
+          _integer(
+            _deepValue(map, const [
+              'paseosCompletados',
+              'PaseosCompletados',
+              'cantidadPaseos',
+              'CantidadPaseos',
+              'totalPaseos',
+              'TotalPaseos',
+              'completedWalks',
+              'CompletedWalks',
+            ]),
           ) ??
           0,
       available: _boolean(
-        _deepValue(
-          map,
-          const [
-            'disponible',
-            'Disponible',
-            'available',
-            'Available',
-          ],
-        ),
+        _deepValue(map, const [
+          'disponible',
+          'Disponible',
+          'available',
+          'Available',
+        ]),
         fallback: true,
       ),
       verified: _boolean(
-        _deepValue(
-          map,
-          const [
-            'verificado',
-            'Verificado',
-            'esVerificado',
-            'EsVerificado',
-            'verified',
-            'Verified',
-          ],
-        ),
+        _deepValue(map, const [
+          'verificado',
+          'Verificado',
+          'esVerificado',
+          'EsVerificado',
+          'verified',
+          'Verified',
+        ]),
       ),
       photoPath: _nullableText(
-        _deepValue(
-          map,
-          const [
-            'fotoUrl',
-            'FotoUrl',
-            'fotoPerfilUrl',
-            'FotoPerfilUrl',
-            'imagenUrl',
-            'ImagenUrl',
-            'foto',
-            'Foto',
-            'photoUrl',
-            'PhotoUrl',
-          ],
-        ),
+        _deepValue(map, const [
+          'fotoUrl',
+          'FotoUrl',
+          'fotoPerfilUrl',
+          'FotoPerfilUrl',
+          'imagenUrl',
+          'ImagenUrl',
+          'foto',
+          'Foto',
+          'photoUrl',
+          'PhotoUrl',
+        ]),
+      ),
+      stateName: _nullableText(
+        _deepValue(map, const ['estadoNombre', 'EstadoNombre']),
+      ),
+      municipalityName: _nullableText(
+        _deepValue(map, const ['municipioNombre', 'MunicipioNombre']),
+      ),
+      distanceKm: _decimal(
+        _deepValue(map, const ['distanciaKm', 'DistanciaKm']),
+      ),
+      serviceRadiusKm:
+          _integer(
+            _deepValue(map, const ['radioServicioKm', 'RadioServicioKm']),
+          ) ??
+          10,
+      withinCoverage: _boolean(
+        _deepValue(map, const ['dentroDeCobertura', 'DentroDeCobertura']),
+      ),
+      locationMatch: _text(
+        _deepValue(map, const [
+          'coincidenciaUbicacion',
+          'CoincidenciaUbicacion',
+        ]),
+        fallback: 'SinUbicacion',
       ),
       rawData: Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(map),
@@ -256,6 +256,13 @@ class Walker {
     return '$experienceYears años de experiencia';
   }
 
+  String get proximityLabel {
+    if (distanceKm != null) return '${distanceKm!.toStringAsFixed(1)} km de ti';
+    if (locationMatch == 'MismoMunicipio') return 'En tu municipio';
+    if (locationMatch == 'MismoEstado') return 'En tu estado';
+    return municipalityName ?? serviceZone;
+  }
+
   String get reviewCountLabel {
     if (reviewCount == 0) return 'Sin reseñas';
     if (reviewCount == 1) return '1 reseña';
@@ -285,9 +292,7 @@ class Walker {
     if (words.isEmpty) return 'DG';
 
     if (words.length == 1) {
-      return words.first
-          .substring(0, 1)
-          .toUpperCase();
+      return words.first.substring(0, 1).toUpperCase();
     }
 
     return '${words.first.substring(0, 1)}'
@@ -298,14 +303,11 @@ class Walker {
   String? publicPhotoUrl(String? baseUrl) {
     final path = photoPath?.trim();
 
-    if (path == null ||
-        path.isEmpty ||
-        path.toLowerCase() == 'null') {
+    if (path == null || path.isEmpty || path.toLowerCase() == 'null') {
       return null;
     }
 
-    if (path.startsWith('http://') ||
-        path.startsWith('https://')) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
@@ -317,8 +319,7 @@ class Walker {
         ? server.substring(0, server.length - 1)
         : server;
 
-    final cleanPath =
-        path.startsWith('/') ? path : '/$path';
+    final cleanPath = path.startsWith('/') ? path : '/$path';
 
     return '$cleanServer$cleanPath';
   }
@@ -341,6 +342,12 @@ class Walker {
       'disponible': available,
       'verificado': verified,
       'fotoUrl': photoPath,
+      'estadoNombre': stateName,
+      'municipioNombre': municipalityName,
+      'distanciaKm': distanceKm,
+      'radioServicioKm': serviceRadiusKm,
+      'dentroDeCobertura': withinCoverage,
+      'coincidenciaUbicacion': locationMatch,
     };
   }
 
@@ -349,55 +356,35 @@ class Walker {
 
     return value
         .whereType<Map>()
-        .map(
-          (item) => Walker.fromMap(
-            Map<String, dynamic>.from(item),
-          ),
-        )
+        .map((item) => Walker.fromMap(Map<String, dynamic>.from(item)))
         .toList(growable: false);
   }
 
-  static String _walkerName(
-    Map<String, dynamic> map,
-  ) {
+  static String _walkerName(Map<String, dynamic> map) {
     final complete = _text(
-      _deepValue(
-        map,
-        const [
-          'nombreCompleto',
-          'NombreCompleto',
-          'fullName',
-          'FullName',
-        ],
-      ),
+      _deepValue(map, const [
+        'nombreCompleto',
+        'NombreCompleto',
+        'fullName',
+        'FullName',
+      ]),
     );
 
     if (complete.isNotEmpty) return complete;
 
     final firstName = _text(
-      _deepValue(
-        map,
-        const [
-          'nombre',
-          'Nombre',
-          'nombrePaseador',
-          'NombrePaseador',
-          'name',
-          'Name',
-        ],
-      ),
+      _deepValue(map, const [
+        'nombre',
+        'Nombre',
+        'nombrePaseador',
+        'NombrePaseador',
+        'name',
+        'Name',
+      ]),
     );
 
     final lastName = _text(
-      _deepValue(
-        map,
-        const [
-          'apellido',
-          'Apellido',
-          'lastName',
-          'LastName',
-        ],
-      ),
+      _deepValue(map, const ['apellido', 'Apellido', 'lastName', 'LastName']),
     );
 
     final result = '$firstName $lastName'.trim();
@@ -406,8 +393,7 @@ class Walker {
   }
 
   static List<String> _splitZones(String value) {
-    if (value.trim().isEmpty ||
-        value == 'Sin zona registrada') {
+    if (value.trim().isEmpty || value == 'Sin zona registrada') {
       return const [];
     }
 
@@ -423,10 +409,7 @@ class Walker {
     return List<String>.unmodifiable(zones);
   }
 
-  static dynamic _deepValue(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
+  static dynamic _deepValue(Map<String, dynamic> map, List<String> keys) {
     for (final key in keys) {
       final value = map[key];
 
@@ -446,8 +429,7 @@ class Walker {
       final nested = map[nestedKey];
 
       if (nested is Map) {
-        final nestedMap =
-            Map<String, dynamic>.from(nested);
+        final nestedMap = Map<String, dynamic>.from(nested);
 
         for (final key in keys) {
           final value = nestedMap[key];
@@ -460,10 +442,7 @@ class Walker {
     return null;
   }
 
-  static String _text(
-    dynamic value, {
-    String fallback = '',
-  }) {
+  static String _text(dynamic value, {String fallback = ''}) {
     final text = value?.toString().trim() ?? '';
 
     if (text.isEmpty || text.toLowerCase() == 'null') {
@@ -476,9 +455,7 @@ class Walker {
   static String? _nullableText(dynamic value) {
     final text = value?.toString().trim();
 
-    if (text == null ||
-        text.isEmpty ||
-        text.toLowerCase() == 'null') {
+    if (text == null || text.isEmpty || text.toLowerCase() == 'null') {
       return null;
     }
 
@@ -497,15 +474,10 @@ class Walker {
     if (value == null) return null;
     if (value is num) return value.toDouble();
 
-    return double.tryParse(
-      value.toString().trim().replaceAll(',', '.'),
-    );
+    return double.tryParse(value.toString().trim().replaceAll(',', '.'));
   }
 
-  static bool _boolean(
-    dynamic value, {
-    bool fallback = false,
-  }) {
+  static bool _boolean(dynamic value, {bool fallback = false}) {
     if (value is bool) return value;
     if (value is num) return value != 0;
 

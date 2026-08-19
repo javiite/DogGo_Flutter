@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../location/models/mexico_location.dart';
+
 class EditWalkerProfileState {
   final bool loading;
   final bool saving;
@@ -9,6 +11,15 @@ class EditWalkerProfileState {
   final String? currentPhotoUrl;
   final File? selectedPhoto;
   final bool profileLoaded;
+  final List<MexicoState> states;
+  final List<MexicoMunicipality> municipalities;
+  final String? selectedStateCode;
+  final String? selectedMunicipalityCode;
+  final int serviceRadiusKm;
+  final bool loadingMunicipalities;
+  final double? latitude;
+  final double? longitude;
+  final bool locatingCoverage;
 
   const EditWalkerProfileState({
     this.loading = true,
@@ -19,12 +30,20 @@ class EditWalkerProfileState {
     this.currentPhotoUrl,
     this.selectedPhoto,
     this.profileLoaded = false,
+    this.states = const [],
+    this.municipalities = const [],
+    this.selectedStateCode,
+    this.selectedMunicipalityCode,
+    this.serviceRadiusKm = 10,
+    this.loadingMunicipalities = false,
+    this.latitude,
+    this.longitude,
+    this.locatingCoverage = false,
   });
 
   bool get hasPhoto {
     return selectedPhoto != null ||
-        (currentPhotoUrl != null &&
-            currentPhotoUrl!.trim().isNotEmpty);
+        (currentPhotoUrl != null && currentPhotoUrl!.trim().isNotEmpty);
   }
 
   EditWalkerProfileState copyWith({
@@ -39,6 +58,19 @@ class EditWalkerProfileState {
     File? selectedPhoto,
     bool clearSelectedPhoto = false,
     bool? profileLoaded,
+    List<MexicoState>? states,
+    List<MexicoMunicipality>? municipalities,
+    String? selectedStateCode,
+    bool clearSelectedState = false,
+    String? selectedMunicipalityCode,
+    bool clearSelectedMunicipality = false,
+    int? serviceRadiusKm,
+    bool? loadingMunicipalities,
+    double? latitude,
+    bool clearLatitude = false,
+    double? longitude,
+    bool clearLongitude = false,
+    bool? locatingCoverage,
   }) {
     return EditWalkerProfileState(
       loading: loading ?? this.loading,
@@ -53,20 +85,31 @@ class EditWalkerProfileState {
           ? null
           : selectedPhoto ?? this.selectedPhoto,
       profileLoaded: profileLoaded ?? this.profileLoaded,
+      states: states ?? this.states,
+      municipalities: municipalities ?? this.municipalities,
+      selectedStateCode: clearSelectedState
+          ? null
+          : selectedStateCode ?? this.selectedStateCode,
+      selectedMunicipalityCode: clearSelectedMunicipality
+          ? null
+          : selectedMunicipalityCode ?? this.selectedMunicipalityCode,
+      serviceRadiusKm: serviceRadiusKm ?? this.serviceRadiusKm,
+      loadingMunicipalities:
+          loadingMunicipalities ?? this.loadingMunicipalities,
+      latitude: clearLatitude ? null : latitude ?? this.latitude,
+      longitude: clearLongitude ? null : longitude ?? this.longitude,
+      locatingCoverage: locatingCoverage ?? this.locatingCoverage,
     );
   }
 
   String? publicUrl(dynamic value) {
     final path = value?.toString().trim();
 
-    if (path == null ||
-        path.isEmpty ||
-        path.toLowerCase() == 'null') {
+    if (path == null || path.isEmpty || path.toLowerCase() == 'null') {
       return null;
     }
 
-    if (path.startsWith('http://') ||
-        path.startsWith('https://')) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
@@ -78,16 +121,12 @@ class EditWalkerProfileState {
         ? server.substring(0, server.length - 1)
         : server;
 
-    final cleanPath =
-        path.startsWith('/') ? path : '/$path';
+    final cleanPath = path.startsWith('/') ? path : '/$path';
 
     return '$cleanServer$cleanPath';
   }
 
-  static bool safeBool(
-    dynamic value, {
-    bool fallback = true,
-  }) {
+  static bool safeBool(dynamic value, {bool fallback = true}) {
     if (value is bool) return value;
     if (value is num) return value != 0;
 
@@ -126,9 +165,7 @@ class EditWalkerProfileState {
 
     final number = value is num
         ? value.toDouble()
-        : double.tryParse(
-            value.toString().replaceAll(',', '.'),
-          );
+        : double.tryParse(value.toString().replaceAll(',', '.'));
 
     if (number == null || number <= 0) return '';
 
@@ -142,9 +179,7 @@ class EditWalkerProfileState {
   static String integerText(dynamic value) {
     if (value == null) return '';
 
-    final number = value is int
-        ? value
-        : int.tryParse(value.toString());
+    final number = value is int ? value : int.tryParse(value.toString());
 
     if (number == null || number < 0) return '';
 

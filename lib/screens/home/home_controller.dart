@@ -368,6 +368,7 @@ class HomeController extends ChangeNotifier {
 
           return HomeWalk(
             id: walk.id,
+            programacionId: walk.programacionId,
             status: walk.status,
             scheduledAt: walk.scheduledAt,
             startedAt: walk.startedAt,

@@ -23,11 +23,18 @@ dependencies:
   flutter_background_service: ^5.1.0
   flutter_local_notifications: ^19.5.0
   flutter_svg: ^2.3.0
+  drift: 2.32.0
+  drift_flutter: 0.3.0
+  uuid: ^4.6.0
+  path_provider: 2.1.5
+  connectivity_plus: 7.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  build_runner: 2.15.1
+  drift_dev: 2.32.0
 
 flutter:
   uses-material-design: true

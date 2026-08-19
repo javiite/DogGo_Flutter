@@ -17,20 +17,14 @@ import 'seleccionar_ubicacion_screen.dart';
 class EditarPerfilScreen extends StatefulWidget {
   final Map<String, dynamic> perfil;
 
-  const EditarPerfilScreen({
-    super.key,
-    required this.perfil,
-  });
+  const EditarPerfilScreen({super.key, required this.perfil});
 
   @override
-  State<EditarPerfilScreen> createState() =>
-      _EditarPerfilScreenState();
+  State<EditarPerfilScreen> createState() => _EditarPerfilScreenState();
 }
 
-class _EditarPerfilScreenState
-    extends State<EditarPerfilScreen> {
-  final GlobalKey<FormState> _formKey =
-      GlobalKey<FormState>();
+class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   late final EditProfileController _controller;
   bool _validationEnabled = false;
@@ -39,9 +33,8 @@ class _EditarPerfilScreenState
   void initState() {
     super.initState();
 
-    _controller = EditProfileController(
-      initialProfile: widget.perfil,
-    )..initialize();
+    _controller = EditProfileController(initialProfile: widget.perfil)
+      ..initialize();
   }
 
   @override
@@ -50,18 +43,14 @@ class _EditarPerfilScreenState
     super.dispose();
   }
 
-  void _showMessage(
-    String message, {
-    bool error = false,
-  }) {
+  void _showMessage(String message, {bool error = false}) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          backgroundColor:
-              error ? DogGoTheme.red : DogGoTheme.ink,
+          backgroundColor: error ? DogGoTheme.red : DogGoTheme.ink,
           content: Row(
             children: [
               Icon(
@@ -112,10 +101,7 @@ class _EditarPerfilScreenState
                   title: 'Tomar fotografía',
                   subtitle: 'Usar la cámara del teléfono',
                   onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                      ImageSource.camera,
-                    );
+                    Navigator.pop(sheetContext, ImageSource.camera);
                   },
                 ),
                 const SizedBox(height: DogGoSpacing.sm),
@@ -124,10 +110,7 @@ class _EditarPerfilScreenState
                   title: 'Elegir de la galería',
                   subtitle: 'Seleccionar una imagen guardada',
                   onTap: () {
-                    Navigator.pop(
-                      sheetContext,
-                      ImageSource.gallery,
-                    );
+                    Navigator.pop(sheetContext, ImageSource.gallery);
                   },
                 ),
               ],
@@ -139,41 +122,28 @@ class _EditarPerfilScreenState
 
     if (source == null) return;
 
-    final selected =
-        await _controller.selectPhoto(source);
+    final selected = await _controller.selectPhoto(source);
 
     if (!mounted) return;
 
     if (selected) {
-      _showMessage(
-        'Fotografía seleccionada. Se subirá al guardar.',
-      );
+      _showMessage('Fotografía seleccionada. Se subirá al guardar.');
     } else if (_controller.state.error != null) {
-      _showMessage(
-        _controller.state.error!,
-        error: true,
-      );
+      _showMessage(_controller.state.error!, error: true);
     }
   }
 
   Future<void> _selectLocation() async {
     final state = _controller.state;
 
-    final result =
-        await Navigator.push<Map<String, dynamic>>(
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute<Map<String, dynamic>>(
         builder: (_) => SeleccionarUbicacionScreen(
           ubicacionInicial: state.hasLocation
-              ? LatLng(
-                  state.latitude!,
-                  state.longitude!,
-                )
+              ? LatLng(state.latitude!, state.longitude!)
               : null,
-          textoInicial: _controller
-                  .addressController.text
-                  .trim()
-                  .isEmpty
+          textoInicial: _controller.addressController.text.trim().isEmpty
               ? null
               : _controller.addressController.text.trim(),
         ),
@@ -183,26 +153,20 @@ class _EditarPerfilScreenState
     if (result == null) return;
 
     final latitude = EditProfileState.safeDouble(
-      result['latitud'] ??
-          result['Latitud'] ??
-          result['latitude'],
+      result['latitud'] ?? result['Latitud'] ?? result['latitude'],
     );
 
     final longitude = EditProfileState.safeDouble(
-      result['longitud'] ??
-          result['Longitud'] ??
-          result['longitude'],
+      result['longitud'] ?? result['Longitud'] ?? result['longitude'],
     );
 
     if (latitude == null || longitude == null) {
-      _showMessage(
-        'La ubicación seleccionada no es válida.',
-        error: true,
-      );
+      _showMessage('La ubicación seleccionada no es válida.', error: true);
       return;
     }
 
-    final address = result['texto'] ??
+    final address =
+        result['texto'] ??
         result['ubicacionTexto'] ??
         result['direccionRecogida'] ??
         result['direccion'];
@@ -222,10 +186,7 @@ class _EditarPerfilScreenState
     });
 
     if (!(_formKey.currentState?.validate() ?? false)) {
-      _showMessage(
-        'Revisa los campos marcados.',
-        error: true,
-      );
+      _showMessage('Revisa los campos marcados.', error: true);
       return;
     }
 
@@ -235,20 +196,15 @@ class _EditarPerfilScreenState
 
     if (!saved) {
       _showMessage(
-        _controller.state.error ??
-            'No se pudo actualizar el perfil.',
+        _controller.state.error ?? 'No se pudo actualizar el perfil.',
         error: true,
       );
       return;
     }
 
-    _showMessage(
-      'Perfil actualizado correctamente.',
-    );
+    _showMessage('Perfil actualizado correctamente.');
 
-    await Future<void>.delayed(
-      const Duration(milliseconds: 550),
-    );
+    await Future<void>.delayed(const Duration(milliseconds: 550));
 
     if (mounted) {
       Navigator.pop(context, true);
@@ -284,9 +240,7 @@ class _EditarPerfilScreenState
 
   Widget _buildBody(EditProfileState state) {
     if (state.loading) {
-      return const DogGoLoadingView(
-        message: 'Cargando tu información...',
-      );
+      return const DogGoLoadingView(message: 'Cargando tu información...');
     }
 
     if (state.error != null &&
@@ -294,9 +248,7 @@ class _EditarPerfilScreenState
         !state.ownerProfileLoaded) {
       return Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(
-            DogGoSpacing.screenHorizontal,
-          ),
+          padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
           child: DogGoErrorView(
             title: 'No pudimos cargar el perfil',
             message: state.error!,
@@ -312,8 +264,7 @@ class _EditarPerfilScreenState
           ? AutovalidateMode.onUserInteraction
           : AutovalidateMode.disabled,
       child: ListView(
-        keyboardDismissBehavior:
-            ScrollViewKeyboardDismissBehavior.onDrag,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           DogGoSpacing.screenHorizontal,
@@ -356,25 +307,17 @@ class _EditarPerfilScreenState
           const SizedBox(height: DogGoSpacing.md),
           OutlinedButton.icon(
             onPressed: state.saving ? null : _selectPhoto,
-            icon: const Icon(
-              Icons.add_a_photo_outlined,
-            ),
+            icon: const Icon(Icons.add_a_photo_outlined),
             label: Text(
-              state.hasPhoto
-                  ? 'Cambiar fotografía'
-                  : 'Agregar fotografía',
+              state.hasPhoto ? 'Cambiar fotografía' : 'Agregar fotografía',
             ),
           ),
           if (state.selectedPhoto != null) ...[
             const SizedBox(height: DogGoSpacing.sm),
             TextButton.icon(
-              onPressed: state.saving
-                  ? null
-                  : _controller.removeSelectedPhoto,
+              onPressed: state.saving ? null : _controller.removeSelectedPhoto,
               icon: const Icon(Icons.undo_rounded),
-              label: const Text(
-                'Mantener fotografía anterior',
-              ),
+              label: const Text('Mantener fotografía anterior'),
             ),
           ],
         ],
@@ -396,9 +339,7 @@ class _EditarPerfilScreenState
             icon: Icons.person_outline_rounded,
             textInputAction: TextInputAction.next,
             validator: _controller.validateName,
-            autofillHints: const [
-              AutofillHints.givenName,
-            ],
+            autofillHints: const [AutofillHints.givenName],
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
           _ProfileField(
@@ -408,9 +349,7 @@ class _EditarPerfilScreenState
             icon: Icons.badge_outlined,
             textInputAction: TextInputAction.next,
             validator: _controller.validateLastName,
-            autofillHints: const [
-              AutofillHints.familyName,
-            ],
+            autofillHints: const [AutofillHints.familyName],
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
           _ProfileField(
@@ -421,9 +360,7 @@ class _EditarPerfilScreenState
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.done,
             validator: _controller.validatePhone,
-            autofillHints: const [
-              AutofillHints.telephoneNumber,
-            ],
+            autofillHints: const [AutofillHints.telephoneNumber],
           ),
           const SizedBox(height: DogGoSpacing.md),
           _ReadOnlyInformation(
@@ -442,13 +379,10 @@ class _EditarPerfilScreenState
     );
   }
 
-  Widget _buildCollectionInformation(
-    EditProfileState state,
-  ) {
+  Widget _buildCollectionInformation(EditProfileState state) {
     return _EditCard(
       title: 'Datos de recolección',
-      subtitle:
-          'Ayudan al paseador a encontrar el punto de inicio.',
+      subtitle: 'Ayudan al paseador a encontrar el punto de inicio.',
       icon: Icons.home_outlined,
       child: Column(
         children: [
@@ -481,18 +415,57 @@ class _EditarPerfilScreenState
             },
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
-          _ProfileField(
-            controller: _controller.zoneController,
-            label: 'Zona',
-            hint: 'Colonia, sector o municipio',
-            icon: Icons.map_outlined,
-            textInputAction: TextInputAction.done,
-            validator: (value) {
-              return _controller.validateOptionalText(
-                value,
-                maximumLength: 120,
-              );
-            },
+          DropdownButtonFormField<String>(
+            initialValue: state.selectedStateCode,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Estado',
+              prefixIcon: Icon(Icons.map_outlined),
+            ),
+            items: state.states
+                .map(
+                  (item) => DropdownMenuItem(
+                    value: item.code,
+                    child: Text(item.name),
+                  ),
+                )
+                .toList(),
+            onChanged: state.saving ? null : _controller.selectState,
+            validator: (value) =>
+                value == null ? 'Selecciona tu estado.' : null,
+          ),
+          const SizedBox(height: DogGoSpacing.fieldGap),
+          DropdownButtonFormField<String>(
+            key: ValueKey(
+              '${state.selectedStateCode}-${state.selectedMunicipalityCode}',
+            ),
+            initialValue: state.selectedMunicipalityCode,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Municipio o alcaldía',
+              prefixIcon: state.loadingMunicipalities
+                  ? const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.location_city_outlined),
+            ),
+            items: state.municipalities
+                .map(
+                  (item) => DropdownMenuItem(
+                    value: item.code,
+                    child: Text(item.name, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged:
+                state.saving ||
+                    state.loadingMunicipalities ||
+                    state.selectedStateCode == null
+                ? null
+                : _controller.selectMunicipality,
+            validator: (value) =>
+                value == null ? 'Selecciona tu municipio.' : null,
           ),
           const SizedBox(height: DogGoSpacing.md),
           DogGoMapPreview(
@@ -506,11 +479,8 @@ class _EditarPerfilScreenState
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed:
-                  state.saving ? null : _selectLocation,
-              icon: const Icon(
-                Icons.edit_location_alt_outlined,
-              ),
+              onPressed: state.saving ? null : _selectLocation,
+              icon: const Icon(Icons.edit_location_alt_outlined),
               label: Text(
                 state.hasLocation
                     ? 'Cambiar ubicación'
@@ -520,11 +490,8 @@ class _EditarPerfilScreenState
           ),
           if (state.hasLocation)
             TextButton.icon(
-              onPressed:
-                  state.saving ? null : _controller.clearLocation,
-              icon: const Icon(
-                Icons.location_off_outlined,
-              ),
+              onPressed: state.saving ? null : _controller.clearLocation,
+              icon: const Icon(Icons.location_off_outlined),
               label: const Text('Quitar ubicación'),
             ),
         ],
@@ -535,16 +502,14 @@ class _EditarPerfilScreenState
   Widget _buildWalkingPreferences() {
     return _EditCard(
       title: 'Información para paseos',
-      subtitle:
-          'Comparte indicaciones útiles con el paseador.',
+      subtitle: 'Comparte indicaciones útiles con el paseador.',
       icon: Icons.pets_outlined,
       child: Column(
         children: [
           _ProfileField(
             controller: _controller.descriptionController,
             label: 'Descripción',
-            hint:
-                'Cuéntanos algo importante sobre ti o tus mascotas',
+            hint: 'Cuéntanos algo importante sobre ti o tus mascotas',
             icon: Icons.notes_outlined,
             minLines: 3,
             maxLines: 5,
@@ -560,8 +525,7 @@ class _EditarPerfilScreenState
           _ProfileField(
             controller: _controller.preferencesController,
             label: 'Preferencias de paseo',
-            hint:
-                'Horarios, cuidados o indicaciones especiales',
+            hint: 'Horarios, cuidados o indicaciones especiales',
             icon: Icons.directions_walk_outlined,
             minLines: 3,
             maxLines: 5,
@@ -593,11 +557,7 @@ class _EditarPerfilScreenState
                 ),
               )
             : const Icon(Icons.save_outlined),
-        label: Text(
-          state.saving
-              ? 'Guardando cambios...'
-              : 'Guardar cambios',
-        ),
+        label: Text(state.saving ? 'Guardando cambios...' : 'Guardar cambios'),
       ),
     );
   }
@@ -634,17 +594,11 @@ class _EditCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
         boxShadow: DogGoTheme.softShadow(),
       ),
       child: Column(
@@ -658,32 +612,18 @@ class _EditCard extends StatelessWidget {
                 height: 43,
                 decoration: BoxDecoration(
                   color: DogGoTheme.tealLight,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  icon,
-                  color: DogGoTheme.teal,
-                  size: 22,
-                ),
+                child: Icon(icon, color: DogGoTheme.teal, size: 22),
               ),
               const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: DogGoTheme.title(size: 17),
-                    ),
+                    Text(title, style: DogGoTheme.title(size: 17)),
                     const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: DogGoTheme.subtitle(
-                        size: 12.5,
-                      ),
-                    ),
+                    Text(subtitle, style: DogGoTheme.subtitle(size: 12.5)),
                   ],
                 ),
               ),
@@ -716,10 +656,7 @@ class _ProfilePhoto extends StatelessWidget {
         decoration: BoxDecoration(
           color: DogGoTheme.tealLight,
           shape: BoxShape.circle,
-          border: Border.all(
-            color: DogGoTheme.card,
-            width: 4,
-          ),
+          border: Border.all(color: DogGoTheme.card, width: 4),
           boxShadow: DogGoTheme.elevatedShadow(),
         ),
         child: _buildImage(),
@@ -741,8 +678,7 @@ class _ProfilePhoto extends StatelessWidget {
     final url = currentPhotoUrl?.trim();
 
     if (url != null &&
-        (url.startsWith('http://') ||
-            url.startsWith('https://'))) {
+        (url.startsWith('http://') || url.startsWith('https://'))) {
       return Image.network(
         url,
         fit: BoxFit.cover,
@@ -761,11 +697,7 @@ class _PhotoPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Icon(
-      Icons.person_rounded,
-      color: DogGoTheme.teal,
-      size: 62,
-    );
+    return const Icon(Icons.person_rounded, color: DogGoTheme.teal, size: 62);
   }
 }
 
@@ -809,9 +741,7 @@ class _ProfileField extends StatelessWidget {
         hintText: hint,
         alignLabelWithHint: maxLines > 1,
         prefixIcon: Padding(
-          padding: EdgeInsets.only(
-            bottom: maxLines > 1 ? 48 : 0,
-          ),
+          padding: EdgeInsets.only(bottom: maxLines > 1 ? 48 : 0),
           child: Icon(icon),
         ),
       ),
@@ -837,38 +767,20 @@ class _ReadOnlyInformation extends StatelessWidget {
       padding: const EdgeInsets.all(DogGoSpacing.md),
       decoration: BoxDecoration(
         color: DogGoTheme.cream,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: DogGoTheme.muted,
-            size: 21,
-          ),
+          Icon(icon, color: DogGoTheme.muted, size: 21),
           const SizedBox(width: DogGoSpacing.compactGap),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: DogGoTheme.caption(
-                    weight: FontWeight.w700,
-                  ),
-                ),
+                Text(title, style: DogGoTheme.caption(weight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: DogGoTheme.body(
-                    size: 13.5,
-                  ),
-                ),
+                Text(value, style: DogGoTheme.body(size: 13.5)),
               ],
             ),
           ),
@@ -894,20 +806,14 @@ class _SheetOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(
-        DogGoRadius.medium,
-      ),
+      borderRadius: BorderRadius.circular(DogGoRadius.medium),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(DogGoSpacing.md),
         decoration: BoxDecoration(
           color: DogGoTheme.cream,
-          borderRadius: BorderRadius.circular(
-            DogGoRadius.medium,
-          ),
-          border: Border.all(
-            color: DogGoTheme.border,
-          ),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
+          border: Border.all(color: DogGoTheme.border),
         ),
         child: Row(
           children: [
@@ -916,40 +822,22 @@ class _SheetOption extends StatelessWidget {
               height: 43,
               decoration: BoxDecoration(
                 color: DogGoTheme.tealLight,
-                borderRadius: BorderRadius.circular(
-                  DogGoRadius.medium,
-                ),
+                borderRadius: BorderRadius.circular(DogGoRadius.medium),
               ),
-              child: Icon(
-                icon,
-                color: DogGoTheme.teal,
-              ),
+              child: Icon(icon, color: DogGoTheme.teal),
             ),
             const SizedBox(width: DogGoSpacing.compactGap),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: DogGoTheme.body(
-                      weight: FontWeight.w800,
-                    ),
-                  ),
+                  Text(title, style: DogGoTheme.body(weight: FontWeight.w800)),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: DogGoTheme.subtitle(
-                      size: 12,
-                    ),
-                  ),
+                  Text(subtitle, style: DogGoTheme.subtitle(size: 12)),
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: DogGoTheme.muted,
-            ),
+            const Icon(Icons.chevron_right_rounded, color: DogGoTheme.muted),
           ],
         ),
       ),

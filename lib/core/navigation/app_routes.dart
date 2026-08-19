@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../screens/authenticated_entry_screen.dart';
+import '../../screens/availability/availability_screen.dart';
 import '../../screens/login_screen.dart';
 import '../../screens/mis_perros_screen.dart';
 import '../../screens/mis_paseos_screen.dart';
@@ -14,61 +15,38 @@ abstract final class AppRoutes {
   static const String pets = '/pets';
   static const String walks = '/walks';
   static const String walkers = '/walkers';
-  static const String notifications =
-      '/notifications';
+  static const String notifications = '/notifications';
   static const String profile = '/profile';
+  static const String availability = '/walker/availability';
 
-  static Route<dynamic> onGenerateRoute(
-    RouteSettings settings,
-  ) {
+  static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case login:
-        return _route(
-          settings,
-          const LoginScreen(),
-        );
+        return _route(settings, const LoginScreen());
 
       case home:
-        return _route(
-          settings,
-          const AuthenticatedEntryScreen(),
-        );
+        return _route(settings, const AuthenticatedEntryScreen());
 
       case pets:
-        return _route(
-          settings,
-          const MisPerrosScreen(),
-        );
+        return _route(settings, const MisPerrosScreen());
 
       case walks:
-        return _route(
-          settings,
-          const MisPaseosScreen(),
-        );
+        return _route(settings, const MisPaseosScreen());
 
       case walkers:
-        return _route(
-          settings,
-          const PaseadoresScreen(),
-        );
+        return _route(settings, const PaseadoresScreen());
 
       case notifications:
-        return _route(
-          settings,
-          const NotificacionesScreen(),
-        );
+        return _route(settings, const NotificacionesScreen());
 
       case profile:
-        return _route(
-          settings,
-          const PerfilScreen(),
-        );
+        return _route(settings, const PerfilScreen());
+
+      case availability:
+        return _route(settings, const AvailabilityScreen());
 
       default:
-        return _route(
-          settings,
-          const _RouteNotFoundScreen(),
-        );
+        return _route(settings, const _RouteNotFoundScreen());
     }
   }
 
@@ -83,47 +61,35 @@ abstract final class AppRoutes {
   }
 }
 
-class _RouteNotFoundScreen
-    extends StatelessWidget {
+class _RouteNotFoundScreen extends StatelessWidget {
   const _RouteNotFoundScreen();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('DogGo'),
-      ),
+      appBar: AppBar(title: const Text('DogGo')),
       body: Center(
         child: Padding(
-          padding:
-              const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Column(
-            mainAxisSize:
-                MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.route_outlined,
-                size: 48,
-              ),
+              const Icon(Icons.route_outlined, size: 48),
               const SizedBox(height: 16),
               const Text(
                 'La pantalla solicitada no existe.',
-                textAlign:
-                    TextAlign.center,
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  Navigator
-                      .pushNamedAndRemoveUntil(
+                  Navigator.pushNamedAndRemoveUntil(
                     context,
                     AppRoutes.home,
                     (_) => false,
                   );
                 },
-                child: const Text(
-                  'Volver al inicio',
-                ),
+                child: const Text('Volver al inicio'),
               ),
             ],
           ),

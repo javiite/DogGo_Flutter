@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -31,6 +30,10 @@ class PetFormController extends ChangeNotifier {
   final TextEditingController nameController;
   final TextEditingController breedController;
   final TextEditingController ageController;
+  final TextEditingController weightController;
+  final TextEditingController temperamentController;
+  final TextEditingController fearsController;
+  final TextEditingController commandsController;
   final TextEditingController notesController;
   final TextEditingController photoUrlController;
 
@@ -40,46 +43,72 @@ class PetFormController extends ChangeNotifier {
   PetFormController({
     Map<String, dynamic>? initialData,
     ImagePicker? imagePicker,
-  })  : _imagePicker = imagePicker ?? ImagePicker(),
-        initialPet = initialData == null
-            ? null
-            : Pet.fromMap(initialData),
-        nameController = TextEditingController(
-          text: initialData == null
-              ? ''
-              : Pet.fromMap(initialData).name,
-        ),
-        breedController = TextEditingController(
-          text: initialData == null
-              ? ''
-              : Pet.fromMap(initialData).breed,
-        ),
-        ageController = TextEditingController(
-          text: initialData == null
-              ? ''
-              : Pet.fromMap(initialData).age?.toString() ??
-                  '',
-        ),
-        notesController = TextEditingController(
-          text: initialData == null
-              ? ''
-              : Pet.fromMap(initialData).notes,
-        ),
-        photoUrlController = TextEditingController(
-          text: initialData == null
-              ? ''
-              : Pet.fromMap(initialData).photoPath ?? '',
-        ) {
+  }) : _imagePicker = imagePicker ?? ImagePicker(),
+       initialPet = initialData == null ? null : Pet.fromMap(initialData),
+       nameController = TextEditingController(
+         text: initialData == null ? '' : Pet.fromMap(initialData).name,
+       ),
+       breedController = TextEditingController(
+         text: initialData == null ? '' : Pet.fromMap(initialData).breed,
+       ),
+       ageController = TextEditingController(
+         text: initialData == null
+             ? ''
+             : Pet.fromMap(initialData).age?.toString() ?? '',
+       ),
+       weightController = TextEditingController(
+         text: _text(initialData, const ['peso', 'Peso']),
+       ),
+       temperamentController = TextEditingController(
+         text: _text(initialData, const ['temperamento', 'Temperamento']),
+       ),
+       fearsController = TextEditingController(
+         text: _text(initialData, const [
+           'miedosDetonantes',
+           'MiedosDetonantes',
+         ]),
+       ),
+       commandsController = TextEditingController(
+         text: _text(initialData, const [
+           'comandosConocidos',
+           'ComandosConocidos',
+         ]),
+       ),
+       notesController = TextEditingController(
+         text: initialData == null ? '' : Pet.fromMap(initialData).notes,
+       ),
+       photoUrlController = TextEditingController(
+         text: initialData == null
+             ? ''
+             : Pet.fromMap(initialData).photoPath ?? '',
+       ) {
     final pet = initialPet;
 
     _state = PetFormState(
-      mode: pet == null
-          ? PetFormMode.create
-          : PetFormMode.edit,
+      mode: pet == null ? PetFormMode.create : PetFormMode.edit,
       loading: true,
-      selectedSize: PetFormState.normalizeSize(
-        pet?.size,
+      selectedSize: PetFormState.normalizeSize(pet?.size),
+      selectedSex: _choice(
+        pet?.sex,
+        PetFormState.availableSexes,
+        'No especificado',
       ),
+      selectedEnergyLevel: _choice(
+        pet?.energyLevel,
+        PetFormState.availableEnergyLevels,
+        'No especificado',
+      ),
+      selectedLeashBehavior: _choice(
+        pet?.leashBehavior,
+        PetFormState.availableLeashBehaviors,
+        'No especificado',
+      ),
+      sterilized: pet?.sterilized,
+      socialWithDogs: pet?.socialWithDogs,
+      socialWithPeople: pet?.socialWithPeople,
+      socialWithChildren: pet?.socialWithChildren,
+      reactive: pet?.reactive,
+      escapeRisk: pet?.escapeRisk,
     );
   }
 
@@ -90,54 +119,64 @@ class PetFormController extends ChangeNotifier {
   bool get isEditing => _state.isEditing;
 
   Future<void> initialize() async {
-    _setState(
-      _state.copyWith(
-        loading: true,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(loading: true, clearError: true));
 
     try {
       final baseUrl = await StorageService.obtenerBaseUrl();
 
       if (_disposed) return;
 
-      final stateWithServer = _state.copyWith(
-        baseUrl: baseUrl,
-      );
+      final stateWithServer = _state.copyWith(baseUrl: baseUrl);
 
       _setState(
         stateWithServer.copyWith(
           loading: false,
-          currentPhotoUrl: stateWithServer.publicUrl(
-            initialPet?.photoPath,
-          ),
+          currentPhotoUrl: stateWithServer.publicUrl(initialPet?.photoPath),
         ),
       );
     } catch (error) {
       if (_disposed) return;
 
-      _setState(
-        _state.copyWith(
-          loading: false,
-          error: _cleanError(error),
-        ),
-      );
+      _setState(_state.copyWith(loading: false, error: _cleanError(error)));
     }
   }
 
   void setSize(String? size) {
-    if (size == null ||
-        !PetFormState.availableSizes.contains(size)) {
+    if (size == null || !PetFormState.availableSizes.contains(size)) {
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        selectedSize: size,
-      ),
-    );
+    _setState(_state.copyWith(selectedSize: size));
   }
+
+  void setSex(String? value) => _setState(_state.copyWith(selectedSex: value));
+  void setEnergyLevel(String? value) =>
+      _setState(_state.copyWith(selectedEnergyLevel: value));
+  void setLeashBehavior(String? value) =>
+      _setState(_state.copyWith(selectedLeashBehavior: value));
+  void setSterilized(bool? value) => _setState(
+    _state.copyWith(sterilized: value, clearSterilized: value == null),
+  );
+  void setSocialWithDogs(bool? value) => _setState(
+    _state.copyWith(socialWithDogs: value, clearSocialWithDogs: value == null),
+  );
+  void setSocialWithPeople(bool? value) => _setState(
+    _state.copyWith(
+      socialWithPeople: value,
+      clearSocialWithPeople: value == null,
+    ),
+  );
+  void setSocialWithChildren(bool? value) => _setState(
+    _state.copyWith(
+      socialWithChildren: value,
+      clearSocialWithChildren: value == null,
+    ),
+  );
+  void setReactive(bool? value) =>
+      _setState(_state.copyWith(reactive: value, clearReactive: value == null));
+  void setEscapeRisk(bool? value) => _setState(
+    _state.copyWith(escapeRisk: value, clearEscapeRisk: value == null),
+  );
 
   Future<bool> selectPhoto(ImageSource source) async {
     if (_state.saving) return false;
@@ -157,20 +196,13 @@ class PetFormController extends ChangeNotifier {
       photoUrlController.clear();
 
       _setState(
-        _state.copyWith(
-          selectedPhoto: File(image.path),
-          clearError: true,
-        ),
+        _state.copyWith(selectedPhoto: File(image.path), clearError: true),
       );
 
       return true;
     } catch (error) {
       if (!_disposed) {
-        _setState(
-          _state.copyWith(
-            error: _cleanError(error),
-          ),
-        );
+        _setState(_state.copyWith(error: _cleanError(error)));
       }
 
       return false;
@@ -178,21 +210,13 @@ class PetFormController extends ChangeNotifier {
   }
 
   void removeSelectedPhoto() {
-    _setState(
-      _state.copyWith(
-        clearSelectedPhoto: true,
-      ),
-    );
+    _setState(_state.copyWith(clearSelectedPhoto: true));
   }
 
   void clearError() {
     if (_state.error == null) return;
 
-    _setState(
-      _state.copyWith(
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(clearError: true));
   }
 
   Future<PetFormResult> save() async {
@@ -203,9 +227,7 @@ class PetFormController extends ChangeNotifier {
       );
     }
 
-    final age = int.tryParse(
-      ageController.text.trim(),
-    );
+    final age = int.tryParse(ageController.text.trim());
 
     if (age == null) {
       return const PetFormResult(
@@ -214,12 +236,7 @@ class PetFormController extends ChangeNotifier {
       );
     }
 
-    _setState(
-      _state.copyWith(
-        saving: true,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(saving: true, clearError: true));
 
     try {
       if (_state.isCreating) {
@@ -231,18 +248,10 @@ class PetFormController extends ChangeNotifier {
       final message = _cleanError(error);
 
       if (!_disposed) {
-        _setState(
-          _state.copyWith(
-            saving: false,
-            error: message,
-          ),
-        );
+        _setState(_state.copyWith(saving: false, error: message));
       }
 
-      return PetFormResult(
-        success: false,
-        message: message,
-      );
+      return PetFormResult(success: false, message: message);
     }
   }
 
@@ -254,14 +263,26 @@ class PetFormController extends ChangeNotifier {
       tamano: _state.selectedSize,
       notas: notesController.text.trim(),
       fotoUrl: _manualPhotoUrl,
+      peso: double.tryParse(weightController.text.trim().replaceAll(',', '.')),
+      sexo: _state.selectedSex,
+      esterilizado: _state.sterilized,
+      temperamento: temperamentController.text.trim(),
+      nivelEnergia: _state.selectedEnergyLevel,
+      sociableConPerros: _state.socialWithDogs,
+      sociableConPersonas: _state.socialWithPeople,
+      sociableConNinos: _state.socialWithChildren,
+      comportamientoCorrea: _state.selectedLeashBehavior,
+      reactivo: _state.reactive,
+      riesgoEscape: _state.escapeRisk,
+      miedosDetonantes: fearsController.text.trim(),
+      comandosConocidos: commandsController.text.trim(),
     );
 
     if (response['success'] != true) {
       throw Exception(
         _responseMessage(
           response,
-          fallback:
-              'No se pudo registrar la mascota.',
+          fallback: 'No se pudo registrar la mascota.',
         ),
       );
     }
@@ -272,8 +293,7 @@ class PetFormController extends ChangeNotifier {
     var photoUploaded = false;
     var message = _responseMessage(
       response,
-      fallback:
-          'Mascota registrada correctamente.',
+      fallback: 'Mascota registrada correctamente.',
     );
 
     if (selectedPhoto != null) {
@@ -281,16 +301,14 @@ class PetFormController extends ChangeNotifier {
         message =
             'La mascota se registró, pero el servidor no devolvió su identificador para subir la fotografía.';
       } else {
-        final photoResponse =
-            await PerrosService.subirFotoPerro(
+        final photoResponse = await PerrosService.subirFotoPerro(
           id: petId,
           filePath: selectedPhoto.path,
         );
 
         if (photoResponse['success'] == true) {
           photoUploaded = true;
-          message =
-              'Mascota registrada con fotografía correctamente.';
+          message = 'Mascota registrada con fotografía correctamente.';
         } else {
           message =
               'La mascota se registró, pero no se pudo subir la fotografía: '
@@ -300,12 +318,7 @@ class PetFormController extends ChangeNotifier {
     }
 
     if (!_disposed) {
-      _setState(
-        _state.copyWith(
-          saving: false,
-          clearError: true,
-        ),
-      );
+      _setState(_state.copyWith(saving: false, clearError: true));
     }
 
     return PetFormResult(
@@ -320,9 +333,7 @@ class PetFormController extends ChangeNotifier {
     final pet = initialPet;
 
     if (pet == null || !pet.hasValidId) {
-      throw Exception(
-        'No se encontró el identificador de la mascota.',
-      );
+      throw Exception('No se encontró el identificador de la mascota.');
     }
 
     final response = await PerrosService.editarPerro(
@@ -333,14 +344,26 @@ class PetFormController extends ChangeNotifier {
       tamano: _state.selectedSize,
       notas: notesController.text.trim(),
       fotoUrl: _manualPhotoUrl,
+      peso: double.tryParse(weightController.text.trim().replaceAll(',', '.')),
+      sexo: _state.selectedSex,
+      esterilizado: _state.sterilized,
+      temperamento: temperamentController.text.trim(),
+      nivelEnergia: _state.selectedEnergyLevel,
+      sociableConPerros: _state.socialWithDogs,
+      sociableConPersonas: _state.socialWithPeople,
+      sociableConNinos: _state.socialWithChildren,
+      comportamientoCorrea: _state.selectedLeashBehavior,
+      reactivo: _state.reactive,
+      riesgoEscape: _state.escapeRisk,
+      miedosDetonantes: fearsController.text.trim(),
+      comandosConocidos: commandsController.text.trim(),
     );
 
     if (response['success'] != true) {
       throw Exception(
         _responseMessage(
           response,
-          fallback:
-              'No se pudo actualizar la mascota.',
+          fallback: 'No se pudo actualizar la mascota.',
         ),
       );
     }
@@ -350,21 +373,18 @@ class PetFormController extends ChangeNotifier {
     var photoUploaded = false;
     var message = _responseMessage(
       response,
-      fallback:
-          'Mascota actualizada correctamente.',
+      fallback: 'Mascota actualizada correctamente.',
     );
 
     if (selectedPhoto != null) {
-      final photoResponse =
-          await PerrosService.subirFotoPerro(
+      final photoResponse = await PerrosService.subirFotoPerro(
         id: pet.id,
         filePath: selectedPhoto.path,
       );
 
       if (photoResponse['success'] == true) {
         photoUploaded = true;
-        message =
-            'Mascota y fotografía actualizadas correctamente.';
+        message = 'Mascota y fotografía actualizadas correctamente.';
       } else {
         message =
             'La mascota se actualizó, pero no se pudo subir la fotografía: '
@@ -373,12 +393,7 @@ class PetFormController extends ChangeNotifier {
     }
 
     if (!_disposed) {
-      _setState(
-        _state.copyWith(
-          saving: false,
-          clearError: true,
-        ),
-      );
+      _setState(_state.copyWith(saving: false, clearError: true));
     }
 
     return PetFormResult(
@@ -465,6 +480,16 @@ class PetFormController extends ChangeNotifier {
     return null;
   }
 
+  String? validateWeight(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+    final weight = double.tryParse(text.replaceAll(',', '.'));
+    if (weight == null || weight < 0 || weight > 150) {
+      return 'Escribe un peso entre 0 y 150 kg.';
+    }
+    return null;
+  }
+
   String? validatePhotoUrl(String? value) {
     final text = value?.trim() ?? '';
 
@@ -501,14 +526,13 @@ class PetFormController extends ChangeNotifier {
       for (final candidate in candidates) {
         final id = candidate is int
             ? candidate
-            : int.tryParse(
-                candidate?.toString() ?? '',
-              );
+            : int.tryParse(candidate?.toString() ?? '');
 
         if (id != null) return id;
       }
 
-      final nested = value['data'] ??
+      final nested =
+          value['data'] ??
           value['perro'] ??
           value['mascota'] ??
           value['resultado'] ??
@@ -526,9 +550,8 @@ class PetFormController extends ChangeNotifier {
     Map<String, dynamic> response, {
     required String fallback,
   }) {
-    final value = response['message'] ??
-        response['mensaje'] ??
-        response['error'];
+    final value =
+        response['message'] ?? response['mensaje'] ?? response['error'];
 
     final message = value?.toString().trim();
 
@@ -550,9 +573,7 @@ class PetFormController extends ChangeNotifier {
         .replaceFirst('ApiException: ', '')
         .trim();
 
-    return message.isEmpty
-        ? 'No se pudo guardar la mascota.'
-        : message;
+    return message.isEmpty ? 'No se pudo guardar la mascota.' : message;
   }
 
   void _setState(PetFormState newState) {
@@ -569,9 +590,30 @@ class PetFormController extends ChangeNotifier {
     nameController.dispose();
     breedController.dispose();
     ageController.dispose();
+    weightController.dispose();
+    temperamentController.dispose();
+    fearsController.dispose();
+    commandsController.dispose();
     notesController.dispose();
     photoUrlController.dispose();
 
     super.dispose();
+  }
+
+  static String _text(Map<String, dynamic>? data, List<String> keys) {
+    if (data == null) return '';
+    for (final key in keys) {
+      final value = data[key]?.toString().trim();
+      if (value != null && value.isNotEmpty && value != 'null') return value;
+    }
+    return '';
+  }
+
+  static String _choice(String? value, List<String> choices, String fallback) {
+    final clean = value?.trim().toLowerCase();
+    for (final choice in choices) {
+      if (choice.toLowerCase() == clean) return choice;
+    }
+    return fallback;
   }
 }

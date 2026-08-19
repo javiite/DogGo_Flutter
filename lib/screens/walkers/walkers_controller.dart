@@ -27,12 +27,7 @@ class WalkersController extends ChangeNotifier {
 
     _requestInProgress = true;
 
-    _setState(
-      _state.copyWith(
-        loading: true,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(loading: true, clearError: true));
 
     try {
       final results = await Future.wait<dynamic>([
@@ -49,15 +44,12 @@ class WalkersController extends ChangeNotifier {
         throw Exception(
           _responseMessage(
             response,
-            fallback:
-                'No se pudieron cargar los paseadores.',
+            fallback: 'No se pudieron cargar los paseadores.',
           ),
         );
       }
 
-      final walkers = Walker.listFrom(
-        response['data'],
-      );
+      final walkers = Walker.listFrom(response['data']);
 
       var selectedZone = _state.selectedZone;
 
@@ -84,54 +76,32 @@ class WalkersController extends ChangeNotifier {
     } catch (error) {
       if (_disposed) return;
 
-      _setState(
-        _state.copyWith(
-          loading: false,
-          error: _cleanError(error),
-        ),
-      );
+      _setState(_state.copyWith(loading: false, error: _cleanError(error)));
     } finally {
       _requestInProgress = false;
     }
   }
 
   void search(String query) {
-    _setState(
-      _state.copyWith(
-        searchQuery: query,
-      ),
-    );
+    _setState(_state.copyWith(searchQuery: query));
   }
 
   void selectZone(String? zone) {
-    if (zone == null ||
-        !_state.availableZones.contains(zone)) {
+    if (zone == null || !_state.availableZones.contains(zone)) {
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        selectedZone: zone,
-      ),
-    );
+    _setState(_state.copyWith(selectedZone: zone));
   }
 
   void setOnlyAvailable(bool value) {
-    _setState(
-      _state.copyWith(
-        onlyAvailable: value,
-      ),
-    );
+    _setState(_state.copyWith(onlyAvailable: value));
   }
 
   void setSort(WalkerSort? sort) {
     if (sort == null) return;
 
-    _setState(
-      _state.copyWith(
-        sort: sort,
-      ),
-    );
+    _setState(_state.copyWith(sort: sort));
   }
 
   void clearFilters() {
@@ -140,7 +110,7 @@ class WalkersController extends ChangeNotifier {
         searchQuery: '',
         selectedZone: WalkersState.allZones,
         onlyAvailable: false,
-        sort: WalkerSort.bestRated,
+        sort: WalkerSort.nearest,
         clearError: true,
       ),
     );
@@ -149,11 +119,7 @@ class WalkersController extends ChangeNotifier {
   void clearError() {
     if (_state.error == null) return;
 
-    _setState(
-      _state.copyWith(
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(clearError: true));
   }
 
   Walker? findById(int id) {
@@ -182,9 +148,8 @@ class WalkersController extends ChangeNotifier {
     Map<String, dynamic> response, {
     required String fallback,
   }) {
-    final value = response['message'] ??
-        response['mensaje'] ??
-        response['error'];
+    final value =
+        response['message'] ?? response['mensaje'] ?? response['error'];
 
     final message = value?.toString().trim();
 
@@ -206,9 +171,7 @@ class WalkersController extends ChangeNotifier {
         .replaceFirst('ApiException: ', '')
         .trim();
 
-    return message.isEmpty
-        ? 'No se pudieron cargar los paseadores.'
-        : message;
+    return message.isEmpty ? 'No se pudieron cargar los paseadores.' : message;
   }
 
   void _setState(WalkersState newState) {

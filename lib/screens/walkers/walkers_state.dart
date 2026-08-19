@@ -1,14 +1,12 @@
 import 'models/walker.dart';
 
-enum WalkerSort {
-  bestRated,
-  lowestRate,
-  mostExperience,
-}
+enum WalkerSort { nearest, bestRated, lowestRate, mostExperience }
 
 extension WalkerSortLabel on WalkerSort {
   String get label {
     switch (this) {
+      case WalkerSort.nearest:
+        return 'Más cercanos';
       case WalkerSort.bestRated:
         return 'Mejor calificación';
       case WalkerSort.lowestRate:
@@ -39,7 +37,7 @@ class WalkersState {
     this.searchQuery = '',
     this.selectedZone = allZones,
     this.onlyAvailable = false,
-    this.sort = WalkerSort.bestRated,
+    this.sort = WalkerSort.nearest,
   });
 
   bool get isEmpty => !loading && walkers.isEmpty;
@@ -50,15 +48,13 @@ class WalkersState {
     return searchQuery.trim().isNotEmpty ||
         selectedZone != allZones ||
         onlyAvailable ||
-        sort != WalkerSort.bestRated;
+        sort != WalkerSort.nearest;
   }
 
   int get totalWalkers => walkers.length;
 
   int get availableWalkers {
-    return walkers
-        .where((walker) => walker.available)
-        .length;
+    return walkers.where((walker) => walker.available).length;
   }
 
   double get averageRating {
@@ -68,10 +64,7 @@ class WalkersState {
 
     if (rated.isEmpty) return 0;
 
-    final total = rated.fold<double>(
-      0,
-      (sum, walker) => sum + walker.rating,
-    );
+    final total = rated.fold<double>(0, (sum, walker) => sum + walker.rating);
 
     return total / rated.length;
   }
@@ -85,10 +78,7 @@ class WalkersState {
 
     final result = zones.toList()..sort();
 
-    return [
-      allZones,
-      ...result,
-    ];
+    return [allZones, ...result];
   }
 
   List<Walker> get filteredWalkers {
@@ -101,9 +91,7 @@ class WalkersState {
 
       if (selectedZone != allZones) {
         final matchesZone = walker.zones.any(
-          (zone) =>
-              zone.toLowerCase() ==
-              selectedZone.toLowerCase(),
+          (zone) => zone.toLowerCase() == selectedZone.toLowerCase(),
         );
 
         if (!matchesZone) return false;
@@ -129,31 +117,31 @@ class WalkersState {
       }
 
       switch (sort) {
+        case WalkerSort.nearest:
+          if (first.withinCoverage != second.withinCoverage) {
+            return first.withinCoverage ? -1 : 1;
+          }
+          return (first.distanceKm ?? double.maxFinite).compareTo(
+            second.distanceKm ?? double.maxFinite,
+          );
         case WalkerSort.bestRated:
-          final ratingComparison =
-              second.rating.compareTo(first.rating);
+          final ratingComparison = second.rating.compareTo(first.rating);
 
           if (ratingComparison != 0) {
             return ratingComparison;
           }
 
-          return second.reviewCount.compareTo(
-            first.reviewCount,
-          );
+          return second.reviewCount.compareTo(first.reviewCount);
 
         case WalkerSort.lowestRate:
-          final firstRate =
-              first.hourlyRate ?? double.maxFinite;
+          final firstRate = first.hourlyRate ?? double.maxFinite;
 
-          final secondRate =
-              second.hourlyRate ?? double.maxFinite;
+          final secondRate = second.hourlyRate ?? double.maxFinite;
 
           return firstRate.compareTo(secondRate);
 
         case WalkerSort.mostExperience:
-          return second.experienceYears.compareTo(
-            first.experienceYears,
-          );
+          return second.experienceYears.compareTo(first.experienceYears);
       }
     });
 
@@ -181,10 +169,8 @@ class WalkersState {
       baseUrl: baseUrl ?? this.baseUrl,
       walkers: walkers ?? this.walkers,
       searchQuery: searchQuery ?? this.searchQuery,
-      selectedZone:
-          selectedZone ?? this.selectedZone,
-      onlyAvailable:
-          onlyAvailable ?? this.onlyAvailable,
+      selectedZone: selectedZone ?? this.selectedZone,
+      onlyAvailable: onlyAvailable ?? this.onlyAvailable,
       sort: sort ?? this.sort,
     );
   }

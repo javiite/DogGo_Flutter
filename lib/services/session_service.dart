@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'storage_service.dart';
+import 'background_tracking_service.dart';
 
 class SessionService {
   static Future<String?> obtenerToken() async {
@@ -19,9 +20,9 @@ class SessionService {
 
     if (payload == null) return null;
 
-    final valor = payload['nameid'] ??
-        payload[
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
+    final valor =
+        payload['nameid'] ??
+        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
         payload['sub'] ??
         payload['id'] ??
         payload['usuarioId'] ??
@@ -48,9 +49,9 @@ class SessionService {
 
     if (payload == null) return null;
 
-    final valor = payload['role'] ??
-        payload[
-            'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
+    final valor =
+        payload['role'] ??
+        payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
         payload['rol'] ??
         payload['Rol'];
 
@@ -75,10 +76,10 @@ class SessionService {
 
     if (payload == null) return null;
 
-    final valor = payload['unique_name'] ??
+    final valor =
+        payload['unique_name'] ??
         payload['name'] ??
-        payload[
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
+        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
         payload['nombre'] ??
         payload['Nombre'];
 
@@ -103,9 +104,9 @@ class SessionService {
 
     if (payload == null) return null;
 
-    final valor = payload['email'] ??
-        payload[
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
+    final valor =
+        payload['email'] ??
+        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
         payload['Email'];
 
     final email = valor?.toString().trim();
@@ -155,7 +156,8 @@ class SessionService {
   }
 
   static Future<void> guardarSesionDesdeLogin(Map<String, dynamic> data) async {
-    final token = data['token'] ??
+    final token =
+        data['token'] ??
         data['Token'] ??
         data['jwt'] ??
         data['Jwt'] ??
@@ -201,10 +203,12 @@ class SessionService {
   }
 
   static Future<void> cerrarSesion() async {
+    await BackgroundTrackingService.detenerTracking();
     await limpiarSesion();
   }
 
   static Future<void> logout() async {
+    await BackgroundTrackingService.detenerTracking();
     await limpiarSesion();
   }
 
@@ -284,8 +288,7 @@ class SessionService {
     if (usuarioIdActual == null) {
       final id = _intSeguro(
         payload['nameid'] ??
-            payload[
-                'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
+            payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
             payload['sub'] ??
             payload['id'] ??
             payload['usuarioId'] ??
@@ -299,9 +302,9 @@ class SessionService {
 
     final rolActual = await StorageService.obtenerRol();
     if (rolActual == null || rolActual.trim().isEmpty) {
-      final rol = payload['role'] ??
-          payload[
-              'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
+      final rol =
+          payload['role'] ??
+          payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
           payload['rol'] ??
           payload['Rol'];
 
@@ -312,10 +315,10 @@ class SessionService {
 
     final nombreActual = await StorageService.obtenerNombre();
     if (nombreActual == null || nombreActual.trim().isEmpty) {
-      final nombre = payload['unique_name'] ??
+      final nombre =
+          payload['unique_name'] ??
           payload['name'] ??
-          payload[
-              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
+          payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
           payload['nombre'] ??
           payload['Nombre'];
 
@@ -326,9 +329,9 @@ class SessionService {
 
     final emailActual = await StorageService.obtenerEmail();
     if (emailActual == null || emailActual.trim().isEmpty) {
-      final email = payload['email'] ??
-          payload[
-              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
+      final email =
+          payload['email'] ??
+          payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
           payload['Email'];
 
       if (email != null && email.toString().trim().isNotEmpty) {

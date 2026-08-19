@@ -16,23 +16,19 @@ class PaseadoresScreen extends StatefulWidget {
   const PaseadoresScreen({super.key});
 
   @override
-  State<PaseadoresScreen> createState() =>
-      _PaseadoresScreenState();
+  State<PaseadoresScreen> createState() => _PaseadoresScreenState();
 }
 
-class _PaseadoresScreenState
-    extends State<PaseadoresScreen> {
+class _PaseadoresScreenState extends State<PaseadoresScreen> {
   late final WalkersController _controller;
 
-  final TextEditingController _searchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
 
-    _controller = WalkersController()
-      ..initialize();
+    _controller = WalkersController()..initialize();
   }
 
   @override
@@ -42,18 +38,14 @@ class _PaseadoresScreenState
     super.dispose();
   }
 
-  void _showMessage(
-    String message, {
-    bool error = false,
-  }) {
+  void _showMessage(String message, {bool error = false}) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          backgroundColor:
-              error ? DogGoTheme.red : DogGoTheme.ink,
+          backgroundColor: error ? DogGoTheme.red : DogGoTheme.ink,
           content: Row(
             children: [
               Icon(
@@ -62,9 +54,7 @@ class _PaseadoresScreenState
                     : Icons.check_circle_outline_rounded,
                 color: Colors.white,
               ),
-              const SizedBox(
-                width: DogGoSpacing.compactGap,
-              ),
+              const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(child: Text(message)),
             ],
           ),
@@ -88,9 +78,8 @@ class _PaseadoresScreenState
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => DetallePaseadorScreen(
-          paseador: walker.toNavigationMap(),
-        ),
+        builder: (_) =>
+            DetallePaseadorScreen(paseador: walker.toNavigationMap()),
       ),
     );
 
@@ -111,18 +100,14 @@ class _PaseadoresScreenState
     final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute<bool>(
-        builder: (_) => CrearPaseoScreen(
-          paseador: walker.toNavigationMap(),
-        ),
+        builder: (_) => CrearPaseoScreen(paseador: walker.toNavigationMap()),
       ),
     );
 
     if (!mounted) return;
 
     if (created == true) {
-      _showMessage(
-        'Paseo solicitado correctamente.',
-      );
+      _showMessage('Paseo solicitado correctamente.');
 
       await _controller.refresh();
     }
@@ -141,8 +126,7 @@ class _PaseadoresScreenState
             actions: [
               IconButton(
                 tooltip: 'Actualizar paseadores',
-                onPressed:
-                    state.loading ? null : _controller.refresh,
+                onPressed: state.loading ? null : _controller.refresh,
                 icon: const Icon(Icons.refresh_rounded),
               ),
               const SizedBox(width: DogGoSpacing.sm),
@@ -156,18 +140,13 @@ class _PaseadoresScreenState
 
   Widget _buildBody(WalkersState state) {
     if (state.loading && state.walkers.isEmpty) {
-      return const DogGoLoadingView(
-        message: 'Buscando paseadores...',
-      );
+      return const DogGoLoadingView(message: 'Buscando paseadores...');
     }
 
-    if (state.error != null &&
-        state.walkers.isEmpty) {
+    if (state.error != null && state.walkers.isEmpty) {
       return Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(
-            DogGoSpacing.screenHorizontal,
-          ),
+          padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
           child: DogGoErrorView(
             title: 'No pudimos cargar los paseadores',
             message: state.error!,
@@ -182,8 +161,7 @@ class _PaseadoresScreenState
     return RefreshIndicator(
       onRefresh: _controller.refresh,
       child: CustomScrollView(
-        keyboardDismissBehavior:
-            ScrollViewKeyboardDismissBehavior.onDrag,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
@@ -195,9 +173,7 @@ class _PaseadoresScreenState
               DogGoSpacing.screenHorizontal,
               0,
             ),
-            sliver: SliverToBoxAdapter(
-              child: _WalkersHeader(state: state),
-            ),
+            sliver: SliverToBoxAdapter(child: _WalkersHeader(state: state)),
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
@@ -212,20 +188,15 @@ class _PaseadoresScreenState
                 textInputAction: TextInputAction.search,
                 onChanged: _controller.search,
                 decoration: InputDecoration(
-                  hintText:
-                      'Buscar por nombre, zona o experiencia',
-                  prefixIcon:
-                      const Icon(Icons.search_rounded),
-                  suffixIcon:
-                      state.searchQuery.isNotEmpty
-                          ? IconButton(
-                              tooltip: 'Limpiar búsqueda',
-                              onPressed: _clearSearch,
-                              icon: const Icon(
-                                Icons.close_rounded,
-                              ),
-                            )
-                          : null,
+                  hintText: 'Buscar por nombre, zona o experiencia',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: state.searchQuery.isNotEmpty
+                      ? IconButton(
+                          tooltip: 'Limpiar búsqueda',
+                          onPressed: _clearSearch,
+                          icon: const Icon(Icons.close_rounded),
+                        )
+                      : null,
                 ),
               ),
             ),
@@ -240,18 +211,14 @@ class _PaseadoresScreenState
             sliver: SliverToBoxAdapter(
               child: _FiltersCard(
                 state: state,
-                onZoneChanged:
-                    _controller.selectZone,
-                onSortChanged:
-                    _controller.setSort,
-                onAvailableChanged:
-                    _controller.setOnlyAvailable,
+                onZoneChanged: _controller.selectZone,
+                onSortChanged: _controller.setSort,
+                onAvailableChanged: _controller.setOnlyAvailable,
                 onClear: _clearFilters,
               ),
             ),
           ),
-          if (state.error != null &&
-              state.walkers.isNotEmpty)
+          if (state.error != null && state.walkers.isNotEmpty)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 DogGoSpacing.screenHorizontal,
@@ -271,9 +238,7 @@ class _PaseadoresScreenState
             SliverFillRemaining(
               hasScrollBody: false,
               child: Padding(
-                padding: const EdgeInsets.all(
-                  DogGoSpacing.screenHorizontal,
-                ),
+                padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
                 child: Center(
                   child: DogGoEmptyView(
                     title: 'No hay paseadores',
@@ -290,9 +255,7 @@ class _PaseadoresScreenState
             SliverFillRemaining(
               hasScrollBody: false,
               child: Padding(
-                padding: const EdgeInsets.all(
-                  DogGoSpacing.screenHorizontal,
-                ),
+                padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
                 child: Center(
                   child: DogGoEmptyView(
                     title: 'Sin coincidencias',
@@ -315,18 +278,15 @@ class _PaseadoresScreenState
               ),
               sliver: SliverList.separated(
                 itemCount: walkers.length,
-                separatorBuilder: (_, __) {
-                  return const SizedBox(
-                    height: DogGoSpacing.md,
-                  );
+                separatorBuilder: (_, _) {
+                  return const SizedBox(height: DogGoSpacing.md);
                 },
                 itemBuilder: (context, index) {
                   final walker = walkers[index];
 
                   return _WalkerCard(
                     walker: walker,
-                    photoUrl:
-                        state.photoUrlFor(walker),
+                    photoUrl: state.photoUrlFor(walker),
                     onViewProfile: () {
                       _openDetail(walker);
                     },
@@ -346,28 +306,18 @@ class _PaseadoresScreenState
 class _WalkersHeader extends StatelessWidget {
   final WalkersState state;
 
-  const _WalkersHeader({
-    required this.state,
-  });
+  const _WalkersHeader({required this.state});
 
   @override
   Widget build(BuildContext context) {
     final rating = state.averageRating;
 
     return Container(
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.tealLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.teal.withValues(
-            alpha: 0.13,
-          ),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.teal.withValues(alpha: 0.13)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,9 +329,7 @@ class _WalkersHeader extends StatelessWidget {
                 height: 54,
                 decoration: BoxDecoration(
                   color: DogGoTheme.card,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
                 child: const Icon(
                   Icons.person_search_outlined,
@@ -392,23 +340,16 @@ class _WalkersHeader extends StatelessWidget {
               const SizedBox(width: DogGoSpacing.md),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Encuentra un paseador',
-                      style: DogGoTheme.title(
-                        size: 20,
-                      ),
+                      style: DogGoTheme.title(size: 20),
                     ),
-                    const SizedBox(
-                      height: DogGoSpacing.xs,
-                    ),
+                    const SizedBox(height: DogGoSpacing.xs),
                     Text(
                       'Compara disponibilidad, zona, tarifa y experiencia.',
-                      style: DogGoTheme.subtitle(
-                        size: 12.5,
-                      ),
+                      style: DogGoTheme.subtitle(size: 12.5),
                     ),
                   ],
                 ),
@@ -427,21 +368,16 @@ class _WalkersHeader extends StatelessWidget {
               const _HeaderDivider(),
               Expanded(
                 child: _HeaderStat(
-                  value:
-                      '${state.availableWalkers}',
+                  value: '${state.availableWalkers}',
                   label: 'Disponibles',
                 ),
               ),
               const _HeaderDivider(),
               Expanded(
                 child: _HeaderStat(
-                  value: rating > 0
-                      ? rating.toStringAsFixed(1)
-                      : '—',
+                  value: rating > 0 ? rating.toStringAsFixed(1) : '—',
                   label: 'Promedio',
-                  icon: rating > 0
-                      ? Icons.star_rounded
-                      : null,
+                  icon: rating > 0 ? Icons.star_rounded : null,
                 ),
               ),
             ],
@@ -457,34 +393,22 @@ class _HeaderStat extends StatelessWidget {
   final String label;
   final IconData? icon;
 
-  const _HeaderStat({
-    required this.value,
-    required this.label,
-    this.icon,
-  });
+  const _HeaderStat({required this.value, required this.label, this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(
-                icon,
-                size: 17,
-                color: DogGoTheme.orange,
-              ),
+              Icon(icon, size: 17, color: DogGoTheme.orange),
               const SizedBox(width: 3),
             ],
             Text(
               value,
-              style: DogGoTheme.title(
-                size: 18,
-                color: DogGoTheme.teal,
-              ),
+              style: DogGoTheme.title(size: 18, color: DogGoTheme.teal),
             ),
           ],
         ),
@@ -492,9 +416,7 @@ class _HeaderStat extends StatelessWidget {
         Text(
           label,
           textAlign: TextAlign.center,
-          style: DogGoTheme.caption(
-            size: 10,
-          ),
+          style: DogGoTheme.caption(size: 10),
         ),
       ],
     );
@@ -509,9 +431,7 @@ class _HeaderDivider extends StatelessWidget {
     return Container(
       width: 1,
       height: 34,
-      color: DogGoTheme.teal.withValues(
-        alpha: 0.15,
-      ),
+      color: DogGoTheme.teal.withValues(alpha: 0.15),
     );
   }
 }
@@ -534,87 +454,59 @@ class _FiltersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.tune_rounded,
-                color: DogGoTheme.teal,
-              ),
-              const SizedBox(
-                width: DogGoSpacing.compactGap,
-              ),
+              const Icon(Icons.tune_rounded, color: DogGoTheme.teal),
+              const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
-                child: Text(
-                  'Filtros',
-                  style: DogGoTheme.title(
-                    size: 16,
-                  ),
-                ),
+                child: Text('Filtros', style: DogGoTheme.title(size: 16)),
               ),
               if (state.hasActiveFilters)
-                TextButton(
-                  onPressed: onClear,
-                  child: const Text('Limpiar'),
-                ),
+                TextButton(onPressed: onClear, child: const Text('Limpiar')),
             ],
           ),
           const SizedBox(height: DogGoSpacing.md),
           DropdownButtonFormField<String>(
-            initialValue: state.availableZones.contains(
-              state.selectedZone,
-            )
+            initialValue: state.availableZones.contains(state.selectedZone)
                 ? state.selectedZone
                 : WalkersState.allZones,
             decoration: const InputDecoration(
               labelText: 'Zona',
-              prefixIcon:
-                  Icon(Icons.location_on_outlined),
+              prefixIcon: Icon(Icons.location_on_outlined),
             ),
-            items: state.availableZones.map(
-              (zone) {
-                return DropdownMenuItem<String>(
-                  value: zone,
-                  child: Text(
-                    zone,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              },
-            ).toList(growable: false),
+            items: state.availableZones
+                .map((zone) {
+                  return DropdownMenuItem<String>(
+                    value: zone,
+                    child: Text(zone, overflow: TextOverflow.ellipsis),
+                  );
+                })
+                .toList(growable: false),
             onChanged: onZoneChanged,
           ),
-          const SizedBox(
-            height: DogGoSpacing.fieldGap,
-          ),
+          const SizedBox(height: DogGoSpacing.fieldGap),
           DropdownButtonFormField<WalkerSort>(
             initialValue: state.sort,
             decoration: const InputDecoration(
               labelText: 'Ordenar por',
-              prefixIcon:
-                  Icon(Icons.sort_rounded),
+              prefixIcon: Icon(Icons.sort_rounded),
             ),
-            items: WalkerSort.values.map(
-              (sort) {
-                return DropdownMenuItem<WalkerSort>(
-                  value: sort,
-                  child: Text(sort.label),
-                );
-              },
-            ).toList(growable: false),
+            items: WalkerSort.values
+                .map((sort) {
+                  return DropdownMenuItem<WalkerSort>(
+                    value: sort,
+                    child: Text(sort.label),
+                  );
+                })
+                .toList(growable: false),
             onChanged: onSortChanged,
           ),
           const SizedBox(height: DogGoSpacing.sm),
@@ -628,15 +520,11 @@ class _FiltersCard extends StatelessWidget {
             ),
             title: Text(
               'Solo disponibles',
-              style: DogGoTheme.body(
-                weight: FontWeight.w800,
-              ),
+              style: DogGoTheme.body(weight: FontWeight.w800),
             ),
             subtitle: Text(
               'Ocultar paseadores ocupados.',
-              style: DogGoTheme.subtitle(
-                size: 12,
-              ),
+              style: DogGoTheme.subtitle(size: 12),
             ),
           ),
         ],
@@ -664,39 +552,25 @@ class _WalkerCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
         boxShadow: DogGoTheme.softShadow(),
       ),
       child: InkWell(
         onTap: onViewProfile,
         child: Padding(
-          padding: const EdgeInsets.all(
-            DogGoSpacing.cardPadding,
-          ),
+          padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _WalkerPhoto(
-                    walker: walker,
-                    photoUrl: photoUrl,
-                  ),
-                  const SizedBox(
-                    width: DogGoSpacing.md,
-                  ),
+                  _WalkerPhoto(walker: walker, photoUrl: photoUrl),
+                  const SizedBox(width: DogGoSpacing.md),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
@@ -704,17 +578,13 @@ class _WalkerCard extends StatelessWidget {
                               child: Text(
                                 walker.name,
                                 maxLines: 1,
-                                overflow:
-                                    TextOverflow.ellipsis,
-                                style: DogGoTheme.title(
-                                  size: 18,
-                                ),
+                                overflow: TextOverflow.ellipsis,
+                                style: DogGoTheme.title(size: 18),
                               ),
                             ),
                             if (walker.verified)
                               const Padding(
-                                padding:
-                                    EdgeInsets.only(left: 5),
+                                padding: EdgeInsets.only(left: 5),
                                 child: Icon(
                                   Icons.verified_rounded,
                                   color: DogGoTheme.teal,
@@ -723,16 +593,9 @@ class _WalkerCard extends StatelessWidget {
                               ),
                           ],
                         ),
-                        const SizedBox(
-                          height: DogGoSpacing.xs,
-                        ),
-                        _AvailabilityLabel(
-                          available: walker.available,
-                        ),
-                        const SizedBox(
-                          height:
-                              DogGoSpacing.compactGap,
-                        ),
+                        const SizedBox(height: DogGoSpacing.xs),
+                        _AvailabilityLabel(available: walker.available),
+                        const SizedBox(height: DogGoSpacing.compactGap),
                         Row(
                           children: [
                             const Icon(
@@ -752,10 +615,8 @@ class _WalkerCard extends StatelessWidget {
                             Flexible(
                               child: Text(
                                 '· ${walker.reviewCountLabel}',
-                                overflow:
-                                    TextOverflow.ellipsis,
-                                style:
-                                    DogGoTheme.caption(),
+                                overflow: TextOverflow.ellipsis,
+                                style: DogGoTheme.caption(),
                               ),
                             ),
                           ],
@@ -770,24 +631,19 @@ class _WalkerCard extends StatelessWidget {
                 walker.description,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: DogGoTheme.subtitle(
-                  size: 13,
-                ),
+                style: DogGoTheme.subtitle(size: 13),
               ),
-              const SizedBox(
-                height: DogGoSpacing.compactGap,
-              ),
+              const SizedBox(height: DogGoSpacing.compactGap),
               Wrap(
                 spacing: DogGoSpacing.sm,
                 runSpacing: DogGoSpacing.sm,
                 children: [
                   _WalkerAttribute(
                     icon: Icons.location_on_outlined,
-                    text: walker.serviceZone,
+                    text: walker.proximityLabel,
                   ),
                   _WalkerAttribute(
-                    icon:
-                        Icons.workspace_premium_outlined,
+                    icon: Icons.workspace_premium_outlined,
                     text: walker.experienceLabel,
                   ),
                 ],
@@ -800,9 +656,7 @@ class _WalkerCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: DogGoTheme.cream,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
                 child: Row(
                   children: [
@@ -817,9 +671,7 @@ class _WalkerCard extends StatelessWidget {
                     ),
                     Text(
                       walker.completedWalksLabel,
-                      style: DogGoTheme.caption(
-                        size: 10.5,
-                      ),
+                      style: DogGoTheme.caption(size: 10.5),
                     ),
                   ],
                 ),
@@ -833,18 +685,12 @@ class _WalkerCard extends StatelessWidget {
                       child: const Text('Ver perfil'),
                     ),
                   ),
-                  const SizedBox(
-                    width: DogGoSpacing.compactGap,
-                  ),
+                  const SizedBox(width: DogGoSpacing.compactGap),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: walker.available
-                          ? onRequest
-                          : null,
+                      onPressed: walker.available ? onRequest : null,
                       child: Text(
-                        walker.available
-                            ? 'Solicitar'
-                            : 'No disponible',
+                        walker.available ? 'Solicitar' : 'No disponible',
                       ),
                     ),
                   ),
@@ -862,10 +708,7 @@ class _WalkerPhoto extends StatelessWidget {
   final Walker walker;
   final String? photoUrl;
 
-  const _WalkerPhoto({
-    required this.walker,
-    required this.photoUrl,
-  });
+  const _WalkerPhoto({required this.walker, required this.photoUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -875,21 +718,15 @@ class _WalkerPhoto extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: DogGoTheme.tealLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
       ),
       child: photoUrl == null
-          ? _WalkerPlaceholder(
-              initials: walker.initials,
-            )
+          ? _WalkerPlaceholder(initials: walker.initials)
           : Image.network(
               photoUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return _WalkerPlaceholder(
-                  initials: walker.initials,
-                );
+              errorBuilder: (_, _, _) {
+                return _WalkerPlaceholder(initials: walker.initials);
               },
             ),
     );
@@ -899,19 +736,14 @@ class _WalkerPhoto extends StatelessWidget {
 class _WalkerPlaceholder extends StatelessWidget {
   final String initials;
 
-  const _WalkerPlaceholder({
-    required this.initials,
-  });
+  const _WalkerPlaceholder({required this.initials});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Text(
         initials,
-        style: DogGoTheme.title(
-          size: 21,
-          color: DogGoTheme.teal,
-        ),
+        style: DogGoTheme.title(size: 21, color: DogGoTheme.teal),
       ),
     );
   }
@@ -920,32 +752,21 @@ class _WalkerPlaceholder extends StatelessWidget {
 class _AvailabilityLabel extends StatelessWidget {
   final bool available;
 
-  const _AvailabilityLabel({
-    required this.available,
-  });
+  const _AvailabilityLabel({required this.available});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: available
-            ? DogGoTheme.greenLight
-            : DogGoTheme.redLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.pill,
-        ),
+        color: available ? DogGoTheme.greenLight : DogGoTheme.redLight,
+        borderRadius: BorderRadius.circular(DogGoRadius.pill),
       ),
       child: Text(
         available ? 'Disponible' : 'No disponible',
         style: DogGoTheme.caption(
           size: 10,
-          color: available
-              ? DogGoTheme.green
-              : DogGoTheme.red,
+          color: available ? DogGoTheme.green : DogGoTheme.red,
           weight: FontWeight.w800,
         ),
       ),
@@ -957,35 +778,21 @@ class _WalkerAttribute extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _WalkerAttribute({
-    required this.icon,
-    required this.text,
-  });
+  const _WalkerAttribute({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(
-        maxWidth: 250,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 6,
-      ),
+      constraints: const BoxConstraints(maxWidth: 250),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: DogGoTheme.purpleLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.pill,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: DogGoTheme.purple,
-            size: 15,
-          ),
+          Icon(icon, color: DogGoTheme.purple, size: 15),
           const SizedBox(width: 5),
           Flexible(
             child: Text(

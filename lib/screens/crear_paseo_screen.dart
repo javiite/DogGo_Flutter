@@ -11,36 +11,31 @@ import 'walks/walk_request_controller.dart';
 import 'walks/walk_request_state.dart';
 import 'walks/models/walk_route_selection.dart';
 import 'walks/widgets/walk_route_card.dart';
+import 'walks/widgets/available_date_selector.dart';
+import 'walks/widgets/available_time_selector.dart';
+import 'walks/widgets/availability_warning_card.dart';
 
 class CrearPaseoScreen extends StatefulWidget {
   final Map<String, dynamic> paseador;
 
-  const CrearPaseoScreen({
-    super.key,
-    required this.paseador,
-  });
+  const CrearPaseoScreen({super.key, required this.paseador});
 
   @override
-  State<CrearPaseoScreen> createState() =>
-      _CrearPaseoScreenState();
+  State<CrearPaseoScreen> createState() => _CrearPaseoScreenState();
 }
 
-class _CrearPaseoScreenState
-    extends State<CrearPaseoScreen> {
+class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
   late final WalkRequestController _controller;
 
-  final TextEditingController _notesController =
-      TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
 
-  WalkRouteSelection? _routeSelection;    
+  WalkRouteSelection? _routeSelection;
 
   @override
   void initState() {
     super.initState();
 
-    _controller = WalkRequestController(
-      walkerData: widget.paseador,
-    );
+    _controller = WalkRequestController(walkerData: widget.paseador);
 
     _controller.initialize();
   }
@@ -52,33 +47,25 @@ class _CrearPaseoScreenState
     super.dispose();
   }
 
+  // ignore: unused_element
   Future<void> _selectSchedule() async {
     final now = DateTime.now();
-    final current =
-        _controller.state.scheduledAt;
+    final current = _controller.state.scheduledAt;
 
     final selectedDate = await showDatePicker(
       context: context,
       initialDate: current ?? now,
-      firstDate: DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ),
-      lastDate: now.add(
-        const Duration(days: 180),
-      ),
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: now.add(const Duration(days: 180)),
       helpText: 'Selecciona el día del paseo',
       cancelText: 'Cancelar',
       confirmText: 'Continuar',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context)
-                .colorScheme
-                .copyWith(
-                  primary: DogGoTheme.teal,
-                ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: DogGoTheme.teal),
           ),
           child: child!,
         );
@@ -89,25 +76,20 @@ class _CrearPaseoScreenState
       return;
     }
 
-    final initialDateTime = current ??
-        now.add(const Duration(hours: 1));
+    final initialDateTime = current ?? now.add(const Duration(hours: 1));
 
     final selectedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(
-        initialDateTime,
-      ),
+      initialTime: TimeOfDay.fromDateTime(initialDateTime),
       helpText: 'Selecciona la hora',
       cancelText: 'Cancelar',
       confirmText: 'Guardar',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context)
-                .colorScheme
-                .copyWith(
-                  primary: DogGoTheme.teal,
-                ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: DogGoTheme.teal),
           ),
           child: child!,
         );
@@ -127,9 +109,7 @@ class _CrearPaseoScreenState
     );
 
     if (!result.isAfter(DateTime.now())) {
-      _showMessage(
-        'Selecciona una fecha y hora futuras.',
-      );
+      _showMessage('Selecciona una fecha y hora futuras.');
       return;
     }
 
@@ -137,20 +117,15 @@ class _CrearPaseoScreenState
   }
 
   Future<void> _openMap() async {
-    final current =
-        _controller.state.pickupLocation;
+    final current = _controller.state.pickupLocation;
 
-    final result =
-        await Navigator.push<Map<String, dynamic>>(
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (_) => SeleccionarUbicacionScreen(
           ubicacionInicial: current == null
               ? null
-              : LatLng(
-                  current.latitude,
-                  current.longitude,
-                ),
+              : LatLng(current.latitude, current.longitude),
           textoInicial: current?.displayAddress,
         ),
       ),
@@ -160,8 +135,7 @@ class _CrearPaseoScreenState
       return;
     }
 
-    final error =
-        _controller.applyMapResult(result);
+    final error = _controller.applyMapResult(result);
 
     if (error != null) {
       _showMessage(error);
@@ -169,8 +143,7 @@ class _CrearPaseoScreenState
   }
 
   Future<void> _useCurrentLocation() async {
-    final error =
-        await _controller.useCurrentLocation();
+    final error = await _controller.useCurrentLocation();
 
     if (!mounted) {
       return;
@@ -181,43 +154,50 @@ class _CrearPaseoScreenState
       return;
     }
 
-    _showMessage(
-      'Ubicación actual seleccionada.',
-      success: true,
-    );
+    _showMessage('Ubicación actual seleccionada.', success: true);
   }
 
   void _useDefaultLocation() {
-    final error =
-        _controller.useDefaultLocation();
+    final error = _controller.useDefaultLocation();
 
     if (error != null) {
       _showMessage(error);
       return;
     }
 
-    _showMessage(
-      'Domicilio predeterminado seleccionado.',
-      success: true,
-    );
+    _showMessage('Domicilio predeterminado seleccionado.', success: true);
   }
 
   void _togglePet(int petId) {
-    final error =
-        _controller.togglePet(petId);
+    final error = _controller.togglePet(petId);
 
     if (error != null) {
       _showMessage(error);
     }
   }
 
+  void _addSchedule() {
+    final error = _controller.addCurrentSchedule();
+    if (error != null) _showMessage(error);
+  }
+
+  String _scheduleText(WalkScheduleDraft walk, WalkRequestState state) {
+    final date = walk.startsAt;
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final pets = state.pets
+        .where((pet) => walk.petIds.contains(pet.id))
+        .map((pet) => pet.name)
+        .join(', ');
+    return '$day/$month · $hour:$minute · ${walk.durationMinutes} min · $pets';
+  }
+
   Future<void> _registerPet() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) =>
-            const RegistrarPerroScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const RegistrarPerroScreen()),
     );
 
     if (!mounted) {
@@ -239,20 +219,14 @@ class _CrearPaseoScreenState
       return;
     }
 
-    _showMessage(
-      result.message,
-      success: result.success,
-    );
+    _showMessage(result.message, success: result.success);
 
     if (result.success) {
       Navigator.pop(context, true);
     }
   }
 
-  void _showMessage(
-    String message, {
-    bool success = false,
-  }) {
+  void _showMessage(String message, {bool success = false}) {
     if (!mounted) {
       return;
     }
@@ -262,9 +236,7 @@ class _CrearPaseoScreenState
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: success
-              ? DogGoTheme.teal
-              : DogGoTheme.ink,
+          backgroundColor: success ? DogGoTheme.teal : DogGoTheme.ink,
         ),
       );
   }
@@ -283,28 +255,15 @@ class _CrearPaseoScreenState
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              onPressed: () =>
-                  Navigator.pop(context),
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-              ),
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_rounded),
             ),
-            title: Text(
-              'Solicitar paseo',
-              style: DogGoTheme.title(size: 20),
-            ),
+            title: Text('Solicitar paseo', style: DogGoTheme.title(size: 20)),
           ),
-          bottomNavigationBar:
-              state.loading || state.error != null
-                  ? null
-                  : _SubmitBar(
-                      state: state,
-                      onSubmit: _submit,
-                    ),
-          body: SafeArea(
-            top: false,
-            child: _buildBody(state),
-          ),
+          bottomNavigationBar: state.loading || state.error != null
+              ? null
+              : _SubmitBar(state: state, onSubmit: _submit),
+          body: SafeArea(top: false, child: _buildBody(state)),
         );
       },
     );
@@ -312,10 +271,7 @@ class _CrearPaseoScreenState
 
   Widget _buildBody(WalkRequestState state) {
     if (state.loading) {
-      return const DogGoLoadingView(
-        message:
-            'Preparando tu solicitud...',
-      );
+      return const DogGoLoadingView(message: 'Preparando tu solicitud...');
     }
 
     if (state.error != null) {
@@ -332,22 +288,15 @@ class _CrearPaseoScreenState
       color: DogGoTheme.teal,
       onRefresh: _controller.refresh,
       child: ListView(
-        physics:
-            const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          20,
-          18,
-          20,
-          130,
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 130),
         children: [
           _WalkerHero(state: state),
           const SizedBox(height: 26),
 
           _SectionHeader(
             title: '¿Quiénes salen?',
-            subtitle:
-                'Selecciona de 1 a 5 mascotas',
+            subtitle: 'Selecciona de 1 a 5 mascotas',
             trailing:
                 '${state.selectedPetCount}/'
                 '${WalkRequestState.maxSelectedPets}',
@@ -355,67 +304,114 @@ class _CrearPaseoScreenState
           const SizedBox(height: 12),
 
           if (state.pets.isEmpty)
-            _NoPetsCard(
-              onRegister: _registerPet,
-            )
+            _NoPetsCard(onRegister: _registerPet)
           else ...[
-            _PetSelector(
-              state: state,
-              onSelected: _togglePet,
-            ),
+            _PetSelector(state: state, onSelected: _togglePet),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _registerPet,
-              icon: const Icon(
-                Icons.add_rounded,
-              ),
-              label: const Text(
-                'Registrar otra mascota',
-              ),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Registrar otra mascota'),
             ),
           ],
 
           const SizedBox(height: 28),
           const _SectionHeader(
             title: 'Duración',
-            subtitle:
-                'Elige cuánto durará el paseo',
+            subtitle: 'Elige cuánto durará el paseo',
           ),
           const SizedBox(height: 12),
 
           _DurationSelector(
             state: state,
-            onSelected:
-                _controller.selectDuration,
+            onSelected: _controller.selectDuration,
           ),
+          if (state.scheduledWalks.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            const _ProgramDraftHint(),
+          ],
 
           const SizedBox(height: 28),
           const _SectionHeader(
             title: 'Fecha y hora',
-            subtitle:
-                'Programa el momento del paseo',
+            subtitle: 'Programa el momento del paseo',
           ),
           const SizedBox(height: 12),
 
-          _ActionCard(
-            icon: Icons.calendar_month_rounded,
-            title: state.scheduledAt == null
-                ? 'Seleccionar horario'
-                : state.scheduleLabel,
-            subtitle: state.scheduledAt == null
-                ? 'Elige una fecha futura'
-                : 'Toca para modificarlo',
-            color: DogGoTheme.purple,
-            background:
-                DogGoTheme.purpleLight,
-            onTap: _selectSchedule,
+          AvailabilityWarningCard(
+            loading: state.loadingAvailability,
+            unavailable: state.availability?.available == false,
+            error: state.availabilityError,
+            onRetry: _controller.loadAvailability,
           ),
+          if (state.availability != null && state.availability!.available) ...[
+            const SizedBox(height: 12),
+            AvailableDateSelector(
+              dates: state.availability!.availableDays(
+                DateTime.now(),
+                count: 60,
+              ),
+              selected: state.selectedDay,
+              onSelected: _controller.selectDay,
+            ),
+            const SizedBox(height: 10),
+            AvailableTimeSelector(
+              times: state.currentSlotOptions,
+              selected: state.scheduledAt,
+              onSelected: _controller.setSchedule,
+            ),
+            if (state.scheduledAt != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Seleccionado: ${state.scheduleLabel}',
+                style: DogGoTheme.caption(
+                  color: DogGoTheme.teal,
+                  weight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _addSchedule,
+                icon: const Icon(Icons.add_circle_outline_rounded),
+                label: Text(
+                  state.scheduledWalks.isEmpty
+                      ? 'Agregar otra fecha'
+                      : 'Agregar esta fecha a la programación',
+                ),
+              ),
+            ],
+            if (state.scheduledWalks.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${state.scheduledWalks.length} paseos en esta programación',
+                  style: DogGoTheme.body(weight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: state.scheduledWalks
+                    .map(
+                      (walk) => InputChip(
+                        avatar: const Icon(Icons.event_rounded, size: 17),
+                        label: Text(_scheduleText(walk, state)),
+                        onDeleted: state.saving
+                            ? null
+                            : () => _controller.removeSchedule(walk),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ],
 
           const SizedBox(height: 28),
           const _SectionHeader(
             title: 'Punto de recogida',
-            subtitle:
-                '¿Dónde recogerán a tus mascotas?',
+            subtitle: '¿Dónde recogerán a tus mascotas?',
           ),
           const SizedBox(height: 12),
 
@@ -429,32 +425,28 @@ class _CrearPaseoScreenState
           const SizedBox(height: 28),
           const _SectionHeader(
             title: 'Recorrido',
-            subtitle:
-                'Define por dónde será el paseo',
+            subtitle: 'Define por dónde será el paseo',
           ),
           const SizedBox(height: 12),
 
-            WalkRouteCard(
-              pickupLocation: state.pickupLocation,
-              selection: _routeSelection,
-              onChanged: (selection) {
-                setState(() {
-                  _routeSelection = selection;
-                });
-              },
-            ),
+          WalkRouteCard(
+            pickupLocation: state.pickupLocation,
+            selection: _routeSelection,
+            onChanged: (selection) {
+              setState(() {
+                _routeSelection = selection;
+              });
+            },
+          ),
 
-            const SizedBox(height: 28),
-            const _SectionHeader(
-              title: 'Indicaciones',
-            subtitle:
-                'Información útil para el paseador',
+          const SizedBox(height: 28),
+          const _SectionHeader(
+            title: 'Indicaciones',
+            subtitle: 'Información útil para el paseador',
           ),
           const SizedBox(height: 12),
 
-          _NotesField(
-            controller: _notesController,
-          ),
+          _NotesField(controller: _notesController),
 
           const SizedBox(height: 28),
           _PriceSummary(state: state),
@@ -467,9 +459,7 @@ class _CrearPaseoScreenState
 class _WalkerHero extends StatelessWidget {
   final WalkRequestState state;
 
-  const _WalkerHero({
-    required this.state,
-  });
+  const _WalkerHero({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -483,9 +473,7 @@ class _WalkerHero extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: DogGoTheme.teal.withValues(
-              alpha: .16,
-            ),
+            color: DogGoTheme.teal.withValues(alpha: .16),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -498,19 +486,11 @@ class _WalkerHero extends StatelessWidget {
             height: 70,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(
-                alpha: .14,
-              ),
-              borderRadius:
-                  BorderRadius.circular(22),
-              border: Border.all(
-                color: Colors.white.withValues(
-                  alpha: .20,
-                ),
-              ),
+              color: Colors.white.withValues(alpha: .14),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withValues(alpha: .20)),
             ),
-            child: photoUrl != null &&
-                    photoUrl.trim().isNotEmpty
+            child: photoUrl != null && photoUrl.trim().isNotEmpty
                 ? Image.network(
                     photoUrl,
                     fit: BoxFit.cover,
@@ -521,24 +501,18 @@ class _WalkerHero extends StatelessWidget {
                       );
                     },
                   )
-                : _Initials(
-                    text: walker.initials,
-                    color: Colors.white,
-                  ),
+                : _Initials(text: walker.initials, color: Colors.white),
           ),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'TU PASEADOR',
                   style: DogGoTheme.label(
                     size: 10,
-                    color: Colors.white.withValues(
-                      alpha: .72,
-                    ),
+                    color: Colors.white.withValues(alpha: .72),
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -546,10 +520,7 @@ class _WalkerHero extends StatelessWidget {
                   walker.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: DogGoTheme.title(
-                    size: 21,
-                    color: Colors.white,
-                  ),
+                  style: DogGoTheme.title(size: 21, color: Colors.white),
                 ),
                 const SizedBox(height: 7),
                 Wrap(
@@ -559,13 +530,11 @@ class _WalkerHero extends StatelessWidget {
                     _HeroData(
                       icon: Icons.star_rounded,
                       text: walker.rating > 0
-                          ? walker.rating
-                              .toStringAsFixed(1)
+                          ? walker.rating.toStringAsFixed(1)
                           : 'Nuevo',
                     ),
                     _HeroData(
-                      icon:
-                          Icons.location_on_outlined,
+                      icon: Icons.location_on_outlined,
                       text: walker.serviceZone,
                     ),
                   ],
@@ -583,25 +552,17 @@ class _HeroData extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _HeroData({
-    required this.icon,
-    required this.text,
-  });
+  const _HeroData({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          color: DogGoTheme.orange,
-          size: 16,
-        ),
+        Icon(icon, color: DogGoTheme.orange, size: 16),
         const SizedBox(width: 4),
         ConstrainedBox(
-          constraints:
-              const BoxConstraints(maxWidth: 150),
+          constraints: const BoxConstraints(maxWidth: 150),
           child: Text(
             text,
             maxLines: 1,
@@ -614,6 +575,39 @@ class _HeroData extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProgramDraftHint extends StatelessWidget {
+  const _ProgramDraftHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: DogGoTheme.tealLight,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.tune_rounded, size: 19, color: DogGoTheme.teal),
+          SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              'Los cambios de mascotas y duración se aplicarán al próximo paseo que agregues. Los anteriores conservan su configuración.',
+              style: TextStyle(
+                color: DogGoTheme.tealDark,
+                fontSize: 11,
+                height: 1.35,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -632,44 +626,28 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment:
-          CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: DogGoTheme.title(size: 22),
-              ),
+              Text(title, style: DogGoTheme.title(size: 22)),
               const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style:
-                    DogGoTheme.subtitle(size: 12),
-              ),
+              Text(subtitle, style: DogGoTheme.subtitle(size: 12)),
             ],
           ),
         ),
         if (trailing != null)
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 11,
-              vertical: 7,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
             decoration: BoxDecoration(
               color: DogGoTheme.tealLight,
-              borderRadius:
-                  BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               trailing!,
-              style: DogGoTheme.label(
-                size: 11,
-                color: DogGoTheme.teal,
-              ),
+              style: DogGoTheme.label(size: 11, color: DogGoTheme.teal),
             ),
           ),
       ],
@@ -681,22 +659,16 @@ class _PetSelector extends StatelessWidget {
   final WalkRequestState state;
   final ValueChanged<int> onSelected;
 
-  const _PetSelector({
-    required this.state,
-    required this.onSelected,
-  });
+  const _PetSelector({required this.state, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: state.pets.map((pet) {
-        final selected =
-            state.isPetSelected(pet.id);
+        final selected = state.isPetSelected(pet.id);
 
         return Padding(
-          padding: const EdgeInsets.only(
-            bottom: 10,
-          ),
+          padding: const EdgeInsets.only(bottom: 10),
           child: _PetCard(
             pet: pet,
             photoUrl: state.petPhotoUrl(pet),
@@ -727,28 +699,20 @@ class _PetCard extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label:
-          '${pet.name}, ${selected ? "seleccionado" : "no seleccionado"}',
+      label: '${pet.name}, ${selected ? "seleccionado" : "no seleccionado"}',
       child: Material(
-        color: selected
-            ? DogGoTheme.tealLight
-            : DogGoTheme.card,
+        color: selected ? DogGoTheme.tealLight : DogGoTheme.card,
         borderRadius: BorderRadius.circular(22),
         child: InkWell(
           onTap: onTap,
-          borderRadius:
-              BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(22),
           child: AnimatedContainer(
-            duration:
-                const Duration(milliseconds: 180),
+            duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              borderRadius:
-                  BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(22),
               border: Border.all(
-                color: selected
-                    ? DogGoTheme.teal
-                    : DogGoTheme.border,
+                color: selected ? DogGoTheme.teal : DogGoTheme.border,
                 width: selected ? 2 : 1,
               ),
             ),
@@ -760,51 +724,38 @@ class _PetCard extends StatelessWidget {
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: DogGoTheme.card,
-                    borderRadius:
-                        BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                  child: photoUrl != null &&
-                          photoUrl!.trim().isNotEmpty
+                  child: photoUrl != null && photoUrl!.trim().isNotEmpty
                       ? Image.network(
                           photoUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder:
-                              (_, __, ___) {
+                          errorBuilder: (_, __, ___) {
                             return _Initials(
                               text: pet.initials,
                               color: DogGoTheme.teal,
                             );
                           },
                         )
-                      : _Initials(
-                          text: pet.initials,
-                          color: DogGoTheme.teal,
-                        ),
+                      : _Initials(text: pet.initials, color: DogGoTheme.teal),
                 ),
                 const SizedBox(width: 13),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         pet.name,
                         maxLines: 1,
-                        overflow:
-                            TextOverflow.ellipsis,
-                        style: DogGoTheme.title(
-                          size: 17,
-                        ),
+                        overflow: TextOverflow.ellipsis,
+                        style: DogGoTheme.title(size: 17),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         pet.shortDescription,
                         maxLines: 1,
-                        overflow:
-                            TextOverflow.ellipsis,
-                        style: DogGoTheme.subtitle(
-                          size: 11,
-                        ),
+                        overflow: TextOverflow.ellipsis,
+                        style: DogGoTheme.subtitle(size: 11),
                       ),
                       const SizedBox(height: 5),
                       Text(
@@ -820,19 +771,14 @@ class _PetCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 AnimatedContainer(
-                  duration:
-                      const Duration(milliseconds: 180),
+                  duration: const Duration(milliseconds: 180),
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: selected
-                        ? DogGoTheme.teal
-                        : DogGoTheme.card,
+                    color: selected ? DogGoTheme.teal : DogGoTheme.card,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: selected
-                          ? DogGoTheme.teal
-                          : DogGoTheme.border,
+                      color: selected ? DogGoTheme.teal : DogGoTheme.border,
                       width: 2,
                     ),
                   ),
@@ -856,9 +802,7 @@ class _PetCard extends StatelessWidget {
 class _NoPetsCard extends StatelessWidget {
   final VoidCallback onRegister;
 
-  const _NoPetsCard({
-    required this.onRegister,
-  });
+  const _NoPetsCard({required this.onRegister});
 
   @override
   Widget build(BuildContext context) {
@@ -867,17 +811,11 @@ class _NoPetsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: DogGoTheme.card,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.pets_outlined,
-            color: DogGoTheme.teal,
-            size: 40,
-          ),
+          const Icon(Icons.pets_outlined, color: DogGoTheme.teal, size: 40),
           const SizedBox(height: 10),
           Text(
             'No tienes mascotas registradas',
@@ -893,12 +831,8 @@ class _NoPetsCard extends StatelessWidget {
           const SizedBox(height: 14),
           FilledButton.icon(
             onPressed: onRegister,
-            icon: const Icon(
-              Icons.add_rounded,
-            ),
-            label: const Text(
-              'Registrar mascota',
-            ),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Registrar mascota'),
           ),
         ],
       ),
@@ -910,104 +844,75 @@ class _DurationSelector extends StatelessWidget {
   final WalkRequestState state;
   final ValueChanged<int> onSelected;
 
-  const _DurationSelector({
-    required this.state,
-    required this.onSelected,
-  });
+  const _DurationSelector({required this.state, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
-      physics:
-          const NeverScrollableScrollPhysics(),
+      physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
       childAspectRatio: 2.1,
-      children:
-          WalkRequestState.allowedDurations.map(
-        (minutes) {
-          final selected =
-              minutes == state.durationMinutes;
+      children: WalkRequestState.allowedDurations.map((minutes) {
+        final selected = minutes == state.durationMinutes;
 
-          final base =
-              state.hourlyRate * (minutes / 60);
+        final base = state.hourlyRate * (minutes / 60);
 
-          return Material(
-            color: selected
-                ? DogGoTheme.teal
-                : DogGoTheme.card,
-            borderRadius:
-                BorderRadius.circular(18),
-            child: InkWell(
-              onTap: () => onSelected(minutes),
-              borderRadius:
-                  BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(18),
-                  border: Border.all(
-                    color: selected
-                        ? DogGoTheme.teal
-                        : DogGoTheme.border,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.directions_walk_rounded,
-                      color: selected
-                          ? Colors.white
-                          : DogGoTheme.teal,
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _durationLabel(minutes),
-                            style: DogGoTheme.body(
-                              size: 12,
-                              color: selected
-                                  ? Colors.white
-                                  : DogGoTheme.ink,
-                              weight:
-                                  FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '\$${base.toStringAsFixed(2)} base',
-                            style: DogGoTheme.caption(
-                              size: 9.5,
-                              color: selected
-                                  ? Colors.white
-                                      .withValues(
-                                        alpha: .75,
-                                      )
-                                  : DogGoTheme.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+        return Material(
+          color: selected ? DogGoTheme.teal : DogGoTheme.card,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            onTap: () => onSelected(minutes),
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: selected ? DogGoTheme.teal : DogGoTheme.border,
                 ),
               ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.directions_walk_rounded,
+                    color: selected ? Colors.white : DogGoTheme.teal,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _durationLabel(minutes),
+                          style: DogGoTheme.body(
+                            size: 12,
+                            color: selected ? Colors.white : DogGoTheme.ink,
+                            weight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '\$${base.toStringAsFixed(2)} base',
+                          style: DogGoTheme.caption(
+                            size: 9.5,
+                            color: selected
+                                ? Colors.white.withValues(alpha: .75)
+                                : DogGoTheme.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          );
-        },
-      ).toList(),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -1023,6 +928,7 @@ class _DurationSelector extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1051,11 +957,8 @@ class _ActionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius:
-                BorderRadius.circular(20),
-            border: Border.all(
-              color: DogGoTheme.border,
-            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DogGoTheme.border),
           ),
           child: Row(
             children: [
@@ -1064,39 +967,22 @@ class _ActionCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: background,
-                  borderRadius:
-                      BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                ),
+                child: Icon(icon, color: color),
               ),
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style:
-                          DogGoTheme.title(size: 15),
-                    ),
+                    Text(title, style: DogGoTheme.title(size: 15)),
                     const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: DogGoTheme.subtitle(
-                        size: 10.5,
-                      ),
-                    ),
+                    Text(subtitle, style: DogGoTheme.subtitle(size: 10.5)),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: DogGoTheme.muted,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: DogGoTheme.muted),
             ],
           ),
         ),
@@ -1128,9 +1014,7 @@ class _LocationCard extends StatelessWidget {
         color: DogGoTheme.card,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: location == null
-              ? DogGoTheme.border
-              : DogGoTheme.teal,
+          color: location == null ? DogGoTheme.border : DogGoTheme.teal,
           width: location == null ? 1 : 1.5,
         ),
       ),
@@ -1143,8 +1027,7 @@ class _LocationCard extends StatelessWidget {
                 height: 50,
                 decoration: BoxDecoration(
                   color: DogGoTheme.tealLight,
-                  borderRadius:
-                      BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(
                   Icons.location_on_rounded,
@@ -1154,36 +1037,28 @@ class _LocationCard extends StatelessWidget {
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       location == null
                           ? 'Sin ubicación seleccionada'
                           : location.displayAddress,
                       maxLines: 2,
-                      overflow:
-                          TextOverflow.ellipsis,
-                      style:
-                          DogGoTheme.title(size: 14),
+                      overflow: TextOverflow.ellipsis,
+                      style: DogGoTheme.title(size: 14),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       location == null
                           ? 'Elige una opción'
                           : 'Punto de recogida seleccionado',
-                      style: DogGoTheme.subtitle(
-                        size: 10.5,
-                      ),
+                      style: DogGoTheme.subtitle(size: 10.5),
                     ),
                   ],
                 ),
               ),
               if (location != null)
-                const Icon(
-                  Icons.check_circle_rounded,
-                  color: DogGoTheme.teal,
-                ),
+                const Icon(Icons.check_circle_rounded, color: DogGoTheme.teal),
             ],
           ),
           const SizedBox(height: 15),
@@ -1204,12 +1079,8 @@ class _LocationCard extends StatelessWidget {
                   icon: state.loadingLocation
                       ? Icons.hourglass_top_rounded
                       : Icons.my_location_rounded,
-                  label: state.loadingLocation
-                      ? 'Buscando'
-                      : 'Mi GPS',
-                  onTap: state.loadingLocation
-                      ? null
-                      : onCurrent,
+                  label: state.loadingLocation ? 'Buscando' : 'Mi GPS',
+                  onTap: state.loadingLocation ? null : onCurrent,
                 ),
               ),
               const SizedBox(width: 8),
@@ -1244,10 +1115,7 @@ class _LocationButton extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 6,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1258,10 +1126,7 @@ class _LocationButton extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -1272,9 +1137,7 @@ class _LocationButton extends StatelessWidget {
 class _NotesField extends StatelessWidget {
   final TextEditingController controller;
 
-  const _NotesField({
-    required this.controller,
-  });
+  const _NotesField({required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -1282,45 +1145,26 @@ class _NotesField extends StatelessWidget {
       controller: controller,
       maxLines: 4,
       maxLength: 300,
-      textCapitalization:
-          TextCapitalization.sentences,
+      textCapitalization: TextCapitalization.sentences,
       decoration: InputDecoration(
-        hintText:
-            'Ej. Choco necesita caminar despacio y lleva su correa azul.',
+        hintText: 'Ej. Choco necesita caminar despacio y lleva su correa azul.',
         prefixIcon: const Padding(
-          padding: EdgeInsets.only(
-            left: 12,
-            right: 8,
-            bottom: 70,
-          ),
-          child: Icon(
-            Icons.notes_rounded,
-            color: DogGoTheme.teal,
-          ),
+          padding: EdgeInsets.only(left: 12, right: 8, bottom: 70),
+          child: Icon(Icons.notes_rounded, color: DogGoTheme.teal),
         ),
         filled: true,
         fillColor: DogGoTheme.card,
         border: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(20),
-          borderSide: const BorderSide(
-            color: DogGoTheme.border,
-          ),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: const BorderSide(color: DogGoTheme.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(20),
-          borderSide: const BorderSide(
-            color: DogGoTheme.border,
-          ),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: const BorderSide(color: DogGoTheme.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(20),
-          borderSide: const BorderSide(
-            color: DogGoTheme.teal,
-            width: 1.5,
-          ),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: const BorderSide(color: DogGoTheme.teal, width: 1.5),
         ),
       ),
     );
@@ -1330,9 +1174,7 @@ class _NotesField extends StatelessWidget {
 class _PriceSummary extends StatelessWidget {
   final WalkRequestState state;
 
-  const _PriceSummary({
-    required this.state,
-  });
+  const _PriceSummary({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -1341,19 +1183,13 @@ class _PriceSummary extends StatelessWidget {
       decoration: BoxDecoration(
         color: DogGoTheme.orangeLight,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: DogGoTheme.orange.withValues(
-            alpha: .24,
-          ),
-        ),
+        border: Border.all(color: DogGoTheme.orange.withValues(alpha: .24)),
       ),
       child: Column(
         children: [
           _PriceRow(
-            label:
-                'Tarifa base · ${state.durationLabel}',
-            value:
-                '\$${state.basePrice.toStringAsFixed(2)}',
+            label: 'Tarifa base · ${state.durationLabel}',
+            value: '\$${state.basePrice.toStringAsFixed(2)}',
           ),
           if (state.selectedPetCount > 1) ...[
             const SizedBox(height: 10),
@@ -1361,47 +1197,31 @@ class _PriceSummary extends StatelessWidget {
               label:
                   '${state.selectedPetCount - 1} '
                   '${state.selectedPetCount == 2 ? "mascota adicional" : "mascotas adicionales"} · 50%',
-              value:
-                  '\$${state.additionalPetsPrice.toStringAsFixed(2)}',
+              value: '\$${state.additionalPetsPrice.toStringAsFixed(2)}',
             ),
           ],
           const Padding(
-            padding: EdgeInsets.symmetric(
-              vertical: 14,
-            ),
-            child: Divider(
-              height: 1,
-              color: DogGoTheme.orange,
-            ),
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(height: 1, color: DogGoTheme.orange),
           ),
           Row(
             children: [
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Total estimado',
-                      style:
-                          DogGoTheme.title(size: 17),
-                    ),
+                    Text('Total estimado', style: DogGoTheme.title(size: 17)),
                     const SizedBox(height: 3),
                     Text(
                       state.pricingExplanation,
-                      style: DogGoTheme.caption(
-                        size: 10,
-                      ),
+                      style: DogGoTheme.caption(size: 10),
                     ),
                   ],
                 ),
               ),
               Text(
                 '\$${state.estimatedTotal.toStringAsFixed(2)}',
-                style: DogGoTheme.title(
-                  size: 24,
-                  color: DogGoTheme.teal,
-                ),
+                style: DogGoTheme.title(size: 24, color: DogGoTheme.teal),
               ),
             ],
           ),
@@ -1415,10 +1235,7 @@ class _PriceRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _PriceRow({
-    required this.label,
-    required this.value,
-  });
+  const _PriceRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1427,19 +1244,10 @@ class _PriceRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: DogGoTheme.body(
-              size: 11.5,
-              color: DogGoTheme.ink,
-            ),
+            style: DogGoTheme.body(size: 11.5, color: DogGoTheme.ink),
           ),
         ),
-        Text(
-          value,
-          style: DogGoTheme.body(
-            size: 12,
-            weight: FontWeight.w800,
-          ),
-        ),
+        Text(value, style: DogGoTheme.body(size: 12, weight: FontWeight.w800)),
       ],
     );
   }
@@ -1449,10 +1257,7 @@ class _SubmitBar extends StatelessWidget {
   final WalkRequestState state;
   final VoidCallback onSubmit;
 
-  const _SubmitBar({
-    required this.state,
-    required this.onSubmit,
-  });
+  const _SubmitBar({required this.state, required this.onSubmit});
 
   @override
   Widget build(BuildContext context) {
@@ -1461,42 +1266,26 @@ class _SubmitBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(
-          20,
-          13,
-          20,
-          14,
-        ),
+        padding: const EdgeInsets.fromLTRB(20, 13, 20, 14),
         decoration: BoxDecoration(
           color: DogGoTheme.card,
-          border: const Border(
-            top: BorderSide(
-              color: DogGoTheme.border,
-            ),
-          ),
+          border: const Border(top: BorderSide(color: DogGoTheme.border)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
-                alpha: .05,
-              ),
+              color: Colors.black.withValues(alpha: .05),
               blurRadius: 18,
               offset: const Offset(0, -5),
             ),
           ],
         ),
         child: FilledButton(
-          onPressed: state.canSubmit
-              ? onSubmit
-              : null,
+          onPressed: state.canSubmit ? onSubmit : null,
           style: FilledButton.styleFrom(
-            minimumSize:
-                const Size.fromHeight(56),
+            minimumSize: const Size.fromHeight(56),
             backgroundColor: DogGoTheme.teal,
-            disabledBackgroundColor:
-                DogGoTheme.disabled,
+            disabledBackgroundColor: DogGoTheme.disabled,
             shape: RoundedRectangleBorder(
-              borderRadius:
-                  BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(18),
             ),
           ),
           child: state.saving
@@ -1509,35 +1298,29 @@ class _SubmitBar extends StatelessWidget {
                   ),
                 )
               : Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.pets_rounded,
-                    ),
+                    const Icon(Icons.pets_rounded),
                     const SizedBox(width: 9),
                     Flexible(
                       child: Text(
-                        count <= 1
+                        count == 0
+                            ? 'Selecciona una mascota'
+                            : count == 1
                             ? 'Solicitar paseo'
                             : 'Solicitar para $count mascotas',
                         maxLines: 1,
-                        overflow:
-                            TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight:
-                              FontWeight.w800,
-                        ),
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '\$${state.estimatedTotal.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontWeight:
-                            FontWeight.w900,
+                    if (count > 0) ...[
+                      const SizedBox(width: 12),
+                      Text(
+                        '\$${state.estimatedTotal.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
-                    ),
+                    ],
                   ],
                 ),
         ),
@@ -1550,21 +1333,12 @@ class _Initials extends StatelessWidget {
   final String text;
   final Color color;
 
-  const _Initials({
-    required this.text,
-    required this.color,
-  });
+  const _Initials({required this.text, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        text,
-        style: DogGoTheme.title(
-          size: 19,
-          color: color,
-        ),
-      ),
+      child: Text(text, style: DogGoTheme.title(size: 19, color: color)),
     );
   }
 }

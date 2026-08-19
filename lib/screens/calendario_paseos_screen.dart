@@ -4,6 +4,7 @@ import '../services/session_service.dart';
 import '../theme/doggo_theme.dart';
 import '../widgets/doggo_logo.dart';
 import 'detalle_paseo_screen.dart';
+import 'programacion_paseos_screen.dart';
 
 class CalendarioPaseosScreen extends StatefulWidget {
   final List<Map<String, dynamic>> paseos;
@@ -59,20 +60,14 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
     return texto;
   }
 
-  int? _idPaseo(Map<String, dynamic> paseo) {
-    final valor =
-        paseo['id'] ?? paseo['Id'] ?? paseo['paseoId'] ?? paseo['PaseoId'];
-
-    if (valor is int) return valor;
-
-    return int.tryParse(valor?.toString() ?? '');
+  int? _programacionId(Map<String, dynamic> paseo) {
+    final value = paseo['programacionId'] ?? paseo['ProgramacionId'];
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '');
   }
 
   String _estado(Map<String, dynamic> paseo) {
-    return _texto(
-      paseo['estado'] ?? paseo['Estado'],
-      fallback: 'Pendiente',
-    );
+    return _texto(paseo['estado'] ?? paseo['Estado'], fallback: 'Pendiente');
   }
 
   String _normalizarEstado(String estado) {
@@ -80,7 +75,8 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   DateTime? _fechaPaseo(Map<String, dynamic> paseo) {
-    final valor = paseo['fechaProgramada'] ??
+    final valor =
+        paseo['fechaProgramada'] ??
         paseo['FechaProgramada'] ??
         paseo['fechaInicio'] ??
         paseo['FechaInicio'] ??
@@ -105,13 +101,15 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   String _nombrePaseador(Map<String, dynamic> paseo) {
-    final nombre = paseo['paseadorNombre'] ??
+    final nombre =
+        paseo['paseadorNombre'] ??
         paseo['nombrePaseador'] ??
         paseo['paseador']?['nombre'] ??
         paseo['paseador']?['usuario']?['nombre'] ??
         paseo['Paseador']?['Usuario']?['Nombre'];
 
-    final apellido = paseo['paseadorApellido'] ??
+    final apellido =
+        paseo['paseadorApellido'] ??
         paseo['apellidoPaseador'] ??
         paseo['paseador']?['usuario']?['apellido'] ??
         paseo['Paseador']?['Usuario']?['Apellido'];
@@ -125,14 +123,16 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   String _nombreDuenio(Map<String, dynamic> paseo) {
-    final nombre = paseo['duenioNombre'] ??
+    final nombre =
+        paseo['duenioNombre'] ??
         paseo['nombreDuenio'] ??
         paseo['dueñoNombre'] ??
         paseo['perro']?['duenio']?['nombre'] ??
         paseo['perro']?['usuario']?['nombre'] ??
         paseo['Perro']?['Usuario']?['Nombre'];
 
-    final apellido = paseo['duenioApellido'] ??
+    final apellido =
+        paseo['duenioApellido'] ??
         paseo['apellidoDuenio'] ??
         paseo['dueñoApellido'] ??
         paseo['perro']?['duenio']?['apellido'] ??
@@ -242,23 +242,34 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   List<Map<String, dynamic>> _paseosDelDia(DateTime dia) {
-    return _paseosFiltrados.where((paseo) {
-      final fecha = _fechaPaseo(paseo);
+    final walks =
+        _paseosFiltrados.where((paseo) {
+          final fecha = _fechaPaseo(paseo);
 
-      if (fecha == null) return false;
+          if (fecha == null) return false;
 
-      return _mismoDia(fecha, dia);
-    }).toList()
-      ..sort((a, b) {
-        final fa = _fechaPaseo(a);
-        final fb = _fechaPaseo(b);
+          return _mismoDia(fecha, dia);
+        }).toList()..sort((a, b) {
+          final fa = _fechaPaseo(a);
+          final fb = _fechaPaseo(b);
 
-        if (fa == null && fb == null) return 0;
-        if (fa == null) return 1;
-        if (fb == null) return -1;
+          if (fa == null && fb == null) return 0;
+          if (fa == null) return 1;
+          if (fb == null) return -1;
 
-        return fa.compareTo(fb);
-      });
+          return fa.compareTo(fb);
+        });
+
+    final visible = <Map<String, dynamic>>[];
+    final programs = <int>{};
+    for (final walk in walks) {
+      final programId = _programacionId(walk);
+      if (programId != null && programId > 0 && !programs.add(programId)) {
+        continue;
+      }
+      visible.add(walk);
+    }
+    return visible;
   }
 
   bool _diaTienePaseos(DateTime dia) {
@@ -318,13 +329,16 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   Future<void> _abrirDetalle(Map<String, dynamic> paseo) async {
+    final programId = _programacionId(paseo);
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DetallePaseoScreen(
-          paseo: paseo,
-          rol: widget.rol,
-        ),
+        builder: (_) => programId != null && programId > 0
+            ? ProgramacionPaseosScreen(
+                programacionId: programId,
+                rol: widget.rol,
+              )
+            : DetallePaseoScreen(paseo: paseo, rol: widget.rol),
       ),
     );
   }
@@ -339,24 +353,12 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            SliverToBoxAdapter(
-              child: _buildTopBar(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildHeader(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildFiltros(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildCalendario(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildListaDia(paseosSeleccionados),
-            ),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 34),
-            ),
+            SliverToBoxAdapter(child: _buildTopBar()),
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildFiltros()),
+            SliverToBoxAdapter(child: _buildCalendario()),
+            SliverToBoxAdapter(child: _buildListaDia(paseosSeleccionados)),
+            const SliverToBoxAdapter(child: SizedBox(height: 34)),
           ],
         ),
       ),
@@ -369,19 +371,14 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
       decoration: BoxDecoration(
         color: DogGoTheme.cream2,
         border: Border(
-          bottom: BorderSide(
-            color: DogGoTheme.border.withOpacity(.8),
-          ),
+          bottom: BorderSide(color: DogGoTheme.border.withValues(alpha: .8)),
         ),
       ),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: DogGoTheme.ink,
-            ),
+            icon: const Icon(Icons.arrow_back_rounded, color: DogGoTheme.ink),
           ),
           const SizedBox(width: 4),
           const DogGoLogo(size: 38),
@@ -391,14 +388,10 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
               setState(() {
                 final ahora = DateTime.now();
                 _mesVisible = DateTime(ahora.year, ahora.month, 1);
-                _diaSeleccionado =
-                    DateTime(ahora.year, ahora.month, ahora.day);
+                _diaSeleccionado = DateTime(ahora.year, ahora.month, ahora.day);
               });
             },
-            icon: const Icon(
-              Icons.today_rounded,
-              color: DogGoTheme.ink,
-            ),
+            icon: const Icon(Icons.today_rounded, color: DogGoTheme.ink),
           ),
         ],
       ),
@@ -419,15 +412,9 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '📅 AGENDA DOGGO',
-            style: DogGoTheme.label(size: 11),
-          ),
+          Text('📅 AGENDA DOGGO', style: DogGoTheme.label(size: 11)),
           const SizedBox(height: 10),
-          Text(
-            'Calendario de paseos',
-            style: DogGoTheme.title(size: 32),
-          ),
+          Text('Calendario de paseos', style: DogGoTheme.title(size: 32)),
           const SizedBox(height: 10),
           Text(
             _esPaseador
@@ -458,10 +445,7 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
                   ),
                 ),
                 Expanded(
-                  child: _ResumenCalendario(
-                    label: 'Vista',
-                    value: _filtro,
-                  ),
+                  child: _ResumenCalendario(label: 'Vista', value: _filtro),
                 ),
               ],
             ),
@@ -479,7 +463,7 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: _filtros.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final filtro = _filtros[index];
           final selected = filtro == _filtro;
@@ -590,15 +574,15 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
                     color: seleccionado
                         ? DogGoTheme.teal
                         : tienePaseos
-                            ? DogGoTheme.tealLight
-                            : DogGoTheme.cream,
+                        ? DogGoTheme.tealLight
+                        : DogGoTheme.cream,
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(
                       color: hoy
                           ? DogGoTheme.orange
                           : seleccionado
-                              ? DogGoTheme.teal
-                              : DogGoTheme.border,
+                          ? DogGoTheme.teal
+                          : DogGoTheme.border,
                       width: hoy ? 1.8 : 1,
                     ),
                   ),
@@ -609,9 +593,7 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
                           dia.day.toString(),
                           style: DogGoTheme.body(
                             size: 13,
-                            color: seleccionado
-                                ? Colors.white
-                                : DogGoTheme.ink,
+                            color: seleccionado ? Colors.white : DogGoTheme.ink,
                             weight: FontWeight.w900,
                           ),
                         ),
@@ -662,15 +644,9 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Paseos del día',
-            style: DogGoTheme.title(size: 24),
-          ),
+          Text('Paseos del día', style: DogGoTheme.title(size: 24)),
           const SizedBox(height: 4),
-          Text(
-            fechaTexto,
-            style: DogGoTheme.subtitle(size: 14),
-          ),
+          Text(fechaTexto, style: DogGoTheme.subtitle(size: 14)),
           const SizedBox(height: 16),
           if (paseos.isEmpty)
             Container(
@@ -684,10 +660,7 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
               ),
               child: Column(
                 children: [
-                  const Text(
-                    '🐾',
-                    style: TextStyle(fontSize: 42),
-                  ),
+                  const Text('🐾', style: TextStyle(fontSize: 42)),
                   const SizedBox(height: 10),
                   Text(
                     'No hay paseos este día',
@@ -714,6 +687,13 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
     final color = _colorEstado(estado);
     final surface = _surfaceEstado(estado);
     final fecha = _fechaPaseo(paseo);
+    final programId = _programacionId(paseo);
+    final programCount = programId == null
+        ? 0
+        : widget.paseos
+              .where((item) => _programacionId(item) == programId)
+              .length;
+    final isProgram = programCount > 1;
 
     return GestureDetector(
       onTap: () => _abrirDetalle(paseo),
@@ -735,10 +715,7 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
                 color: surface,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(
-                _iconoEstado(estado),
-                color: color,
-              ),
+              child: Icon(_iconoEstado(estado), color: color),
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -746,12 +723,16 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _nombrePerro(paseo),
+                    isProgram
+                        ? 'Programación · $programCount paseos'
+                        : _nombrePerro(paseo),
                     style: DogGoTheme.title(size: 18),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _esPaseador
+                    isProgram
+                        ? 'Próximo: ${_nombrePerro(paseo)} · ${_hora(fecha)}'
+                        : _esPaseador
                         ? 'Dueño: ${_nombreDuenio(paseo)}'
                         : 'Paseador: ${_nombrePaseador(paseo)}',
                     maxLines: 1,
@@ -807,10 +788,7 @@ class _ResumenCalendario extends StatelessWidget {
   final String label;
   final String value;
 
-  const _ResumenCalendario({
-    required this.label,
-    required this.value,
-  });
+  const _ResumenCalendario({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -827,7 +805,7 @@ class _ResumenCalendario extends StatelessWidget {
           label,
           style: DogGoTheme.subtitle(
             size: 11,
-            color: Colors.white.withOpacity(.86),
+            color: Colors.white.withValues(alpha: .86),
           ),
         ),
       ],

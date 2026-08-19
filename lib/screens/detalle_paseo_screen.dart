@@ -37,12 +37,10 @@ class DetallePaseoScreen extends StatefulWidget {
   });
 
   @override
-  State<DetallePaseoScreen> createState() =>
-      _DetallePaseoScreenState();
+  State<DetallePaseoScreen> createState() => _DetallePaseoScreenState();
 }
 
-class _DetallePaseoScreenState
-    extends State<DetallePaseoScreen> {
+class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
   late final WalkDetailController _controller;
   bool _automaticMapOpened = false;
 
@@ -79,8 +77,7 @@ class _DetallePaseoScreenState
       return;
     }
 
-    if (result.code ==
-        WalkDetailResultCode.finalEvidenceRequired) {
+    if (result.code == WalkDetailResultCode.finalEvidenceRequired) {
       final upload = await _confirmDialog(
         title: 'Evidencia final requerida',
         message:
@@ -96,10 +93,7 @@ class _DetallePaseoScreenState
       return;
     }
 
-    _showMessage(
-      result.message,
-      success: result.success,
-    );
+    _showMessage(result.message, success: result.success);
 
     if (result.success) {
       widget.onPaseoActualizado?.call();
@@ -116,26 +110,21 @@ class _DetallePaseoScreenState
     );
 
     if (confirmed == true) {
-      await _performAction(
-        WalkDetailAction.accept,
-      );
+      await _performAction(WalkDetailAction.accept);
     }
   }
 
   Future<void> _rejectWalk() async {
     final confirmed = await _confirmDialog(
       title: 'Rechazar solicitud',
-      message:
-          'La solicitud dejará de estar disponible para este servicio.',
+      message: 'La solicitud dejará de estar disponible para este servicio.',
       confirmText: 'Rechazar',
       destructive: true,
       icon: Icons.block_outlined,
     );
 
     if (confirmed == true) {
-      await _performAction(
-        WalkDetailAction.reject,
-      );
+      await _performAction(WalkDetailAction.reject);
     }
   }
 
@@ -149,9 +138,7 @@ class _DetallePaseoScreenState
     );
 
     if (confirmed == true) {
-      await _performAction(
-        WalkDetailAction.start,
-      );
+      await _performAction(WalkDetailAction.start);
     }
   }
 
@@ -159,9 +146,7 @@ class _DetallePaseoScreenState
     final state = _controller.state;
 
     if (state.needsEndEvidence) {
-      await _performAction(
-        WalkDetailAction.finish,
-      );
+      await _performAction(WalkDetailAction.finish);
       return;
     }
 
@@ -174,9 +159,7 @@ class _DetallePaseoScreenState
     );
 
     if (confirmed == true) {
-      await _performAction(
-        WalkDetailAction.finish,
-      );
+      await _performAction(WalkDetailAction.finish);
     }
   }
 
@@ -187,10 +170,7 @@ class _DetallePaseoScreenState
       return;
     }
 
-    await _performAction(
-      WalkDetailAction.cancel,
-      cancellationReason: reason,
-    );
+    await _performAction(WalkDetailAction.cancel, cancellationReason: reason);
   }
 
   Future<bool?> _confirmDialog({
@@ -206,32 +186,22 @@ class _DetallePaseoScreenState
         return AlertDialog(
           title: Row(
             children: [
-              Icon(
-                icon,
-                color: destructive
-                    ? DogGoTheme.red
-                    : DogGoTheme.teal,
-              ),
+              Icon(icon, color: destructive ? DogGoTheme.red : DogGoTheme.teal),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(title),
-              ),
+              Expanded(child: Text(title)),
             ],
           ),
           content: Text(message),
           actions: [
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Volver'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: destructive
                   ? ElevatedButton.styleFrom(
-                      backgroundColor:
-                          DogGoTheme.red,
+                      backgroundColor: DogGoTheme.red,
                       foregroundColor: Colors.white,
                     )
                   : null,
@@ -255,25 +225,18 @@ class _DetallePaseoScreenState
             return AlertDialog(
               title: const Row(
                 children: [
-                  Icon(
-                    Icons.cancel_outlined,
-                    color: DogGoTheme.red,
-                  ),
+                  Icon(Icons.cancel_outlined, color: DogGoTheme.red),
                   SizedBox(width: 10),
-                  Expanded(
-                    child: Text('Cancelar paseo'),
-                  ),
+                  Expanded(child: Text('Cancelar paseo')),
                 ],
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Indica por qué necesitas cancelar el servicio.',
-                    style:
-                        DogGoTheme.subtitle(size: 12.5),
+                    style: DogGoTheme.subtitle(size: 12.5),
                   ),
                   const SizedBox(height: 14),
                   TextField(
@@ -281,11 +244,9 @@ class _DetallePaseoScreenState
                     minLines: 3,
                     maxLines: 5,
                     maxLength: 250,
-                    textCapitalization:
-                        TextCapitalization.sentences,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText:
-                          'Motivo de cancelación',
+                      labelText: 'Motivo de cancelación',
                       hintText:
                           'Ejemplo: cambio de horario, emergencia o clima.',
                       errorText: errorText,
@@ -294,43 +255,33 @@ class _DetallePaseoScreenState
                   ),
                   Text(
                     'Este motivo quedará visible en el detalle.',
-                    style:
-                        DogGoTheme.caption(size: 10),
+                    style: DogGoTheme.caption(size: 10),
                   ),
                 ],
               ),
               actions: [
                 TextButton(
-                  onPressed: () =>
-                      Navigator.pop(dialogContext),
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: const Text('Volver'),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final reason =
-                        controller.text.trim();
+                    final reason = controller.text.trim();
 
                     if (reason.length < 3) {
                       setDialogState(() {
-                        errorText =
-                            'Escribe un motivo más completo.';
+                        errorText = 'Escribe un motivo más completo.';
                       });
                       return;
                     }
 
-                    Navigator.pop(
-                      dialogContext,
-                      reason,
-                    );
+                    Navigator.pop(dialogContext, reason);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        DogGoTheme.red,
+                    backgroundColor: DogGoTheme.red,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text(
-                    'Confirmar cancelación',
-                  ),
+                  child: const Text('Confirmar cancelación'),
                 ),
               ],
             );
@@ -348,18 +299,12 @@ class _DetallePaseoScreenState
     final walk = state.walk;
     final id = state.walkId;
 
-    if (walk == null ||
-        id == null ||
-        !state.canOpenChat) {
-      _showMessage(
-        'El chat no está disponible para este paseo.',
-      );
+    if (walk == null || id == null || !state.canOpenChat) {
+      _showMessage('El chat no está disponible para este paseo.');
       return;
     }
 
-    final otherName = state.isWalker
-        ? walk.ownerName
-        : walk.walkerName;
+    final otherName = state.isWalker ? walk.ownerName : walk.walkerName;
 
     await Navigator.push(
       context,
@@ -378,25 +323,19 @@ class _DetallePaseoScreenState
     final walk = state.walk;
 
     if (walk == null || !state.canOpenMap) {
-      _showMessage(
-        'El mapa todavía no está disponible.',
-      );
+      _showMessage('El mapa todavía no está disponible.');
       return;
     }
 
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MapaPaseoScreen(
-          paseo: walk.toNavigationMap(),
-        ),
+        builder: (_) => MapaPaseoScreen(paseo: walk.toNavigationMap()),
       ),
     );
   }
 
-    void _scheduleAutomaticMap(
-    WalkDetailState state,
-  ) {
+  void _scheduleAutomaticMap(WalkDetailState state) {
     if (!widget.openMapOnLoad ||
         _automaticMapOpened ||
         state.walk == null ||
@@ -406,15 +345,13 @@ class _DetallePaseoScreenState
 
     _automaticMapOpened = true;
 
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) async {
-        if (!mounted) {
-          return;
-        }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        return;
+      }
 
-        await _openMap();
-      },
-    );
+      await _openMap();
+    });
   }
 
   Future<void> _openTracking() async {
@@ -422,12 +359,8 @@ class _DetallePaseoScreenState
     final walk = state.walk;
     final id = state.walkId;
 
-    if (walk == null ||
-        id == null ||
-        !state.canOpenTracking) {
-      _showMessage(
-        'El seguimiento todavía no está disponible.',
-      );
+    if (walk == null || id == null || !state.canOpenTracking) {
+      _showMessage('El seguimiento todavía no está disponible.');
       return;
     }
 
@@ -485,9 +418,7 @@ class _DetallePaseoScreenState
     final walk = state.walk;
     final id = state.walkId;
 
-    if (walk == null ||
-        id == null ||
-        !state.canRate) {
+    if (walk == null || id == null || !state.canRate) {
       return;
     }
 
@@ -504,10 +435,7 @@ class _DetallePaseoScreenState
 
     if (updated == true) {
       await _refreshAfterChild();
-      _showMessage(
-        'Gracias por compartir tu opinión.',
-        success: true,
-      );
+      _showMessage('Gracias por compartir tu opinión.', success: true);
     }
   }
 
@@ -521,10 +449,7 @@ class _DetallePaseoScreenState
     widget.onPaseoActualizado?.call();
   }
 
-  void _showMessage(
-    String message, {
-    bool success = false,
-  }) {
+  void _showMessage(String message, {bool success = false}) {
     if (!mounted) {
       return;
     }
@@ -534,9 +459,7 @@ class _DetallePaseoScreenState
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: success
-              ? DogGoTheme.teal
-              : DogGoTheme.ink,
+          backgroundColor: success ? DogGoTheme.teal : DogGoTheme.ink,
         ),
       );
   }
@@ -547,23 +470,17 @@ class _DetallePaseoScreenState
       animation: _controller,
       builder: (context, _) {
         final state = _controller.state;
-            _scheduleAutomaticMap(state);
+        _scheduleAutomaticMap(state);
 
         return Scaffold(
           backgroundColor: DogGoTheme.cream,
           appBar: AppBar(
-            title: const Text(
-              'Detalle del paseo',
-            ),
+            title: const Text('Detalle del paseo'),
             actions: [
               IconButton(
-                onPressed: state.loading
-                    ? null
-                    : _controller.refresh,
+                onPressed: state.loading ? null : _controller.refresh,
                 tooltip: 'Actualizar',
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                ),
+                icon: const Icon(Icons.refresh_rounded),
               ),
               const SizedBox(width: 7),
             ],
@@ -574,25 +491,18 @@ class _DetallePaseoScreenState
     );
   }
 
-  Widget _buildBody(
-    WalkDetailState state,
-  ) {
+  Widget _buildBody(WalkDetailState state) {
     if (state.loading && state.walk == null) {
       return const DogGoLoadingView(
-        message:
-            'Cargando información del paseo...',
+        message: 'Cargando información del paseo...',
       );
     }
 
-    if (state.error != null &&
-        state.walk == null) {
+    if (state.error != null && state.walk == null) {
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(
-          DogGoSpacing.screenHorizontal,
-        ),
+        padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
         child: DogGoErrorView(
-          title:
-              'No pudimos cargar el paseo',
+          title: 'No pudimos cargar el paseo',
           message: state.error!,
           icon: Icons.route_outlined,
           onRetry: _controller.initialize,
@@ -603,19 +513,14 @@ class _DetallePaseoScreenState
     final walk = state.walk;
 
     if (walk == null) {
-      return const Center(
-        child: Text(
-          'No hay información disponible.',
-        ),
-      );
+      return const Center(child: Text('No hay información disponible.'));
     }
 
     return RefreshIndicator(
       onRefresh: _controller.refresh,
       color: DogGoTheme.teal,
       child: ListView(
-        physics:
-            const AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           DogGoSpacing.screenHorizontal,
           18,
@@ -623,23 +528,17 @@ class _DetallePaseoScreenState
           110,
         ),
         children: [
-          _StatusHero(
-            state: state,
-          ),
+          _StatusHero(state: state),
           const SizedBox(height: 16),
-          _WalkProgress(
-            walk: walk,
-          ),
+          _WalkProgress(walk: walk),
           const SizedBox(height: 22),
           _RecommendedStep(
             state: state,
             onStart: _startWalk,
             onOpenMap: _openMap,
             onTracking: _openTracking,
-            onStartEvidence: () =>
-                _openEvidence('inicio'),
-            onEndEvidence: () =>
-                _openEvidence('fin'),
+            onStartEvidence: () => _openEvidence('inicio'),
+            onEndEvidence: () => _openEvidence('fin'),
             onFinish: _finishWalk,
             onRate: _openRating,
           ),
@@ -651,60 +550,41 @@ class _DetallePaseoScreenState
             onTracking: _openTracking,
           ),
           const SizedBox(height: 22),
-          _ServiceInformation(
-            walk: walk,
-          ),
+          _ServiceInformation(walk: walk),
           const SizedBox(height: 14),
           WalkPetsSection(
             state: state,
             controller: _controller,
+            canViewPetProfiles: true,
           ),
           const SizedBox(height: 14),
-          _ParticipantsCard(
-            walk: walk,
-            isWalker: state.isWalker,
-          ),
+          _ParticipantsCard(walk: walk, isWalker: state.isWalker),
           const SizedBox(height: 14),
           _PickupCard(
             walk: walk,
-            onOpenMap:
-                state.canOpenMap ? _openMap : null,
+            onOpenMap: state.canOpenMap ? _openMap : null,
           ),
 
           const SizedBox(height: 14),
 
           WalkRouteManagementCard(
             walkId: walk.id,
-            initialCenter:
-                walk.hasPickupCoordinates
-                    ? LatLng(
-                        walk.pickupLatitude!,
-                        walk.pickupLongitude!,
-                      )
-                    : const LatLng(
-                        25.6866,
-                        -100.3161,
-                      ),
-            canManage: state.isOwner &&
-                (walk.isPending ||
-                    walk.isAccepted),
+            initialCenter: walk.hasPickupCoordinates
+                ? LatLng(walk.pickupLatitude!, walk.pickupLongitude!)
+                : const LatLng(25.6866, -100.3161),
+            canManage: state.isOwner && (walk.isPending || walk.isAccepted),
             onOpenMap: _openMap,
           ),
 
           const SizedBox(height: 22),
           _EvidenceSection(
             state: state,
-            onStartEvidence: () =>
-                _openEvidence('inicio'),
-            onEndEvidence: () =>
-                _openEvidence('fin'),
+            onStartEvidence: () => _openEvidence('inicio'),
+            onEndEvidence: () => _openEvidence('fin'),
           ),
-          if (walk.isCancelled ||
-              walk.isRejected) ...[
+          if (walk.isCancelled || walk.isRejected) ...[
             const SizedBox(height: 22),
-            _CancellationCard(
-              walk: walk,
-            ),
+            _CancellationCard(walk: walk),
           ],
           const SizedBox(height: 22),
           _MainActions(
@@ -725,9 +605,7 @@ class _DetallePaseoScreenState
 class _StatusHero extends StatelessWidget {
   final WalkDetailState state;
 
-  const _StatusHero({
-    required this.state,
-  });
+  const _StatusHero({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -739,12 +617,8 @@ class _StatusHero extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
-        border: Border.all(
-          color: color.withValues(alpha: .2),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
+        border: Border.all(color: color.withValues(alpha: .2)),
         boxShadow: DogGoTheme.softShadow(
           opacity: .035,
           blur: 22,
@@ -752,8 +626,7 @@ class _StatusHero extends StatelessWidget {
         ),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -764,17 +637,11 @@ class _StatusHero extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: surface,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.pill,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.pill),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      _statusIcon(walk.status),
-                      color: color,
-                      size: 16,
-                    ),
+                    Icon(_statusIcon(walk.status), color: color, size: 16),
                     const SizedBox(width: 6),
                     Text(
                       walk.status.label,
@@ -788,54 +655,39 @@ class _StatusHero extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Text(
-                '#${walk.id}',
-                style:
-                    DogGoTheme.caption(size: 10.5),
-              ),
+              Text('#${walk.id}', style: DogGoTheme.caption(size: 10.5)),
             ],
           ),
           const SizedBox(height: 18),
           Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _PetPhoto(
-                url: state.petPhotoUrl,
-                name: walk.petName,
-              ),
+              _PetPhoto(url: state.petPhotoUrl, name: walk.petName),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       walk.petsLabel,
                       maxLines: 1,
-                      overflow:
-                          TextOverflow.ellipsis,
-                      style:
-                          DogGoTheme.title(size: 23),
+                      overflow: TextOverflow.ellipsis,
+                      style: DogGoTheme.title(size: 23),
                     ),
                     const SizedBox(height: 6),
                     _HeroDetail(
-                      icon:
-                          Icons.calendar_month_outlined,
+                      icon: Icons.calendar_month_outlined,
                       text: walk.scheduledLabel,
                     ),
                     const SizedBox(height: 5),
                     _HeroDetail(
-                      icon:
-                          Icons.schedule_outlined,
+                      icon: Icons.schedule_outlined,
                       text: walk.durationLabel,
                     ),
                     const SizedBox(height: 5),
                     _HeroDetail(
                       icon: Icons.person_outline_rounded,
-                      text: state.isWalker
-                          ? walk.ownerName
-                          : walk.walkerName,
+                      text: state.isWalker ? walk.ownerName : walk.walkerName,
                     ),
                   ],
                 ),
@@ -848,9 +700,7 @@ class _StatusHero extends StatelessWidget {
             padding: const EdgeInsets.all(13),
             decoration: BoxDecoration(
               color: surface.withValues(alpha: .65),
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
             ),
             child: Text(
               state.statusMessage,
@@ -871,16 +721,12 @@ class _PetPhoto extends StatelessWidget {
   final String? url;
   final String name;
 
-  const _PetPhoto({
-    required this.url,
-    required this.name,
-  });
+  const _PetPhoto({required this.url, required this.name});
 
   bool get _hasPhoto {
     final value = url?.trim() ?? '';
 
-    return value.startsWith('http://') ||
-        value.startsWith('https://');
+    return value.startsWith('http://') || value.startsWith('https://');
   }
 
   @override
@@ -891,16 +737,13 @@ class _PetPhoto extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: DogGoTheme.tealLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
       ),
       child: _hasPhoto
           ? Image.network(
               url!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const _PetPlaceholder(),
+              errorBuilder: (_, _, _) => const _PetPlaceholder(),
             )
           : const _PetPlaceholder(),
     );
@@ -912,11 +755,7 @@ class _PetPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Icon(
-      Icons.pets_rounded,
-      color: DogGoTheme.teal,
-      size: 37,
-    );
+    return const Icon(Icons.pets_rounded, color: DogGoTheme.teal, size: 37);
   }
 }
 
@@ -924,28 +763,20 @@ class _HeroDetail extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _HeroDetail({
-    required this.icon,
-    required this.text,
-  });
+  const _HeroDetail({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 15,
-          color: DogGoTheme.muted,
-        ),
+        Icon(icon, size: 15, color: DogGoTheme.muted),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style:
-                DogGoTheme.subtitle(size: 11),
+            style: DogGoTheme.subtitle(size: 11),
           ),
         ),
       ],
@@ -956,9 +787,7 @@ class _HeroDetail extends StatelessWidget {
 class _WalkProgress extends StatelessWidget {
   final WalkDetail walk;
 
-  const _WalkProgress({
-    required this.walk,
-  });
+  const _WalkProgress({required this.walk});
 
   int get _currentStep {
     if (walk.isCompleted) {
@@ -982,114 +811,88 @@ class _WalkProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = [
-      'Solicitud',
-      'Aceptado',
-      'En curso',
-      'Finalizado',
-    ];
+    const labels = ['Solicitud', 'Aceptado', 'En curso', 'Finalizado'];
 
-    final closed =
-        walk.isCancelled || walk.isRejected;
+    final closed = walk.isCancelled || walk.isRejected;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Progreso del servicio',
-            style: DogGoTheme.title(size: 16),
-          ),
+          Text('Progreso del servicio', style: DogGoTheme.title(size: 16)),
           const SizedBox(height: 16),
           Row(
-            children: List.generate(
-              labels.length,
-              (index) {
-                final step = index + 1;
-                final completed =
-                    !closed && step <= _currentStep;
+            children: List.generate(labels.length, (index) {
+              final step = index + 1;
+              final completed = !closed && step <= _currentStep;
 
-                return Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              alignment:
-                                  Alignment.center,
-                              decoration: BoxDecoration(
-                                color: closed
-                                    ? DogGoTheme.redLight
-                                    : completed
-                                        ? DogGoTheme.teal
-                                        : DogGoTheme
-                                            .purpleLight,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                closed
-                                    ? Icons.close_rounded
-                                    : completed
-                                        ? Icons
-                                            .check_rounded
-                                        : Icons
-                                            .circle_outlined,
-                                size: 15,
-                                color: closed
-                                    ? DogGoTheme.red
-                                    : completed
-                                        ? Colors.white
-                                        : DogGoTheme.muted,
-                              ),
+              return Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: closed
+                                  ? DogGoTheme.redLight
+                                  : completed
+                                  ? DogGoTheme.teal
+                                  : DogGoTheme.purpleLight,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(height: 7),
-                            Text(
-                              labels[index],
-                              textAlign:
-                                  TextAlign.center,
-                              style:
-                                  DogGoTheme.caption(
-                                size: 8.5,
-                                color: completed
-                                    ? DogGoTheme.teal
-                                    : DogGoTheme.muted,
-                                weight: completed
-                                    ? FontWeight.w800
-                                    : FontWeight.w500,
-                              ),
+                            child: Icon(
+                              closed
+                                  ? Icons.close_rounded
+                                  : completed
+                                  ? Icons.check_rounded
+                                  : Icons.circle_outlined,
+                              size: 15,
+                              color: closed
+                                  ? DogGoTheme.red
+                                  : completed
+                                  ? Colors.white
+                                  : DogGoTheme.muted,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 7),
+                          Text(
+                            labels[index],
+                            textAlign: TextAlign.center,
+                            style: DogGoTheme.caption(
+                              size: 8.5,
+                              color: completed
+                                  ? DogGoTheme.teal
+                                  : DogGoTheme.muted,
+                              weight: completed
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      if (index <
-                          labels.length - 1)
-                        Container(
-                          width: 10,
-                          height: 2,
-                          color: !closed &&
-                                  step < _currentStep
-                              ? DogGoTheme.teal
-                              : DogGoTheme.border,
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                    if (index < labels.length - 1)
+                      Container(
+                        width: 10,
+                        height: 2,
+                        color: !closed && step < _currentStep
+                            ? DogGoTheme.teal
+                            : DogGoTheme.border,
+                      ),
+                  ],
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -1127,25 +930,15 @@ class _RecommendedStep extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            DogGoTheme.tealLight,
-            DogGoTheme.card,
-          ],
+          colors: [DogGoTheme.tealLight, DogGoTheme.card],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.teal.withValues(
-            alpha: .15,
-          ),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.teal.withValues(alpha: .15)),
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 48,
@@ -1163,41 +956,24 @@ class _RecommendedStep extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'SIGUIENTE PASO',
-                  style: DogGoTheme.label(
-                    size: 9.5,
-                  ),
-                ),
+                Text('SIGUIENTE PASO', style: DogGoTheme.label(size: 9.5)),
                 const SizedBox(height: 6),
-                Text(
-                  state.recommendedTitle,
-                  style:
-                      DogGoTheme.title(size: 17),
-                ),
+                Text(state.recommendedTitle, style: DogGoTheme.title(size: 17)),
                 const SizedBox(height: 5),
                 Text(
                   state.recommendedDescription,
-                  style:
-                      DogGoTheme.subtitle(size: 11.5),
+                  style: DogGoTheme.subtitle(size: 11.5),
                 ),
                 if (button != null) ...[
                   const SizedBox(height: 13),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: state.acting
-                          ? null
-                          : button.onPressed,
-                      icon: Icon(
-                        button.icon,
-                        size: 18,
-                      ),
-                      label:
-                          Text(button.label),
+                      onPressed: state.acting ? null : button.onPressed,
+                      icon: Icon(button.icon, size: 18),
+                      label: Text(button.label),
                     ),
                   ),
                 ],
@@ -1209,9 +985,7 @@ class _RecommendedStep extends StatelessWidget {
     );
   }
 
-  _RecommendedButton? _buttonFor(
-    WalkDetailRecommendedAction action,
-  ) {
+  _RecommendedButton? _buttonFor(WalkDetailRecommendedAction action) {
     switch (action) {
       case WalkDetailRecommendedAction.startWalk:
         return _RecommendedButton(
@@ -1220,8 +994,7 @@ class _RecommendedStep extends StatelessWidget {
           onPressed: onStart,
         );
 
-      case WalkDetailRecommendedAction
-            .uploadStartEvidence:
+      case WalkDetailRecommendedAction.uploadStartEvidence:
         return _RecommendedButton(
           label: 'Subir evidencia inicial',
           icon: Icons.photo_camera_outlined,
@@ -1242,12 +1015,10 @@ class _RecommendedStep extends StatelessWidget {
           onPressed: onOpenMap,
         );
 
-      case WalkDetailRecommendedAction
-            .uploadEndEvidence:
+      case WalkDetailRecommendedAction.uploadEndEvidence:
         return _RecommendedButton(
           label: 'Subir evidencia final',
-          icon:
-              Icons.photo_camera_back_outlined,
+          icon: Icons.photo_camera_back_outlined,
           onPressed: onEndEvidence,
         );
 
@@ -1326,21 +1097,16 @@ class _QuickActions extends StatelessWidget {
     ];
 
     return Row(
-      children: List.generate(
-        actions.length,
-        (index) {
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                right: index == actions.length - 1
-                    ? 0
-                    : 9,
-              ),
-              child: actions[index],
+      children: List.generate(actions.length, (index) {
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: index == actions.length - 1 ? 0 : 9,
             ),
-          );
-        },
-      ),
+            child: actions[index],
+          ),
+        );
+      }),
     );
   }
 }
@@ -1362,34 +1128,21 @@ class _QuickAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: DogGoTheme.card,
-      borderRadius: BorderRadius.circular(
-        DogGoRadius.medium,
-      ),
+      borderRadius: BorderRadius.circular(DogGoRadius.medium),
       child: InkWell(
         onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 14,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.medium,
-            ),
-            border: Border.all(
-              color: DogGoTheme.border,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.medium),
+            border: Border.all(color: DogGoTheme.border),
           ),
           child: Column(
             children: [
               Icon(
                 icon,
-                color: enabled
-                    ? DogGoTheme.teal
-                    : DogGoTheme.disabled,
+                color: enabled ? DogGoTheme.teal : DogGoTheme.disabled,
                 size: 22,
               ),
               const SizedBox(height: 6),
@@ -1397,9 +1150,7 @@ class _QuickAction extends StatelessWidget {
                 label,
                 style: DogGoTheme.caption(
                   size: 10,
-                  color: enabled
-                      ? DogGoTheme.ink
-                      : DogGoTheme.disabled,
+                  color: enabled ? DogGoTheme.ink : DogGoTheme.disabled,
                   weight: FontWeight.w700,
                 ),
               ),
@@ -1414,9 +1165,7 @@ class _QuickAction extends StatelessWidget {
 class _ServiceInformation extends StatelessWidget {
   final WalkDetail walk;
 
-  const _ServiceInformation({
-    required this.walk,
-  });
+  const _ServiceInformation({required this.walk});
 
   @override
   Widget build(BuildContext context) {
@@ -1469,10 +1218,7 @@ class _ParticipantsCard extends StatelessWidget {
   final WalkDetail walk;
   final bool isWalker;
 
-  const _ParticipantsCard({
-    required this.walk,
-    required this.isWalker,
-  });
+  const _ParticipantsCard({required this.walk, required this.isWalker});
 
   @override
   Widget build(BuildContext context) {
@@ -1531,32 +1277,20 @@ class _Participant extends StatelessWidget {
             color: color.withValues(alpha: .1),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 19,
-          ),
+          child: Icon(icon, color: color, size: 19),
         ),
         const SizedBox(width: 11),
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                role,
-                style:
-                    DogGoTheme.caption(size: 9.5),
-              ),
+              Text(role, style: DogGoTheme.caption(size: 9.5)),
               const SizedBox(height: 2),
               Text(
                 name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: DogGoTheme.body(
-                  size: 12,
-                  weight: FontWeight.w800,
-                ),
+                style: DogGoTheme.body(size: 12, weight: FontWeight.w800),
               ),
             ],
           ),
@@ -1570,10 +1304,7 @@ class _PickupCard extends StatelessWidget {
   final WalkDetail walk;
   final VoidCallback? onOpenMap;
 
-  const _PickupCard({
-    required this.walk,
-    this.onOpenMap,
-  });
+  const _PickupCard({required this.walk, this.onOpenMap});
 
   @override
   Widget build(BuildContext context) {
@@ -1585,28 +1316,18 @@ class _PickupCard extends StatelessWidget {
           : IconButton(
               onPressed: onOpenMap,
               tooltip: 'Abrir mapa',
-              icon: const Icon(
-                Icons.open_in_new_rounded,
-              ),
+              icon: const Icon(Icons.open_in_new_rounded),
               color: DogGoTheme.teal,
             ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             walk.pickupAddress,
-            style: DogGoTheme.body(
-              size: 12.5,
-              weight: FontWeight.w800,
-            ),
+            style: DogGoTheme.body(size: 12.5, weight: FontWeight.w800),
           ),
           const SizedBox(height: 7),
-          Text(
-            walk.pickupReferences,
-            style:
-                DogGoTheme.subtitle(size: 11),
-          ),
+          Text(walk.pickupReferences, style: DogGoTheme.subtitle(size: 11)),
           const SizedBox(height: 11),
           Container(
             width: double.infinity,
@@ -1615,9 +1336,7 @@ class _PickupCard extends StatelessWidget {
               color: walk.hasPickupCoordinates
                   ? DogGoTheme.tealLight
                   : DogGoTheme.orangeLight,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
             ),
             child: Row(
               children: [
@@ -1636,10 +1355,9 @@ class _PickupCard extends StatelessWidget {
                     walk.pickupCoordinatesLabel,
                     style: DogGoTheme.caption(
                       size: 10,
-                      color:
-                          walk.hasPickupCoordinates
-                              ? DogGoTheme.teal
-                              : DogGoTheme.orange,
+                      color: walk.hasPickupCoordinates
+                          ? DogGoTheme.teal
+                          : DogGoTheme.orange,
                       weight: FontWeight.w700,
                     ),
                   ),
@@ -1669,13 +1387,9 @@ class _EvidenceSection extends StatelessWidget {
     final walk = state.walk!;
 
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Evidencias',
-          style: DogGoTheme.title(size: 21),
-        ),
+        Text('Evidencias', style: DogGoTheme.title(size: 21)),
         const SizedBox(height: 4),
         Text(
           'Registro fotográfico del servicio',
@@ -1689,8 +1403,7 @@ class _EvidenceSection extends StatelessWidget {
               : 'Pendiente de registrar',
           imageUrl: state.startPhotoUrl,
           completed: walk.hasStartEvidence,
-          canUpload:
-              state.canUploadStartEvidence,
+          canUpload: state.canUploadStartEvidence,
           onUpload: onStartEvidence,
         ),
         const SizedBox(height: 11),
@@ -1701,8 +1414,7 @@ class _EvidenceSection extends StatelessWidget {
               : 'Pendiente de registrar',
           imageUrl: state.endPhotoUrl,
           completed: walk.hasEndEvidence,
-          canUpload:
-              state.canUploadEndEvidence,
+          canUpload: state.canUploadEndEvidence,
           onUpload: onEndEvidence,
         ),
       ],
@@ -1730,8 +1442,7 @@ class _EvidenceCard extends StatelessWidget {
   bool get _hasImage {
     final value = imageUrl?.trim() ?? '';
 
-    return value.startsWith('http://') ||
-        value.startsWith('https://');
+    return value.startsWith('http://') || value.startsWith('https://');
   }
 
   @override
@@ -1740,14 +1451,10 @@ class _EvidenceCard extends StatelessWidget {
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
         border: Border.all(
           color: completed
-              ? DogGoTheme.green.withValues(
-                  alpha: .25,
-                )
+              ? DogGoTheme.green.withValues(alpha: .25)
               : DogGoTheme.border,
         ),
       ),
@@ -1758,48 +1465,34 @@ class _EvidenceCard extends StatelessWidget {
             height: 66,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: completed
-                  ? DogGoTheme.greenLight
-                  : DogGoTheme.purpleLight,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              color: completed ? DogGoTheme.greenLight : DogGoTheme.purpleLight,
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
             ),
             child: _hasImage
                 ? Image.network(
                     imageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) {
-                      return _EvidencePlaceholder(
-                        completed: completed,
-                      );
+                    errorBuilder: (_, _, _) {
+                      return _EvidencePlaceholder(completed: completed);
                     },
                   )
-                : _EvidencePlaceholder(
-                    completed: completed,
-                  ),
+                : _EvidencePlaceholder(completed: completed),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: DogGoTheme.body(
-                    size: 12.5,
-                    weight: FontWeight.w800,
-                  ),
+                  style: DogGoTheme.body(size: 12.5, weight: FontWeight.w800),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
                   style: DogGoTheme.caption(
                     size: 10,
-                    color: completed
-                        ? DogGoTheme.green
-                        : DogGoTheme.muted,
+                    color: completed ? DogGoTheme.green : DogGoTheme.muted,
                     weight: FontWeight.w600,
                   ),
                 ),
@@ -1810,23 +1503,16 @@ class _EvidenceCard extends StatelessWidget {
             IconButton(
               onPressed: onUpload,
               tooltip: 'Subir fotografía',
-              icon: const Icon(
-                Icons.add_a_photo_outlined,
-              ),
+              icon: const Icon(Icons.add_a_photo_outlined),
               color: DogGoTheme.teal,
               style: IconButton.styleFrom(
-                backgroundColor:
-                    DogGoTheme.tealLight,
+                backgroundColor: DogGoTheme.tealLight,
               ),
             )
           else
             Icon(
-              completed
-                  ? Icons.check_circle_rounded
-                  : Icons.schedule_rounded,
-              color: completed
-                  ? DogGoTheme.green
-                  : DogGoTheme.muted,
+              completed ? Icons.check_circle_rounded : Icons.schedule_rounded,
+              color: completed ? DogGoTheme.green : DogGoTheme.muted,
             ),
         ],
       ),
@@ -1837,19 +1523,13 @@ class _EvidenceCard extends StatelessWidget {
 class _EvidencePlaceholder extends StatelessWidget {
   final bool completed;
 
-  const _EvidencePlaceholder({
-    required this.completed,
-  });
+  const _EvidencePlaceholder({required this.completed});
 
   @override
   Widget build(BuildContext context) {
     return Icon(
-      completed
-          ? Icons.photo_outlined
-          : Icons.add_a_photo_outlined,
-      color: completed
-          ? DogGoTheme.green
-          : DogGoTheme.muted,
+      completed ? Icons.photo_outlined : Icons.add_a_photo_outlined,
+      color: completed ? DogGoTheme.green : DogGoTheme.muted,
       size: 27,
     );
   }
@@ -1858,9 +1538,7 @@ class _EvidencePlaceholder extends StatelessWidget {
 class _CancellationCard extends StatelessWidget {
   final WalkDetail walk;
 
-  const _CancellationCard({
-    required this.walk,
-  });
+  const _CancellationCard({required this.walk});
 
   @override
   Widget build(BuildContext context) {
@@ -1868,33 +1546,19 @@ class _CancellationCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.redLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color:
-              DogGoTheme.red.withValues(alpha: .2),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.red.withValues(alpha: .2)),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                color: DogGoTheme.red,
-              ),
+              const Icon(Icons.info_outline_rounded, color: DogGoTheme.red),
               const SizedBox(width: 9),
               Text(
-                walk.isRejected
-                    ? 'Solicitud rechazada'
-                    : 'Paseo cancelado',
-                style: DogGoTheme.title(
-                  size: 16,
-                  color: DogGoTheme.red,
-                ),
+                walk.isRejected ? 'Solicitud rechazada' : 'Paseo cancelado',
+                style: DogGoTheme.title(size: 16, color: DogGoTheme.red),
               ),
             ],
           ),
@@ -1904,26 +1568,18 @@ class _CancellationCard extends StatelessWidget {
                 (walk.isRejected
                     ? 'El paseador no aceptó esta solicitud.'
                     : 'No se registró un motivo.'),
-            style: DogGoTheme.body(
-              size: 11.5,
-              color: DogGoTheme.ink,
-            ),
+            style: DogGoTheme.body(size: 11.5, color: DogGoTheme.ink),
           ),
           if (walk.cancelledBy != null) ...[
             const SizedBox(height: 7),
             Text(
               'Cancelado por: ${walk.cancelledBy}',
-              style:
-                  DogGoTheme.caption(size: 10),
+              style: DogGoTheme.caption(size: 10),
             ),
           ],
           if (walk.cancelledAt != null) ...[
             const SizedBox(height: 3),
-            Text(
-              walk.cancelledLabel,
-              style:
-                  DogGoTheme.caption(size: 10),
-            ),
+            Text(walk.cancelledLabel, style: DogGoTheme.caption(size: 10)),
           ],
         ],
       ),
@@ -1952,108 +1608,69 @@ class _MainActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasPrimaryAction = state.canAccept ||
-        state.canStart ||
-        state.canFinish ||
-        state.canRate;
+    final hasPrimaryAction =
+        state.canAccept || state.canStart || state.canFinish || state.canRate;
 
-    if (!hasPrimaryAction &&
-        !state.canReject &&
-        !state.canCancel) {
+    if (!hasPrimaryAction && !state.canReject && !state.canCancel) {
       return const SizedBox.shrink();
     }
 
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Acciones',
-          style: DogGoTheme.title(size: 21),
-        ),
+        Text('Acciones', style: DogGoTheme.title(size: 21)),
         const SizedBox(height: 13),
         if (state.canAccept)
           ElevatedButton.icon(
-            onPressed:
-                state.acting ? null : onAccept,
-            icon: const Icon(
-              Icons.check_circle_outline_rounded,
-            ),
-            label:
-                const Text('Aceptar solicitud'),
+            onPressed: state.acting ? null : onAccept,
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            label: const Text('Aceptar solicitud'),
           ),
         if (state.canStart)
           ElevatedButton.icon(
-            onPressed:
-                state.acting ? null : onStart,
-            icon: const Icon(
-              Icons.directions_walk_rounded,
-            ),
-            label:
-                const Text('Iniciar paseo'),
+            onPressed: state.acting ? null : onStart,
+            icon: const Icon(Icons.directions_walk_rounded),
+            label: const Text('Iniciar paseo'),
           ),
         if (state.canFinish)
           ElevatedButton.icon(
-            onPressed:
-                state.acting ? null : onFinish,
-            icon: const Icon(
-              Icons.flag_outlined,
-            ),
-            label:
-                const Text('Finalizar paseo'),
+            onPressed: state.acting ? null : onFinish,
+            icon: const Icon(Icons.flag_outlined),
+            label: const Text('Finalizar paseo'),
           ),
         if (state.canRate)
           ElevatedButton.icon(
-            onPressed:
-                state.acting ? null : onRate,
-            icon: const Icon(
-              Icons.star_outline_rounded,
-            ),
-            label:
-                const Text('Calificar paseo'),
+            onPressed: state.acting ? null : onRate,
+            icon: const Icon(Icons.star_outline_rounded),
+            label: const Text('Calificar paseo'),
           ),
         if (state.canReject) ...[
           const SizedBox(height: 10),
           OutlinedButton.icon(
-            onPressed:
-                state.acting ? null : onReject,
-            icon: const Icon(
-              Icons.block_outlined,
-            ),
-            label:
-                const Text('Rechazar solicitud'),
+            onPressed: state.acting ? null : onReject,
+            icon: const Icon(Icons.block_outlined),
+            label: const Text('Rechazar solicitud'),
             style: OutlinedButton.styleFrom(
               foregroundColor: DogGoTheme.red,
-              side: const BorderSide(
-                color: DogGoTheme.red,
-              ),
+              side: const BorderSide(color: DogGoTheme.red),
             ),
           ),
         ],
         if (state.canCancel) ...[
           const SizedBox(height: 10),
           TextButton.icon(
-            onPressed:
-                state.acting ? null : onCancel,
-            icon: const Icon(
-              Icons.cancel_outlined,
-            ),
-            label:
-                const Text('Cancelar paseo'),
+            onPressed: state.acting ? null : onCancel,
+            icon: const Icon(Icons.cancel_outlined),
+            label: const Text('Cancelar paseo'),
             style: TextButton.styleFrom(
               foregroundColor: DogGoTheme.red,
-              minimumSize:
-                  const Size(double.infinity, 48),
+              minimumSize: const Size(double.infinity, 48),
             ),
           ),
         ],
         if (state.acting) ...[
           const SizedBox(height: 12),
-          const Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-            ),
-          ),
+          const Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
         ],
       ],
     );
@@ -2080,16 +1697,11 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -2098,24 +1710,12 @@ class _SectionCard extends StatelessWidget {
                 height: 39,
                 decoration: BoxDecoration(
                   color: DogGoTheme.tealLight,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  icon,
-                  color: DogGoTheme.teal,
-                  size: 20,
-                ),
+                child: Icon(icon, color: DogGoTheme.teal, size: 20),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style:
-                      DogGoTheme.title(size: 16),
-                ),
-              ),
+              Expanded(child: Text(title, style: DogGoTheme.title(size: 16))),
               if (trailing != null) trailing!,
             ],
           ),
@@ -2144,19 +1744,12 @@ class _DetailRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 18,
-          color: DogGoTheme.muted,
-        ),
+        Icon(icon, size: 18, color: DogGoTheme.muted),
         const SizedBox(width: 9),
         Expanded(
           child: Text(
             label,
-            style: DogGoTheme.body(
-              size: 11,
-              color: DogGoTheme.muted,
-            ),
+            style: DogGoTheme.body(size: 11, color: DogGoTheme.muted),
           ),
         ),
         const SizedBox(width: 10),
@@ -2176,9 +1769,7 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-IconData _recommendedIcon(
-  WalkDetailRecommendedAction action,
-) {
+IconData _recommendedIcon(WalkDetailRecommendedAction action) {
   switch (action) {
     case WalkDetailRecommendedAction.waitForWalker:
       return Icons.hourglass_top_rounded;
@@ -2188,10 +1779,8 @@ IconData _recommendedIcon(
       return Icons.pets_outlined;
     case WalkDetailRecommendedAction.startWalk:
       return Icons.directions_walk_rounded;
-    case WalkDetailRecommendedAction
-          .uploadStartEvidence:
-    case WalkDetailRecommendedAction
-          .uploadEndEvidence:
+    case WalkDetailRecommendedAction.uploadStartEvidence:
+    case WalkDetailRecommendedAction.uploadEndEvidence:
       return Icons.photo_camera_outlined;
     case WalkDetailRecommendedAction.activateTracking:
       return Icons.location_searching_rounded;

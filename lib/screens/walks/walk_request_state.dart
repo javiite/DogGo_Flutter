@@ -1,14 +1,29 @@
 import '../pets/models/pet.dart';
 import '../walkers/models/walker.dart';
 import 'models/pickup_location.dart';
+import 'models/walk_request_availability.dart';
+
+class WalkScheduleDraft {
+  final DateTime startsAt;
+  final int durationMinutes;
+  final List<int> petIds;
+
+  const WalkScheduleDraft({
+    required this.startsAt,
+    required this.durationMinutes,
+    required this.petIds,
+  });
+
+  DateTime get endsAt => startsAt.add(Duration(minutes: durationMinutes));
+
+  bool overlaps(DateTime start, int duration) {
+    final end = start.add(Duration(minutes: duration));
+    return start.isBefore(endsAt) && end.isAfter(startsAt);
+  }
+}
 
 class WalkRequestState {
-  static const List<int> allowedDurations = [
-    30,
-    45,
-    60,
-    90,
-  ];
+  static const List<int> allowedDurations = [30, 45, 60, 90];
 
   static const int maxSelectedPets = 5;
 
@@ -21,9 +36,14 @@ class WalkRequestState {
   final List<Pet> pets;
   final List<int> selectedPetIds;
   final int durationMinutes;
+  final DateTime? selectedDay;
   final DateTime? scheduledAt;
+  final List<WalkScheduleDraft> scheduledWalks;
   final PickupLocation? pickupLocation;
   final PickupLocation? defaultLocation;
+  final bool loadingAvailability;
+  final WalkRequestAvailability? availability;
+  final String? availabilityError;
 
   const WalkRequestState({
     required this.walker,
@@ -35,16 +55,19 @@ class WalkRequestState {
     this.pets = const [],
     this.selectedPetIds = const [],
     this.durationMinutes = 30,
+    this.selectedDay,
     this.scheduledAt,
+    this.scheduledWalks = const [],
     this.pickupLocation,
     this.defaultLocation,
+    this.loadingAvailability = false,
+    this.availability,
+    this.availabilityError,
   });
 
   List<Pet> get selectedPets {
     return pets
-        .where(
-          (pet) => selectedPetIds.contains(pet.id),
-        )
+        .where((pet) => selectedPetIds.contains(pet.id))
         .toList(growable: false);
   }
 
@@ -57,9 +80,7 @@ class WalkRequestState {
 
   // Compatibilidad temporal con el selector anterior.
   int? get selectedPetId {
-    return selectedPetIds.isEmpty
-        ? null
-        : selectedPetIds.first;
+    return selectedPetIds.isEmpty ? null : selectedPetIds.first;
   }
 
   int get selectedPetCount {
@@ -91,13 +112,56 @@ class WalkRequestState {
   }
 
   bool get canSubmit {
+    final walks = effectiveScheduledWalks;
     return !loading &&
         !saving &&
         walker.hasValidId &&
         hasSelectedPets &&
         selectedPetCount <= maxSelectedPets &&
-        scheduledAt != null &&
-        pickupLocation != null;
+        walks.isNotEmpty &&
+        pickupLocation != null &&
+        walks.every(
+          (walk) =>
+              availability?.accepts(walk.startsAt, walk.durationMinutes) ==
+              true,
+        );
+  }
+
+  List<WalkScheduleDraft> get effectiveScheduledWalks {
+    if (scheduledWalks.isNotEmpty) return scheduledWalks;
+    if (scheduledAt == null) return const [];
+    return [
+      WalkScheduleDraft(
+        startsAt: scheduledAt!,
+        durationMinutes: durationMinutes,
+        petIds: List.unmodifiable(selectedPetIds),
+      ),
+    ];
+  }
+
+  List<DateTime> get effectiveScheduledDates {
+    return effectiveScheduledWalks.map((item) => item.startsAt).toList();
+  }
+
+  int get walkCount => effectiveScheduledDates.length;
+
+  List<WalkTimeSlotOption> get currentSlotOptions {
+    final day = selectedDay;
+    final source = availability;
+    if (day == null || source == null) return const [];
+    return source.slotOptionsFor(
+      day,
+      durationMinutes,
+      localReservations: scheduledWalks
+          .map(
+            (walk) => WalkUnavailablePeriod(
+              walk.startsAt.toUtc(),
+              walk.endsAt.toUtc(),
+              true,
+            ),
+          )
+          .toList(growable: false),
+    );
   }
 
   double get hourlyRate {
@@ -105,8 +169,7 @@ class WalkRequestState {
   }
 
   double get basePrice {
-    return hourlyRate *
-        (durationMinutes / 60);
+    return hourlyRate * (durationMinutes / 60);
   }
 
   double get additionalPetsPrice {
@@ -114,17 +177,29 @@ class WalkRequestState {
       return 0;
     }
 
-    return basePrice *
-        0.50 *
-        (selectedPetCount - 1);
+    return basePrice * 0.50 * (selectedPetCount - 1);
   }
 
-  double get estimatedTotal {
+  double get pricePerWalk {
     if (!hasSelectedPets) {
       return 0;
     }
 
     return basePrice + additionalPetsPrice;
+  }
+
+  double priceForWalk(WalkScheduleDraft walk) {
+    final base = hourlyRate * (walk.durationMinutes / 60);
+    final additional = walk.petIds.length <= 1
+        ? 0
+        : base * .50 * (walk.petIds.length - 1);
+    return base + additional;
+  }
+
+  double get estimatedTotal {
+    final walks = effectiveScheduledWalks;
+    if (walks.isEmpty) return pricePerWalk;
+    return walks.fold(0, (total, walk) => total + priceForWalk(walk));
   }
 
   String get selectedPetsLabel {
@@ -188,11 +263,9 @@ class WalkRequestState {
       'dic',
     ];
 
-    final hour =
-        date.hour.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
 
-    final minute =
-        date.minute.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
 
     return '${date.day} '
         '${months[date.month - 1]} '
@@ -219,41 +292,49 @@ class WalkRequestState {
     List<int>? selectedPetIds,
     bool clearSelectedPets = false,
     int? durationMinutes,
+    DateTime? selectedDay,
+    bool clearSelectedDay = false,
     DateTime? scheduledAt,
     bool clearScheduledAt = false,
+    List<WalkScheduleDraft>? scheduledWalks,
+    bool clearScheduledWalks = false,
     PickupLocation? pickupLocation,
     bool clearPickupLocation = false,
     PickupLocation? defaultLocation,
     bool clearDefaultLocation = false,
+    bool? loadingAvailability,
+    WalkRequestAvailability? availability,
+    String? availabilityError,
+    bool clearAvailabilityError = false,
   }) {
     return WalkRequestState(
       walker: walker ?? this.walker,
       loading: loading ?? this.loading,
       saving: saving ?? this.saving,
-      loadingLocation:
-          loadingLocation ?? this.loadingLocation,
-      error: clearError
-          ? null
-          : error ?? this.error,
+      loadingLocation: loadingLocation ?? this.loadingLocation,
+      error: clearError ? null : error ?? this.error,
       baseUrl: baseUrl ?? this.baseUrl,
       pets: pets ?? this.pets,
       selectedPetIds: clearSelectedPets
           ? const []
-          : selectedPetIds ??
-              this.selectedPetIds,
-      durationMinutes:
-          durationMinutes ?? this.durationMinutes,
-      scheduledAt: clearScheduledAt
-          ? null
-          : scheduledAt ?? this.scheduledAt,
+          : selectedPetIds ?? this.selectedPetIds,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      selectedDay: clearSelectedDay ? null : selectedDay ?? this.selectedDay,
+      scheduledAt: clearScheduledAt ? null : scheduledAt ?? this.scheduledAt,
+      scheduledWalks: clearScheduledWalks
+          ? const []
+          : scheduledWalks ?? this.scheduledWalks,
       pickupLocation: clearPickupLocation
           ? null
-          : pickupLocation ??
-              this.pickupLocation,
+          : pickupLocation ?? this.pickupLocation,
       defaultLocation: clearDefaultLocation
           ? null
-          : defaultLocation ??
-              this.defaultLocation,
+          : defaultLocation ?? this.defaultLocation,
+      loadingAvailability: loadingAvailability ?? this.loadingAvailability,
+      availability: availability ?? this.availability,
+      availabilityError: clearAvailabilityError
+          ? null
+          : availabilityError ?? this.availabilityError,
     );
   }
 }

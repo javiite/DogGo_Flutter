@@ -4,6 +4,7 @@ import 'home_walker.dart';
 
 class HomeWalk {
   final int? id;
+  final int? programacionId;
   final HomeWalkStatus status;
   final DateTime? scheduledAt;
   final DateTime? startedAt;
@@ -25,6 +26,7 @@ class HomeWalk {
 
   const HomeWalk({
     this.id,
+    this.programacionId,
     required this.status,
     this.scheduledAt,
     this.startedAt,
@@ -225,7 +227,7 @@ class HomeWalk {
     if (walkDay == today) {
       dayLabel = 'Hoy';
     } else if (walkDay == tomorrow) {
-      dayLabel = 'MaÃ±ana';
+      dayLabel = 'Mañana';
     } else {
       dayLabel =
           '${date.day.toString().padLeft(2, '0')}/'
@@ -235,7 +237,7 @@ class HomeWalk {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
 
-    return '$dayLabel Â· $hour:$minute';
+    return '$dayLabel · $hour:$minute';
   }
 
   factory HomeWalk.fromMap(Map<String, dynamic> map, {String? baseUrl}) {
@@ -262,6 +264,9 @@ class HomeWalk {
 
     return HomeWalk(
       id: _toInt(_firstValue(map, const ['id', 'Id', 'paseoId', 'PaseoId'])),
+      programacionId: _toInt(
+        _firstValue(map, const ['programacionId', 'ProgramacionId']),
+      ),
       status: HomeWalkStatus.fromValue(
         _firstValue(map, const ['estado', 'Estado', 'status', 'Status']),
       ),

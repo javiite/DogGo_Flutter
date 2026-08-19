@@ -6,15 +6,19 @@ import '../../explore/places_screen.dart';
 import '../widgets/home_section_title.dart';
 
 class HomeExploreTab extends StatelessWidget {
+  final bool isWalker;
   final VoidCallback onWalkers;
   final VoidCallback onPets;
+  final VoidCallback onAvailability;
   final VoidCallback onWalks;
   final VoidCallback onProfile;
 
   const HomeExploreTab({
     super.key,
+    required this.isWalker,
     required this.onWalkers,
     required this.onPets,
+    required this.onAvailability,
     required this.onWalks,
     required this.onProfile,
   });
@@ -95,13 +99,17 @@ class HomeExploreTab extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _ExploreFeature(
-            icon: Icons.pets_outlined,
-            title: 'Tus mascotas',
-            description:
-                'Administra perfiles, fotografías y datos importantes.',
-            color: DogGoTheme.orange,
-            background: DogGoTheme.orangeLight,
-            onTap: onPets,
+            icon: isWalker
+                ? Icons.event_available_outlined
+                : Icons.pets_outlined,
+            title: isWalker ? 'Mi disponibilidad' : 'Tus mascotas',
+            description: isWalker
+                ? 'Configura tus días, horarios y periodos no disponibles.'
+                : 'Administra perfiles, fotografías y datos importantes.',
+            color: isWalker ? DogGoTheme.teal : DogGoTheme.orange,
+            background:
+                isWalker ? DogGoTheme.tealLight : DogGoTheme.orangeLight,
+            onTap: isWalker ? onAvailability : onPets,
           ),
           const SizedBox(height: 12),
           _ExploreFeature(
