@@ -7,12 +7,7 @@ class CalificacionesService {
 
     if (statusCode is int && statusCode >= 200 && statusCode < 300) {
       if (body is Map<String, dynamic>) {
-        final data = body['data'] ??
-            body['calificacion'] ??
-            body['resultado'] ??
-            body['result'] ??
-            body['value'] ??
-            body;
+        final data = body['data'] ?? body;
 
         if (data is Map<String, dynamic>) {
           return data;
@@ -29,16 +24,14 @@ class CalificacionesService {
         return Map<String, dynamic>.from(body);
       }
 
-      return {
-        'success': true,
-        'data': body,
-      };
+      return {'success': true, 'data': body};
     }
 
     String mensaje = 'Error en la solicitud.';
 
     if (body is Map) {
-      mensaje = body['message']?.toString() ??
+      mensaje =
+          body['message']?.toString() ??
           body['mensaje']?.toString() ??
           body['error']?.toString() ??
           mensaje;
@@ -56,16 +49,7 @@ class CalificacionesService {
     if (statusCode is int && statusCode >= 200 && statusCode < 300) {
       dynamic datos = body;
 
-      if (body is Map) {
-        datos = body['data'] ??
-            body['calificaciones'] ??
-            body['reseñas'] ??
-            body['resenas'] ??
-            body['items'] ??
-            body['resultado'] ??
-            body['result'] ??
-            body['value'];
-      }
+      if (body is Map) datos = body['data'];
 
       if (datos is! List) return [];
 
@@ -78,7 +62,8 @@ class CalificacionesService {
     String mensaje = 'Error al cargar calificaciones.';
 
     if (body is Map) {
-      mensaje = body['message']?.toString() ??
+      mensaje =
+          body['message']?.toString() ??
           body['mensaje']?.toString() ??
           body['error']?.toString() ??
           mensaje;
@@ -92,100 +77,29 @@ class CalificacionesService {
     required int puntaje,
     required String comentario,
   }) async {
-    final body = {
-      'paseoId': paseoId,
-      'PaseoId': paseoId,
-      'puntaje': puntaje,
-      'Puntaje': puntaje,
-      'comentario': comentario,
-      'Comentario': comentario,
-    };
+    final body = {'puntaje': puntaje, 'comentario': comentario};
 
-    final endpoints = [
-      '/api/calificaciones',
-      '/api/Calificaciones',
-      '/api/calificaciones/calificar',
-      '/api/Calificaciones/calificar',
-      '/api/paseos/$paseoId/calificar',
-      '/api/Paseos/$paseoId/calificar',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.postAuth(endpoint, body);
-        return _normalizarRespuesta(respuesta);
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo enviar la calificación.');
+    final respuesta = await ApiService.postAuth(
+      '/api/calificaciones/paseos/$paseoId',
+      body,
+    );
+    return _normalizarRespuesta(respuesta);
   }
 
   Future<List<Map<String, dynamic>>> obtenerCalificacionesPaseador(
     int paseadorId,
   ) async {
-    final endpoints = [
-      '/api/calificaciones/paseador/$paseadorId',
-      '/api/Calificaciones/paseador/$paseadorId',
-      '/api/paseadores/$paseadorId/calificaciones',
-      '/api/Paseadores/$paseadorId/calificaciones',
-      '/api/paseadores/$paseadorId/resenas',
-      '/api/Paseadores/$paseadorId/resenas',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.getAuth(endpoint);
-        return _normalizarLista(respuesta);
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudieron cargar las calificaciones.');
+    final respuesta = await ApiService.getAuth(
+      '/api/calificaciones/paseadores/$paseadorId',
+    );
+    return _normalizarLista(respuesta);
   }
 
   Future<bool> paseoYaCalificado(int paseoId) async {
-    final endpoints = [
-      '/api/calificaciones/paseo/$paseoId/existe',
-      '/api/Calificaciones/paseo/$paseoId/existe',
-      '/api/paseos/$paseoId/calificacion',
-      '/api/Paseos/$paseoId/calificacion',
-    ];
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.getAuth(endpoint);
-        final statusCode = respuesta['statusCode'];
-        final body = respuesta['body'];
-
-        if (statusCode is int && statusCode >= 200 && statusCode < 300) {
-          if (body is bool) return body;
-
-          if (body is Map) {
-            final valor = body['existe'] ??
-                body['yaCalificado'] ??
-                body['calificado'] ??
-                body['success'] ??
-                body['data'];
-
-            if (valor is bool) return valor;
-
-            final texto = valor?.toString().toLowerCase();
-            if (texto == 'true') return true;
-            if (texto == 'false') return false;
-          }
-
-          return true;
-        }
-      } catch (_) {}
-    }
-
-    return false;
+    final respuesta = await ApiService.getAuth(
+      '/api/calificaciones/paseos/$paseoId',
+    );
+    final statusCode = respuesta['statusCode'];
+    return statusCode is int && statusCode >= 200 && statusCode < 300;
   }
 }

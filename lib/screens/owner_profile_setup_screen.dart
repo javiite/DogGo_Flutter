@@ -119,11 +119,11 @@ class _OwnerProfileSetupScreenState extends State<OwnerProfileSetupScreen> {
     }
 
     final latitude = EditProfileState.safeDouble(
-      result['latitud'] ?? result['Latitud'] ?? result['latitude'],
+      result['latitud'],
     );
 
     final longitude = EditProfileState.safeDouble(
-      result['longitud'] ?? result['Longitud'] ?? result['longitude'],
+      result['longitud'],
     );
 
     if (latitude == null || longitude == null) {

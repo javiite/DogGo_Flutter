@@ -47,173 +47,77 @@ class Walker {
 
   factory Walker.fromMap(Map<String, dynamic> map) {
     final zone = _text(
-      _deepValue(map, const [
-        'zonaServicio',
-        'ZonaServicio',
-        'zona',
-        'Zona',
-        'zonas',
-        'Zonas',
-        'serviceZone',
-        'ServiceZone',
-      ]),
+      _deepValue(map, const ['zonaServicio']),
       fallback: 'Sin zona registrada',
     );
 
     return Walker(
       id:
           _integer(
-            _deepValue(map, const [
-              'id',
-              'Id',
-              'paseadorId',
-              'PaseadorId',
-              'usuarioId',
-              'UsuarioId',
-              'walkerId',
-              'WalkerId',
-            ]),
+            _deepValue(map, const ['id']),
           ) ??
           0,
       name: _walkerName(map),
       email: _text(
-        _deepValue(map, const ['email', 'Email', 'correo', 'Correo']),
+        _deepValue(map, const ['email']),
         fallback: 'Correo no disponible',
       ),
       description: _text(
-        _deepValue(map, const [
-          'descripcion',
-          'Descripcion',
-          'descripción',
-          'bio',
-          'Bio',
-          'description',
-          'Description',
-        ]),
+        _deepValue(map, const ['descripcion']),
         fallback: 'Sin descripción registrada.',
       ),
       serviceZone: zone,
       zones: _splitZones(zone),
       hourlyRate: _decimal(
-        _deepValue(map, const [
-          'tarifaPorHora',
-          'TarifaPorHora',
-          'tarifa',
-          'Tarifa',
-          'hourlyRate',
-          'HourlyRate',
-        ]),
+        _deepValue(map, const ['tarifaPorHora']),
       ),
       rating:
           _decimal(
-            _deepValue(map, const [
-              'calificacionPromedio',
-              'CalificacionPromedio',
-              'calificaciónPromedio',
-              'rating',
-              'Rating',
-              'calificacion',
-              'Calificacion',
-            ]),
+            _deepValue(map, const ['calificacionPromedio']),
           ) ??
           0,
       experienceYears:
           _integer(
-            _deepValue(map, const [
-              'experienciaAnios',
-              'ExperienciaAnios',
-              'experienciaAños',
-              'ExperienciaAños',
-              'experiencia',
-              'Experiencia',
-              'experienceYears',
-              'ExperienceYears',
-            ]),
+            _deepValue(map, const ['experienciaAnios']),
           ) ??
           0,
       reviewCount:
           _integer(
-            _deepValue(map, const [
-              'cantidadResenas',
-              'CantidadResenas',
-              'cantidadReseñas',
-              'CantidadReseñas',
-              'totalResenas',
-              'TotalResenas',
-              'reviewCount',
-              'ReviewCount',
-            ]),
+            _deepValue(map, const ['cantidadResenas']),
           ) ??
           0,
       completedWalks:
           _integer(
-            _deepValue(map, const [
-              'paseosCompletados',
-              'PaseosCompletados',
-              'cantidadPaseos',
-              'CantidadPaseos',
-              'totalPaseos',
-              'TotalPaseos',
-              'completedWalks',
-              'CompletedWalks',
-            ]),
+            _deepValue(map, const ['paseosCompletados']),
           ) ??
           0,
       available: _boolean(
-        _deepValue(map, const [
-          'disponible',
-          'Disponible',
-          'available',
-          'Available',
-        ]),
+        _deepValue(map, const ['disponible']),
         fallback: true,
       ),
       verified: _boolean(
-        _deepValue(map, const [
-          'verificado',
-          'Verificado',
-          'esVerificado',
-          'EsVerificado',
-          'verified',
-          'Verified',
-        ]),
+        _deepValue(map, const ['verificado']),
       ),
-      photoPath: _nullableText(
-        _deepValue(map, const [
-          'fotoUrl',
-          'FotoUrl',
-          'fotoPerfilUrl',
-          'FotoPerfilUrl',
-          'imagenUrl',
-          'ImagenUrl',
-          'foto',
-          'Foto',
-          'photoUrl',
-          'PhotoUrl',
-        ]),
-      ),
+      photoPath: _nullableText(_deepValue(map, const ['fotoUrl'])),
       stateName: _nullableText(
-        _deepValue(map, const ['estadoNombre', 'EstadoNombre']),
+        _deepValue(map, const ['estadoNombre']),
       ),
       municipalityName: _nullableText(
-        _deepValue(map, const ['municipioNombre', 'MunicipioNombre']),
+        _deepValue(map, const ['municipioNombre']),
       ),
       distanceKm: _decimal(
-        _deepValue(map, const ['distanciaKm', 'DistanciaKm']),
+        _deepValue(map, const ['distanciaKm']),
       ),
       serviceRadiusKm:
           _integer(
-            _deepValue(map, const ['radioServicioKm', 'RadioServicioKm']),
+            _deepValue(map, const ['radioServicioKm']),
           ) ??
           10,
       withinCoverage: _boolean(
-        _deepValue(map, const ['dentroDeCobertura', 'DentroDeCobertura']),
+        _deepValue(map, const ['dentroDeCobertura']),
       ),
       locationMatch: _text(
-        _deepValue(map, const [
-          'coincidenciaUbicacion',
-          'CoincidenciaUbicacion',
-        ]),
+        _deepValue(map, const ['coincidenciaUbicacion']),
         fallback: 'SinUbicacion',
       ),
       rawData: Map<String, dynamic>.unmodifiable(
@@ -362,29 +266,17 @@ class Walker {
 
   static String _walkerName(Map<String, dynamic> map) {
     final complete = _text(
-      _deepValue(map, const [
-        'nombreCompleto',
-        'NombreCompleto',
-        'fullName',
-        'FullName',
-      ]),
+      _deepValue(map, const ['nombreCompleto']),
     );
 
     if (complete.isNotEmpty) return complete;
 
     final firstName = _text(
-      _deepValue(map, const [
-        'nombre',
-        'Nombre',
-        'nombrePaseador',
-        'NombrePaseador',
-        'name',
-        'Name',
-      ]),
+      _deepValue(map, const ['nombre']),
     );
 
     final lastName = _text(
-      _deepValue(map, const ['apellido', 'Apellido', 'lastName', 'LastName']),
+      _deepValue(map, const ['apellido']),
     );
 
     final result = '$firstName $lastName'.trim();
@@ -414,29 +306,6 @@ class Walker {
       final value = map[key];
 
       if (value != null) return value;
-    }
-
-    const nestedKeys = [
-      'usuario',
-      'Usuario',
-      'user',
-      'User',
-      'perfil',
-      'Perfil',
-    ];
-
-    for (final nestedKey in nestedKeys) {
-      final nested = map[nestedKey];
-
-      if (nested is Map) {
-        final nestedMap = Map<String, dynamic>.from(nested);
-
-        for (final key in keys) {
-          final value = nestedMap[key];
-
-          if (value != null) return value;
-        }
-      }
     }
 
     return null;

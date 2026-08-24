@@ -5,8 +5,8 @@ class MexicoState {
   const MexicoState({required this.code, required this.name});
 
   factory MexicoState.fromMap(Map<String, dynamic> map) => MexicoState(
-    code: (map['clave'] ?? map['Clave'] ?? '').toString(),
-    name: (map['nombre'] ?? map['Nombre'] ?? '').toString(),
+    code: (map['clave'] ?? '').toString(),
+    name: (map['nombre'] ?? '').toString(),
   );
 }
 
@@ -25,10 +25,9 @@ class MexicoMunicipality {
 
   factory MexicoMunicipality.fromMap(Map<String, dynamic> map) =>
       MexicoMunicipality(
-        code: (map['claveGeoestadistica'] ?? map['ClaveGeoestadistica'] ?? '')
-            .toString(),
-        stateCode: (map['estadoClave'] ?? map['EstadoClave'] ?? '').toString(),
-        localCode: (map['clave'] ?? map['Clave'] ?? '').toString(),
-        name: (map['nombre'] ?? map['Nombre'] ?? '').toString(),
+        code: (map['claveGeoestadistica'] ?? '').toString(),
+        stateCode: (map['estadoClave'] ?? '').toString(),
+        localCode: (map['clave'] ?? '').toString(),
+        name: (map['nombre'] ?? '').toString(),
       );
 }

@@ -68,7 +68,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
       Map<String, dynamic>? perfilPaseador;
 
       final rol = _texto(
-        perfil['rol'] ?? perfil['Rol'] ?? perfil['tipoUsuario'] ?? perfil['TipoUsuario'],
+        perfil['rol'],
         fallback: '',
       );
 
@@ -163,14 +163,14 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
 
   String get _nombre {
     return _texto(
-      _valorUsuario(['nombre', 'Nombre']),
+      _valorUsuario(['nombre']),
       fallback: '',
     );
   }
 
   String get _apellido {
     return _texto(
-      _valorUsuario(['apellido', 'Apellido']),
+      _valorUsuario(['apellido']),
       fallback: '',
     );
   }
@@ -182,21 +182,21 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
 
   String get _email {
     return _texto(
-      _valorUsuario(['email', 'Email', 'correo', 'Correo']),
+      _valorUsuario(['email']),
       fallback: 'Correo no disponible',
     );
   }
 
   String get _telefono {
     return _texto(
-      _valorUsuario(['telefono', 'Telefono', 'teléfono', 'Teléfono']),
+      _valorUsuario(['telefono']),
       fallback: 'Teléfono no disponible',
     );
   }
 
   String get _rol {
     return _texto(
-      _valorUsuario(['rol', 'Rol', 'tipoUsuario', 'TipoUsuario']),
+      _valorUsuario(['rol']),
       fallback: 'Usuario',
     );
   }
@@ -208,14 +208,11 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   bool get _esDuenio {
     final rol = _rol.toLowerCase();
 
-    return rol.contains('duenio') ||
-        rol.contains('dueño') ||
-        rol.contains('dueno') ||
-        rol.contains('cliente');
+    return rol == 'duenio';
   }
 
   bool get _emailConfirmado {
-    final valor = _valorUsuario(['emailConfirmado', 'EmailConfirmado']);
+    final valor = _valorUsuario(['emailConfirmado']);
 
     if (valor is bool) return valor;
 
@@ -248,41 +245,26 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
     if (!_esPaseador) return null;
 
     return _urlPublica(
-      _valorPaseador([
-        'fotoUrl',
-        'FotoUrl',
-        'imagenUrl',
-        'ImagenUrl',
-      ]),
+      _valorPaseador(['fotoUrl']),
     );
   }
 
   String get _descripcionPaseador {
     return _texto(
-      _valorPaseador(['descripcion', 'Descripcion']),
+      _valorPaseador(['descripcion']),
       fallback: 'Agrega una descripción profesional para que los dueños conozcan tu experiencia.',
     );
   }
 
   String get _zonaServicio {
     return _texto(
-      _valorPaseador([
-        'zonaServicio',
-        'ZonaServicio',
-        'zona',
-        'Zona',
-      ]),
+      _valorPaseador(['zonaServicio']),
       fallback: 'Sin zona definida',
     );
   }
 
   String get _tarifaPaseador {
-    final valor = _valorPaseador([
-      'tarifaPorHora',
-      'TarifaPorHora',
-      'tarifa',
-      'Tarifa',
-    ]);
+    final valor = _valorPaseador(['tarifaPorHora']);
 
     if (valor == null) return 'Sin tarifa';
 
@@ -294,12 +276,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   }
 
   String get _experienciaPaseador {
-    final valor = _valorPaseador([
-      'experienciaAnios',
-      'ExperienciaAnios',
-      'experiencia',
-      'Experiencia',
-    ]);
+    final valor = _valorPaseador(['experienciaAnios']);
 
     if (valor == null) return 'Sin experiencia registrada';
 
@@ -313,7 +290,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   }
 
   bool get _perfilProfesionalExiste {
-    final existe = _valorPaseador(['existe', 'Existe']);
+    final existe = _valorPaseador(['existe']);
 
     if (existe is bool) return existe;
 
@@ -321,22 +298,22 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   }
 
   bool get _perfilProfesionalCompleto {
-    final completo = _valorPaseador(['perfilCompleto', 'PerfilCompleto']);
+    final completo = _valorPaseador(['perfilCompleto']);
 
     if (completo is bool) return completo;
 
     if (!_esPaseador || _perfilPaseador == null) return false;
 
     final tieneDescripcion =
-        _texto(_valorPaseador(['descripcion', 'Descripcion']), fallback: '')
+        _texto(_valorPaseador(['descripcion']), fallback: '')
             .isNotEmpty;
 
     final tieneZona =
-        _texto(_valorPaseador(['zonaServicio', 'ZonaServicio']), fallback: '')
+        _texto(_valorPaseador(['zonaServicio']), fallback: '')
             .isNotEmpty;
 
     final tarifa = double.tryParse(
-          _valorPaseador(['tarifaPorHora', 'TarifaPorHora'])?.toString() ?? '',
+          _valorPaseador(['tarifaPorHora'])?.toString() ?? '',
         ) ??
         0;
 

@@ -154,11 +154,11 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     if (result == null) return;
 
     final latitude = EditProfileState.safeDouble(
-      result['latitud'] ?? result['Latitud'] ?? result['latitude'],
+      result['latitud'],
     );
 
     final longitude = EditProfileState.safeDouble(
-      result['longitud'] ?? result['Longitud'] ?? result['longitude'],
+      result['longitud'],
     );
 
     if (latitude == null || longitude == null) {

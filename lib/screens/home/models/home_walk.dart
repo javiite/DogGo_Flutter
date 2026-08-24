@@ -241,141 +241,33 @@ class HomeWalk {
   }
 
   factory HomeWalk.fromMap(Map<String, dynamic> map, {String? baseUrl}) {
-    final petMap = _extractPetMap(map);
-    final walkerMap = _extractWalkerMap(map);
-
-    final parsedPets = _extractPets(map, baseUrl);
-
-    final legacyPet = petMap.isEmpty
-        ? _petFromFlatWalk(map, baseUrl)
-        : HomePet.fromMap(petMap, baseUrl: baseUrl);
-
-    final pets = parsedPets.isNotEmpty
-        ? parsedPets
-        : legacyPet == null
-        ? const <HomePet>[]
-        : <HomePet>[legacyPet];
-
-    final pet = pets.isEmpty ? legacyPet : pets.first;
-
-    final walker = walkerMap.isEmpty
-        ? _walkerFromFlatWalk(map, baseUrl)
-        : HomeWalker.fromMap(walkerMap, baseUrl: baseUrl);
+    final pets = _extractPets(map, baseUrl);
+    final pet = pets.isEmpty ? null : pets.first;
+    final walker = _walkerFromFlatWalk(map, baseUrl);
 
     return HomeWalk(
-      id: _toInt(_firstValue(map, const ['id', 'Id', 'paseoId', 'PaseoId'])),
-      programacionId: _toInt(
-        _firstValue(map, const ['programacionId', 'ProgramacionId']),
-      ),
-      status: HomeWalkStatus.fromValue(
-        _firstValue(map, const ['estado', 'Estado', 'status', 'Status']),
-      ),
-      scheduledAt: _toDateTime(
-        _firstValue(map, const [
-          'fechaProgramada',
-          'FechaProgramada',
-          'scheduledAt',
-          'ScheduledAt',
-          'fecha',
-          'Fecha',
-        ]),
-      ),
-      startedAt: _toDateTime(
-        _firstValue(map, const [
-          'fechaInicio',
-          'FechaInicio',
-          'startedAt',
-          'StartedAt',
-        ]),
-      ),
-      finishedAt: _toDateTime(
-        _firstValue(map, const [
-          'fechaFin',
-          'FechaFin',
-          'finishedAt',
-          'FinishedAt',
-        ]),
-      ),
-      durationMinutes:
-          _toInt(
-            _firstValue(map, const [
-              'duracionMinutos',
-              'DuracionMinutos',
-              'minutos',
-              'Minutos',
-            ]),
-          ) ??
-          0,
+      id: _toInt(_firstValue(map, const ['id'])),
+      programacionId: _toInt(_firstValue(map, const ['programacionId'])),
+      status: HomeWalkStatus.fromValue(_firstValue(map, const ['estado'])),
+      scheduledAt: _toDateTime(_firstValue(map, const ['fechaProgramada'])),
+      startedAt: _toDateTime(_firstValue(map, const ['fechaInicio'])),
+      finishedAt: _toDateTime(_firstValue(map, const ['fechaFin'])),
+      durationMinutes: _toInt(_firstValue(map, const ['duracionMinutos'])) ?? 0,
       distanceKilometers:
-          _toDouble(
-            _firstValue(map, const [
-              'distanciaKm',
-              'DistanciaKm',
-              'distanciaKilometros',
-              'DistanciaKilometros',
-            ]),
-          ) ??
-          0,
-      price: _toDouble(
-        _firstValue(map, const [
-          'precioFinal',
-          'PrecioFinal',
-          'precio',
-          'Precio',
-          'total',
-          'Total',
-        ]),
-      ),
-      pickupAddress: _text(
-        _firstValue(map, const [
-          'ubicacionTexto',
-          'UbicacionTexto',
-          'direccionRecogida',
-          'DireccionRecogida',
-          'ubicacionRecogidaTexto',
-          'UbicacionRecogidaTexto',
-        ]),
-      ),
-      notes: _text(
-        _firstValue(map, const [
-          'notas',
-          'Notas',
-          'observaciones',
-          'Observaciones',
-        ]),
-      ),
+          _toDouble(_firstValue(map, const ['distanciaKm'])) ?? 0,
+      price: _toDouble(_firstValue(map, const ['precio'])),
+      pickupAddress: _text(_firstValue(map, const ['direccionRecogida'])),
+      notes: _text(_firstValue(map, const ['notas'])),
       ownerName: _ownerNameFromMap(map),
       hasPlannedRoute: _toBool(
-        _firstValue(map, const [
-          'tieneRutaPlanificada',
-          'TieneRutaPlanificada',
-          'hasPlannedRoute',
-          'HasPlannedRoute',
-        ]),
+        _firstValue(map, const ['tieneRutaPlanificada']),
       ),
-      isOutsideAllowedRoute: _toBool(
-        _firstValue(map, const [
-          'fueraDeRuta',
-          'FueraDeRuta',
-          'isOutsideRoute',
-          'IsOutsideRoute',
-        ]),
-      ),
+      isOutsideAllowedRoute: _toBool(_firstValue(map, const ['fueraDeRuta'])),
       firstRouteDeviationAt: _toDateTime(
-        _firstValue(map, const [
-          'fechaPrimerDesvio',
-          'FechaPrimerDesvio',
-          'firstRouteDeviationAt',
-          'FirstRouteDeviationAt',
-        ]),
+        _firstValue(map, const ['fechaPrimerDesvio']),
       ),
       lastRouteReadingAt: _toDateTime(
-        _firstValue(map, const [
-          'fechaUltimaLecturaRuta',
-          'FechaUltimaLecturaRuta',
-          'lastRouteReadingAt',
-          'LastRouteReadingAt',
-        ]),
+        _firstValue(map, const ['fechaUltimaLecturaRuta']),
       ),
       pet: pet,
       pets: List<HomePet>.unmodifiable(pets),
@@ -385,113 +277,25 @@ class HomeWalk {
   }
 
   static String _ownerNameFromMap(Map<String, dynamic> map) {
-    final fullName = _text(
-      _firstValue(map, const [
-        'duenioNombreCompleto',
-        'DuenioNombreCompleto',
-        'dueñoNombreCompleto',
-        'DueñoNombreCompleto',
-        'ownerName',
-        'OwnerName',
-      ]),
-    );
+    final fullName = _text(_firstValue(map, const ['duenioNombreCompleto']));
 
     if (fullName.isNotEmpty) {
       return fullName;
     }
 
-    final firstName = _text(
-      _firstValue(map, const [
-        'duenioNombre',
-        'DuenioNombre',
-        'dueñoNombre',
-        'DueñoNombre',
-      ]),
-    );
-    final lastName = _text(
-      _firstValue(map, const [
-        'duenioApellido',
-        'DuenioApellido',
-        'dueñoApellido',
-        'DueñoApellido',
-      ]),
-    );
+    final firstName = _text(_firstValue(map, const ['duenioNombre']));
+    final lastName = _text(_firstValue(map, const ['duenioApellido']));
 
     return '$firstName $lastName'.trim();
-  }
-
-  static HomePet? _petFromFlatWalk(Map<String, dynamic> map, String? baseUrl) {
-    final name = _firstValue(map, const [
-      'perroNombre',
-      'PerroNombre',
-      'nombrePerro',
-      'NombrePerro',
-      'mascotaNombre',
-      'MascotaNombre',
-    ]);
-
-    final petId = _firstValue(map, const [
-      'perroId',
-      'PerroId',
-      'mascotaId',
-      'MascotaId',
-    ]);
-
-    final image = _firstValue(map, const [
-      // Nombres reales de los DTO del backend.
-      'perroFotoUrl',
-      'PerroFotoUrl',
-      'perroImagenUrl',
-      'PerroImagenUrl',
-
-      // Variantes conservadas por compatibilidad.
-      'fotoPerroUrl',
-      'FotoPerroUrl',
-      'imagenPerroUrl',
-      'ImagenPerroUrl',
-      'mascotaFotoUrl',
-      'MascotaFotoUrl',
-    ]);
-
-    if (name == null && petId == null && image == null) {
-      return null;
-    }
-
-    return HomePet.fromMap({
-      'perroId': petId,
-      'nombre': name ?? 'Mascota',
-      'raza': _firstValue(map, const [
-        'perroRaza',
-        'PerroRaza',
-        'razaPerro',
-        'RazaPerro',
-      ]),
-      'edad': _firstValue(map, const [
-        'perroEdad',
-        'PerroEdad',
-        'edadPerro',
-        'EdadPerro',
-      ]),
-      'imagenUrl': image,
-    }, baseUrl: baseUrl);
   }
 
   static HomeWalker? _walkerFromFlatWalk(
     Map<String, dynamic> map,
     String? baseUrl,
   ) {
-    final name = _firstValue(map, const [
-      'paseadorNombreCompleto',
-      'PaseadorNombreCompleto',
-      'nombreCompletoPaseador',
-      'NombreCompletoPaseador',
-      'paseadorNombre',
-      'PaseadorNombre',
-      'nombrePaseador',
-      'NombrePaseador',
-    ]);
+    final name = _firstValue(map, const ['paseadorNombreCompleto']);
 
-    final walkerId = _firstValue(map, const ['paseadorId', 'PaseadorId']);
+    final walkerId = _firstValue(map, const ['paseadorId']);
 
     if (name == null && walkerId == null) {
       return null;
@@ -500,24 +304,12 @@ class HomeWalk {
     return HomeWalker.fromMap({
       'paseadorId': walkerId,
       'nombreCompleto': name ?? 'Paseador',
-      'fotoUrl': _firstValue(map, const [
-        'paseadorFotoUrl',
-        'PaseadorFotoUrl',
-        'fotoPaseadorUrl',
-        'FotoPaseadorUrl',
-        'imagenPaseadorUrl',
-        'ImagenPaseadorUrl',
-      ]),
+      'fotoUrl': _firstValue(map, const ['paseadorFotoUrl']),
     }, baseUrl: baseUrl);
   }
 
   static List<HomePet> _extractPets(Map<String, dynamic> map, String? baseUrl) {
-    final value = _firstValue(map, const [
-      'perros',
-      'Perros',
-      'mascotas',
-      'Mascotas',
-    ]);
+    final value = _firstValue(map, const ['perros']);
 
     if (value is! List) {
       return const [];
@@ -533,18 +325,6 @@ class HomeWalk {
         )
         .where((pet) => pet.id != null)
         .toList(growable: false);
-  }
-
-  static Map<String, dynamic> _extractPetMap(Map<String, dynamic> map) {
-    return _safeMap(
-      _firstValue(map, const ['perro', 'Perro', 'mascota', 'Mascota']),
-    );
-  }
-
-  static Map<String, dynamic> _extractWalkerMap(Map<String, dynamic> map) {
-    return _safeMap(
-      _firstValue(map, const ['paseador', 'Paseador', 'walker', 'Walker']),
-    );
   }
 
   static dynamic _firstValue(Map<String, dynamic> map, List<String> keys) {
@@ -568,18 +348,6 @@ class HomeWalk {
     }
 
     return null;
-  }
-
-  static Map<String, dynamic> _safeMap(dynamic value) {
-    if (value is Map<String, dynamic>) {
-      return value;
-    }
-
-    if (value is Map) {
-      return Map<String, dynamic>.from(value);
-    }
-
-    return const {};
   }
 
   static int? _toInt(dynamic value) {

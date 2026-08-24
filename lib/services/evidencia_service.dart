@@ -38,9 +38,7 @@ class EvidenciaService {
     try {
       body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
     } catch (_) {
-      body = {
-        'message': response.body,
-      };
+      body = {'message': response.body};
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -52,16 +50,14 @@ class EvidenciaService {
         return Map<String, dynamic>.from(body);
       }
 
-      return {
-        'success': true,
-        'data': body,
-      };
+      return {'success': true, 'data': body};
     }
 
     String mensaje = 'Error al subir evidencia.';
 
     if (body is Map) {
-      mensaje = body['message']?.toString() ??
+      mensaje =
+          body['message']?.toString() ??
           body['mensaje']?.toString() ??
           body['error']?.toString() ??
           mensaje;
@@ -76,22 +72,14 @@ class EvidenciaService {
     required int paseoId,
     required File archivo,
   }) async {
-    return _subirFoto(
-      paseoId: paseoId,
-      archivo: archivo,
-      tipo: 'inicio',
-    );
+    return _subirFoto(paseoId: paseoId, archivo: archivo, tipo: 'inicio');
   }
 
   Future<Map<String, dynamic>> subirFotoFin({
     required int paseoId,
     required File archivo,
   }) async {
-    return _subirFoto(
-      paseoId: paseoId,
-      archivo: archivo,
-      tipo: 'fin',
-    );
+    return _subirFoto(paseoId: paseoId, archivo: archivo, tipo: 'fin');
   }
 
   Future<Map<String, dynamic>> _subirFoto({
@@ -106,69 +94,21 @@ class EvidenciaService {
     final baseUrl = await _baseUrl();
     final token = await _token();
 
-    final endpoints = tipo == 'inicio'
-        ? [
-            '/api/paseos/$paseoId/foto-inicio',
-            '/api/Paseos/$paseoId/foto-inicio',
-            '/api/paseos/foto-inicio/$paseoId',
-            '/api/Paseos/foto-inicio/$paseoId',
-            '/api/evidencias/paseo/$paseoId/inicio',
-            '/api/Evidencias/paseo/$paseoId/inicio',
-          ]
-        : [
-            '/api/paseos/$paseoId/foto-fin',
-            '/api/Paseos/$paseoId/foto-fin',
-            '/api/paseos/foto-fin/$paseoId',
-            '/api/Paseos/foto-fin/$paseoId',
-            '/api/evidencias/paseo/$paseoId/fin',
-            '/api/Evidencias/paseo/$paseoId/fin',
-          ];
+    final endpoint = tipo == 'inicio'
+        ? '/api/paseos/$paseoId/foto-inicio'
+        : '/api/paseos/$paseoId/foto-fin';
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl$endpoint'),
+    );
 
-    final fileFields = [
-      'archivo',
-      'Archivo',
-      'foto',
-      'Foto',
-      'imagen',
-      'Imagen',
-      'file',
-      'File',
-    ];
+    request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json';
+    request.files.add(
+      await http.MultipartFile.fromPath('archivo', archivo.path),
+    );
 
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      for (final fileField in fileFields) {
-        try {
-          final uri = Uri.parse('$baseUrl$endpoint');
-
-          final request = http.MultipartRequest('POST', uri);
-
-          request.headers['Authorization'] = 'Bearer $token';
-          request.headers['Accept'] = 'application/json';
-
-          request.fields['paseoId'] = paseoId.toString();
-          request.fields['PaseoId'] = paseoId.toString();
-          request.fields['tipo'] = tipo;
-          request.fields['Tipo'] = tipo;
-
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              fileField,
-              archivo.path,
-            ),
-          );
-
-          final response = await _enviarMultipart(request);
-
-          return _normalizarRespuesta(response);
-        } catch (e) {
-          ultimoError = Exception(e.toString());
-        }
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo subir la evidencia.');
+    return _normalizarRespuesta(await _enviarMultipart(request));
   }
 
   Future<http.Response> _enviarMultipart(http.MultipartRequest request) async {

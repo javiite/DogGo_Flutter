@@ -17,36 +17,15 @@ class TrackingSession {
     this.lastSentAt,
   });
 
-  factory TrackingSession.fromMap(
-    Map<String, dynamic> map,
-  ) {
+  factory TrackingSession.fromMap(Map<String, dynamic> map) {
     return TrackingSession(
       active: _boolean(map['activo']),
-      walkId: _integer(
-            map['paseoId'] ??
-                map['PaseoId'],
-          ) ??
-          0,
-      petName: _text(
-        map['nombrePerro'],
-        fallback: 'Mascota',
-      ),
-      walkerName: _text(
-        map['nombrePaseador'],
-        fallback: 'Paseador',
-      ),
-      latitude: _decimal(
-        map['latitud'] ??
-            map['Latitud'],
-      ),
-      longitude: _decimal(
-        map['longitud'] ??
-            map['Longitud'],
-      ),
-      lastSentAt: _dateTime(
-        map['ultimoEnvio'] ??
-            map['UltimoEnvio'],
-      ),
+      walkId: _integer(map['paseoId']) ?? 0,
+      petName: _text(map['nombrePerro'], fallback: 'Mascota'),
+      walkerName: _text(map['nombrePaseador'], fallback: 'Paseador'),
+      latitude: _decimal(map['latitud']),
+      longitude: _decimal(map['longitud']),
+      lastSentAt: _dateTime(map['ultimoEnvio']),
     );
   }
 
@@ -66,10 +45,7 @@ class TrackingSession {
       return false;
     }
 
-    return lat >= -90 &&
-        lat <= 90 &&
-        lng >= -180 &&
-        lng <= 180;
+    return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
   }
 
   String get coordinatesLabel {
@@ -88,12 +64,9 @@ class TrackingSession {
       return 'Aún no enviada';
     }
 
-    final hour =
-        date.hour.toString().padLeft(2, '0');
-    final minute =
-        date.minute.toString().padLeft(2, '0');
-    final second =
-        date.second.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
 
     return '$hour:$minute:$second';
   }
@@ -118,28 +91,17 @@ class TrackingSession {
       active: active ?? this.active,
       walkId: walkId ?? this.walkId,
       petName: petName ?? this.petName,
-      walkerName:
-          walkerName ?? this.walkerName,
-      latitude: clearLatitude
-          ? null
-          : latitude ?? this.latitude,
-      longitude: clearLongitude
-          ? null
-          : longitude ?? this.longitude,
-      lastSentAt: clearLastSentAt
-          ? null
-          : lastSentAt ?? this.lastSentAt,
+      walkerName: walkerName ?? this.walkerName,
+      latitude: clearLatitude ? null : latitude ?? this.latitude,
+      longitude: clearLongitude ? null : longitude ?? this.longitude,
+      lastSentAt: clearLastSentAt ? null : lastSentAt ?? this.lastSentAt,
     );
   }
 
-  static String _text(
-    dynamic value, {
-    String fallback = '',
-  }) {
+  static String _text(dynamic value, {String fallback = ''}) {
     final text = value?.toString().trim() ?? '';
 
-    if (text.isEmpty ||
-        text.toLowerCase() == 'null') {
+    if (text.isEmpty || text.toLowerCase() == 'null') {
       return fallback;
     }
 
@@ -159,9 +121,7 @@ class TrackingSession {
       return value.toInt();
     }
 
-    return int.tryParse(
-      value.toString().trim(),
-    );
+    return int.tryParse(value.toString().trim());
   }
 
   static double? _decimal(dynamic value) {
@@ -173,12 +133,7 @@ class TrackingSession {
       return value.toDouble();
     }
 
-    return double.tryParse(
-      value
-          .toString()
-          .trim()
-          .replaceAll(',', '.'),
-    );
+    return double.tryParse(value.toString().trim().replaceAll(',', '.'));
   }
 
   static DateTime? _dateTime(dynamic value) {
@@ -186,9 +141,7 @@ class TrackingSession {
       return value;
     }
 
-    return DateTime.tryParse(
-      value?.toString() ?? '',
-    );
+    return DateTime.tryParse(value?.toString() ?? '');
   }
 
   static bool _boolean(dynamic value) {
@@ -200,15 +153,8 @@ class TrackingSession {
       return value != 0;
     }
 
-    final text =
-        value?.toString().trim().toLowerCase();
+    final text = value?.toString().trim().toLowerCase();
 
-    return const {
-      'true',
-      '1',
-      'sí',
-      'si',
-      'yes',
-    }.contains(text);
+    return const {'true', '1', 'sí', 'si', 'yes'}.contains(text);
   }
 }

@@ -8,15 +8,7 @@ import 'storage_service.dart';
 
 class PaseadoresService {
   static Future<Map<String, dynamic>> obtenerPaseadores() async {
-    Map<String, dynamic> response;
-    try {
-      response = await ApiService.getAuth('/api/paseadores/cercanos');
-      if (response['statusCode'] != 200) {
-        response = await ApiService.getAuth('/api/paseadores');
-      }
-    } catch (_) {
-      response = await ApiService.getAuth('/api/paseadores');
-    }
+    final response = await ApiService.getAuth('/api/paseadores/cercanos');
 
     final statusCode = response['statusCode'];
     final body = response['body'];
@@ -26,13 +18,7 @@ class PaseadoresService {
       final walkers = _normalizarLista(body['data'])
           .where((item) {
             if (currentUserId == null || item is! Map) return true;
-            final user = item['usuario'] ?? item['Usuario'];
-            final userMap = user is Map ? user : const {};
-            final value =
-                item['usuarioId'] ??
-                item['UsuarioId'] ??
-                userMap['id'] ??
-                userMap['Id'];
+            final value = item['usuarioId'];
             return int.tryParse('$value') != currentUserId;
           })
           .toList(growable: false);
@@ -49,86 +35,33 @@ class PaseadoresService {
   }
 
   static Future<Map<String, dynamic>> obtenerMiPerfilPaseador() async {
-    final endpoints = [
-      '/api/paseadores/mi-perfil',
-      '/api/paseadores/perfil',
-      '/api/Paseadores/mi-perfil',
-      '/api/Paseadores/perfil',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final response = await ApiService.getAuth(endpoint);
-        return _normalizarRespuesta(
-          response,
-          errorDefault: 'No se pudo obtener el perfil de paseador.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo obtener el perfil de paseador.');
+    final response = await ApiService.getAuth('/api/paseadores/mi-perfil');
+    return _normalizarRespuesta(
+      response,
+      errorDefault: 'No se pudo obtener el perfil de paseador.',
+    );
   }
 
   static Future<Map<String, dynamic>> obtenerResenasMiPerfilPaseador() async {
-    final endpoints = [
+    final response = await ApiService.getAuth(
       '/api/paseadores/mi-perfil/resenas',
-      '/api/paseadores/mi-perfil/reseñas',
-      '/api/paseadores/mi-perfil/calificaciones',
-      '/api/Paseadores/mi-perfil/resenas',
-      '/api/Paseadores/mi-perfil/reseñas',
-      '/api/Paseadores/mi-perfil/calificaciones',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final response = await ApiService.getAuth(endpoint);
-        return _normalizarRespuesta(
-          response,
-          errorDefault: 'No se pudieron obtener las reseñas del paseador.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ??
-        Exception('No se pudieron obtener las reseñas del paseador.');
+    );
+    return _normalizarRespuesta(
+      response,
+      errorDefault: 'No se pudieron obtener las reseñas del paseador.',
+    );
   }
 
   static Future<Map<String, dynamic>> obtenerResenasPaseador(
     int paseadorId,
   ) async {
-    final endpoints = [
+    final response = await ApiService.getAuth(
       '/api/paseadores/$paseadorId/resenas',
-      '/api/paseadores/$paseadorId/reseñas',
-      '/api/paseadores/$paseadorId/calificaciones',
-      '/api/Paseadores/$paseadorId/resenas',
-      '/api/Paseadores/$paseadorId/reseñas',
-      '/api/Paseadores/$paseadorId/calificaciones',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final response = await ApiService.getAuth(endpoint);
-        return _normalizarRespuesta(
-          response,
-          errorDefault: 'No se pudieron obtener las reseñas del paseador.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ??
-        Exception('No se pudieron obtener las reseñas del paseador.');
+    );
+    return _normalizarRespuesta(
+      response,
+      errorDefault: 'No se pudieron obtener las reseñas del paseador.',
+    );
   }
 
   static Future<Map<String, dynamic>> guardarMiPerfilPaseador({
@@ -145,21 +78,10 @@ class PaseadoresService {
   }) async {
     final body = {
       'descripcion': descripcion.trim(),
-      'Descripcion': descripcion.trim(),
       'zonaServicio': zonaServicio.trim(),
-      'ZonaServicio': zonaServicio.trim(),
-      'zona': zonaServicio.trim(),
-      'Zona': zonaServicio.trim(),
       'tarifaPorHora': tarifaPorHora,
-      'TarifaPorHora': tarifaPorHora,
-      'tarifa': tarifaPorHora,
-      'Tarifa': tarifaPorHora,
       'experienciaAnios': experienciaAnios,
-      'ExperienciaAnios': experienciaAnios,
-      'experiencia': experienciaAnios,
-      'Experiencia': experienciaAnios,
       'disponible': disponible,
-      'Disponible': disponible,
       ...?estadoClave == null ? null : {'estadoClave': estadoClave},
       ...?municipioClave == null ? null : {'municipioClave': municipioClave},
       ...?radioServicioKm == null ? null : {'radioServicioKm': radioServicioKm},
@@ -167,68 +89,28 @@ class PaseadoresService {
       ...?longitud == null ? null : {'longitud': longitud},
     };
 
-    final endpoints = [
+    final response = await ApiService.putAuth(
       '/api/paseadores/mi-perfil',
-      '/api/paseadores/perfil',
-      '/api/Paseadores/mi-perfil',
-      '/api/Paseadores/perfil',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final response = await ApiService.putAuth(endpoint, body);
-        return _normalizarRespuesta(
-          response,
-          errorDefault: 'No se pudo guardar el perfil de paseador.',
-        );
-      } catch (_) {
-        try {
-          final response = await ApiService.postAuth(endpoint, body);
-          return _normalizarRespuesta(
-            response,
-            errorDefault: 'No se pudo guardar el perfil de paseador.',
-          );
-        } catch (ePost) {
-          ultimoError = Exception(ePost.toString());
-        }
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo guardar el perfil de paseador.');
+      body,
+    );
+    return _normalizarRespuesta(
+      response,
+      errorDefault: 'No se pudo guardar el perfil de paseador.',
+    );
   }
 
   static Future<Map<String, dynamic>> subirFotoMiPerfilPaseador(
     File archivo,
   ) async {
-    final endpoints = [
-      '/api/paseadores/mi-perfil/foto',
-      '/api/paseadores/perfil/foto',
-      '/api/Paseadores/mi-perfil/foto',
-      '/api/Paseadores/perfil/foto',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final response = await _postMultipartAuth(
-          endpoint: endpoint,
-          archivo: archivo,
-          fieldName: 'foto',
-        );
-
-        return _normalizarRespuesta(
-          response,
-          errorDefault: 'No se pudo subir la foto de paseador.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo subir la foto de paseador.');
+    final response = await _postMultipartAuth(
+      endpoint: '/api/paseadores/mi-perfil/foto',
+      archivo: archivo,
+      fieldName: 'foto',
+    );
+    return _normalizarRespuesta(
+      response,
+      errorDefault: 'No se pudo subir la foto de paseador.',
+    );
   }
 
   static Future<Map<String, dynamic>> _postMultipartAuth({
@@ -287,14 +169,7 @@ class PaseadoresService {
       throw Exception(_mensajeError(body, errorDefault));
     }
 
-    final data =
-        body['data'] ??
-        body['paseador'] ??
-        body['perfil'] ??
-        body['resultado'] ??
-        body['result'] ??
-        body['value'] ??
-        body;
+    final data = body['data'];
 
     if (data is Map<String, dynamic>) {
       return data;
@@ -312,19 +187,6 @@ class PaseadoresService {
       return data;
     }
 
-    if (data is Map) {
-      final posibleLista =
-          data['items'] ??
-          data['paseadores'] ??
-          data['data'] ??
-          data['result'] ??
-          data['resultado'];
-
-      if (posibleLista is List) {
-        return posibleLista;
-      }
-    }
-
     return [];
   }
 
@@ -340,11 +202,7 @@ class PaseadoresService {
     String fallback = 'Error en la solicitud.',
   ]) {
     if (body is Map) {
-      return body['message']?.toString() ??
-          body['mensaje']?.toString() ??
-          body['error']?.toString() ??
-          body['title']?.toString() ??
-          fallback;
+      return body['message']?.toString() ?? fallback;
     }
 
     if (body != null) {

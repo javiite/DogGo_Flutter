@@ -111,44 +111,31 @@ class EditWalkerProfileController extends ChangeNotifier {
       if (_disposed) return;
 
       descriptionController.text = _text(
-        _value(profile, const [
-          'descripcion',
-          'Descripcion',
-          'descripción',
-          'bio',
-          'Bio',
-        ]),
+        _value(profile, const ['descripcion']),
       );
 
       zoneController.text = _text(
-        _value(profile, const [
-          'zonaServicio',
-          'ZonaServicio',
-          'zona',
-          'Zona',
-          'serviceZone',
-          'ServiceZone',
-        ]),
+        _value(profile, const ['zonaServicio']),
       );
 
       final stateCode = _text(
-        _value(profile, const ['estadoClave', 'EstadoClave']),
+        _value(profile, const ['estadoClave']),
       );
       final municipalityCode = _text(
-        _value(profile, const ['municipioClave', 'MunicipioClave']),
+        _value(profile, const ['municipioClave']),
       );
       final radius =
           int.tryParse(
             _text(
-              _value(profile, const ['radioServicioKm', 'RadioServicioKm']),
+              _value(profile, const ['radioServicioKm']),
             ),
           ) ??
           10;
       final latitude = double.tryParse(
-        _text(_value(profile, const ['latitud', 'Latitud'])),
+        _text(_value(profile, const ['latitud'])),
       );
       final longitude = double.tryParse(
-        _text(_value(profile, const ['longitud', 'Longitud'])),
+        _text(_value(profile, const ['longitud'])),
       );
 
       if (stateCode.isNotEmpty) {
@@ -156,48 +143,18 @@ class EditWalkerProfileController extends ChangeNotifier {
       }
 
       rateController.text = EditWalkerProfileState.decimalText(
-        _value(profile, const [
-          'tarifaPorHora',
-          'TarifaPorHora',
-          'tarifa',
-          'Tarifa',
-          'hourlyRate',
-          'HourlyRate',
-        ]),
+        _value(profile, const ['tarifaPorHora']),
       );
 
       experienceController.text = EditWalkerProfileState.integerText(
-        _value(profile, const [
-          'experienciaAnios',
-          'ExperienciaAnios',
-          'experienciaAños',
-          'ExperienciaAños',
-          'experiencia',
-          'Experiencia',
-          'experienceYears',
-          'ExperienceYears',
-        ]),
+        _value(profile, const ['experienciaAnios']),
       );
 
       final available = EditWalkerProfileState.safeBool(
-        _value(profile, const [
-          'disponible',
-          'Disponible',
-          'available',
-          'Available',
-        ]),
+        _value(profile, const ['disponible']),
       );
 
-      final photo = _value(profile, const [
-        'fotoUrl',
-        'FotoUrl',
-        'fotoPerfilUrl',
-        'FotoPerfilUrl',
-        'imagenUrl',
-        'ImagenUrl',
-        'foto',
-        'Foto',
-      ]);
+      final photo = _value(profile, const ['fotoUrl']);
 
       _setState(
         _state.copyWith(

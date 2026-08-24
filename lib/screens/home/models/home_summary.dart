@@ -83,7 +83,7 @@ class HomeSummary {
       final status = _normalize(
         _firstValue(
               walk,
-              const ['estado', 'Estado', 'status', 'Status'],
+              const ['estado'],
             )?.toString() ??
             '',
       );
@@ -95,14 +95,7 @@ class HomeSummary {
       final date = _toDateTime(
         _firstValue(
           walk,
-          const [
-            'fechaFin',
-            'FechaFin',
-            'fechaProgramada',
-            'FechaProgramada',
-            'fecha',
-            'Fecha',
-          ],
+          const ['fechaFin', 'fechaProgramada'],
         ),
       );
 
@@ -129,12 +122,7 @@ class HomeSummary {
     final directMinutes = _toInt(
       _firstValue(
         walk,
-        const [
-          'duracionMinutos',
-          'DuracionMinutos',
-          'minutos',
-          'Minutos',
-        ],
+        const ['duracionMinutos'],
       ),
     );
 
@@ -145,24 +133,14 @@ class HomeSummary {
     final start = _toDateTime(
       _firstValue(
         walk,
-        const [
-          'fechaInicio',
-          'FechaInicio',
-          'horaInicio',
-          'HoraInicio',
-        ],
+        const ['fechaInicio'],
       ),
     );
 
     final end = _toDateTime(
       _firstValue(
         walk,
-        const [
-          'fechaFin',
-          'FechaFin',
-          'horaFin',
-          'HoraFin',
-        ],
+        const ['fechaFin'],
       ),
     );
 
@@ -176,14 +154,7 @@ class HomeSummary {
   static double _extractDistance(Map<String, dynamic> walk) {
     final value = _firstValue(
       walk,
-      const [
-        'distanciaKm',
-        'DistanciaKm',
-        'distanciaKilometros',
-        'DistanciaKilometros',
-        'distanceKm',
-        'DistanceKm',
-      ],
+      const ['distanciaKm'],
     );
 
     if (value is num) {
@@ -194,12 +165,7 @@ class HomeSummary {
   }
 
   static bool _isCompletedStatus(String status) {
-    return status == 'finalizado' ||
-        status == 'finalizada' ||
-        status == 'completado' ||
-        status == 'completada' ||
-        status == 'completed' ||
-        status == 'finished';
+    return status == 'finalizado';
   }
 
   static dynamic _firstValue(

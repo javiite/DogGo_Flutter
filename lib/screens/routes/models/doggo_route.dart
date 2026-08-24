@@ -30,61 +30,52 @@ class DoggoRoutePoint {
   ) {
     return DoggoRoutePoint(
       id: _integer(
-        _value(map, const ['id', 'Id']),
+        _value(map, const ['id']),
       ),
       order: _integer(
-        _value(map, const ['orden', 'Orden']),
+        _value(map, const ['orden']),
       ),
       latitude: _decimal(
         _value(
           map,
-          const ['latitud', 'Latitud'],
+          const ['latitud'],
         ),
       ),
       longitude: _decimal(
         _value(
           map,
-          const ['longitud', 'Longitud'],
+          const ['longitud'],
         ),
       ),
       type: _text(
-        _value(map, const ['tipo', 'Tipo']),
+        _value(map, const ['tipo']),
         fallback: 'Ruta',
       ),
       name: _nullableText(
-        _value(map, const ['nombre', 'Nombre']),
+        _value(map, const ['nombre']),
       ),
       alertRadiusMeters: _nullableInteger(
         _value(
           map,
-          const [
-            'radioAvisoMetros',
-            'RadioAvisoMetros',
-          ],
+          const ['radioAvisoMetros'],
         ),
       ),
       notifyOnArrival: _boolean(
         _value(
           map,
-          const [
-            'notificarAlLlegar',
-            'NotificarAlLlegar',
-          ],
+          const ['notificarAlLlegar'],
         ),
       ),
       reached: _boolean(
         _value(
           map,
-          const ['alcanzado', 'Alcanzado'],
+          const ['alcanzado'],
         ),
       ),
       reachedAt: _date(
         _value(
           map,
-          const [
-            'fechaAlcanzado',
-            'FechaAlcanzado',
-          ],
+          const ['fechaAlcanzado'],
         ),
       ),
     );
@@ -205,101 +196,80 @@ class SavedDoggoRoute {
     Map<String, dynamic> map,
   ) {
     final points = _mapList(
-      _value(map, const ['puntos', 'Puntos']),
+      _value(map, const ['puntos']),
     ).map(DoggoRoutePoint.fromMap).toList()
       ..sort((a, b) => a.order.compareTo(b.order));
 
     return SavedDoggoRoute(
       id: _integer(
-        _value(map, const ['id', 'Id']),
+        _value(map, const ['id']),
       ),
       name: _text(
-        _value(map, const ['nombre', 'Nombre']),
+        _value(map, const ['nombre']),
         fallback: 'Ruta guardada',
       ),
       description: _nullableText(
         _value(
           map,
-          const ['descripcion', 'Descripcion'],
+          const ['descripcion'],
         ),
       ),
       controlMode: _text(
         _value(
           map,
-          const [
-            'modoControl',
-            'ModoControl',
-          ],
+          const ['modoControl'],
         ),
         fallback: 'Ruta',
       ),
       allowedRadiusMeters: _integer(
         _value(
           map,
-          const [
-            'radioPermitidoMetros',
-            'RadioPermitidoMetros',
-          ],
+          const ['radioPermitidoMetros'],
         ),
         fallback: 100,
       ),
       startAddress: _nullableText(
         _value(
           map,
-          const [
-            'direccionInicio',
-            'DireccionInicio',
-          ],
+          const ['direccionInicio'],
         ),
       ),
       city: _nullableText(
-        _value(map, const ['ciudad', 'Ciudad']),
+        _value(map, const ['ciudad']),
       ),
       municipality: _nullableText(
         _value(
           map,
-          const ['municipio', 'Municipio'],
+          const ['municipio'],
         ),
       ),
       active: _boolean(
-        _value(map, const ['activa', 'Activa']),
+        _value(map, const ['activa']),
         fallback: true,
       ),
       createdAt: _date(
         _value(
           map,
-          const [
-            'fechaCreacion',
-            'FechaCreacion',
-          ],
+          const ['fechaCreacion'],
         ),
       ),
       updatedAt: _date(
         _value(
           map,
-          const [
-            'fechaActualizacion',
-            'FechaActualizacion',
-          ],
+          const ['fechaActualizacion'],
         ),
       ),
       pointCount: _integer(
         _value(
           map,
-          const [
-            'cantidadPuntos',
-            'CantidadPuntos',
-          ],
+          const ['cantidadPuntos'],
         ),
         fallback: points.length,
       ),
       checkpointCount: _integer(
         _value(
           map,
-          const [
-            'cantidadCheckpoints',
-            'CantidadCheckpoints',
-          ],
+          const ['cantidadCheckpoints'],
         ),
         fallback:
             points.where((p) => p.isCheckpoint).length,
@@ -355,66 +325,54 @@ class DoggoRouteAlert {
   ) {
     return DoggoRouteAlert(
       id: _integer(
-        _value(map, const ['id', 'Id']),
+        _value(map, const ['id']),
       ),
       type: _text(
-        _value(map, const ['tipo', 'Tipo']),
+        _value(map, const ['tipo']),
       ),
       message: _text(
-        _value(map, const ['mensaje', 'Mensaje']),
+        _value(map, const ['mensaje']),
       ),
       latitude: _decimal(
         _value(
           map,
-          const ['latitud', 'Latitud'],
+          const ['latitud'],
         ),
       ),
       longitude: _decimal(
         _value(
           map,
-          const ['longitud', 'Longitud'],
+          const ['longitud'],
         ),
       ),
       routeDistanceMeters: _nullableDecimal(
         _value(
           map,
-          const [
-            'distanciaRutaMetros',
-            'DistanciaRutaMetros',
-          ],
+          const ['distanciaRutaMetros'],
         ),
       ),
       gpsAccuracyMeters: _nullableDecimal(
         _value(
           map,
-          const [
-            'precisionGpsMetros',
-            'PrecisionGpsMetros',
-          ],
+          const ['precisionGpsMetros'],
         ),
       ),
       createdAt: _date(
         _value(
           map,
-          const [
-            'fechaCreacion',
-            'FechaCreacion',
-          ],
+          const ['fechaCreacion'],
         ),
       ),
       resolved: _boolean(
         _value(
           map,
-          const ['resuelta', 'Resuelta'],
+          const ['resuelta'],
         ),
       ),
       resolvedAt: _date(
         _value(
           map,
-          const [
-            'fechaResolucion',
-            'FechaResolucion',
-          ],
+          const ['fechaResolucion'],
         ),
       ),
     );
@@ -458,86 +416,68 @@ class PlannedDoggoRoute {
     Map<String, dynamic> map,
   ) {
     final points = _mapList(
-      _value(map, const ['puntos', 'Puntos']),
+      _value(map, const ['puntos']),
     ).map(DoggoRoutePoint.fromMap).toList()
       ..sort((a, b) => a.order.compareTo(b.order));
 
     final alerts = _mapList(
-      _value(map, const ['alertas', 'Alertas']),
+      _value(map, const ['alertas']),
     ).map(DoggoRouteAlert.fromMap).toList();
 
     return PlannedDoggoRoute(
       id: _integer(
-        _value(map, const ['id', 'Id']),
+        _value(map, const ['id']),
       ),
       walkId: _integer(
         _value(
           map,
-          const ['paseoId', 'PaseoId'],
+          const ['paseoId'],
         ),
       ),
       savedRouteId: _nullableInteger(
         _value(
           map,
-          const [
-            'rutaGuardadaId',
-            'RutaGuardadaId',
-          ],
+          const ['rutaGuardadaId'],
         ),
       ),
       name: _text(
-        _value(map, const ['nombre', 'Nombre']),
+        _value(map, const ['nombre']),
         fallback: 'Ruta del paseo',
       ),
       controlMode: _text(
         _value(
           map,
-          const [
-            'modoControl',
-            'ModoControl',
-          ],
+          const ['modoControl'],
         ),
         fallback: 'Ruta',
       ),
       allowedRadiusMeters: _integer(
         _value(
           map,
-          const [
-            'radioPermitidoMetros',
-            'RadioPermitidoMetros',
-          ],
+          const ['radioPermitidoMetros'],
         ),
         fallback: 100,
       ),
       active: _boolean(
-        _value(map, const ['activa', 'Activa']),
+        _value(map, const ['activa']),
         fallback: true,
       ),
       outsideRoute: _boolean(
         _value(
           map,
-          const [
-            'fueraDeRuta',
-            'FueraDeRuta',
-          ],
+          const ['fueraDeRuta'],
         ),
       ),
       consecutiveOutsideReadings: _integer(
         _value(
           map,
-          const [
-            'lecturasFueraConsecutivas',
-            'LecturasFueraConsecutivas',
-          ],
+          const ['lecturasFueraConsecutivas'],
         ),
       ),
       assignedAt: _date(
         _value(
           map,
-          const [
-            'fechaAsignacion',
-            'FechaAsignacion',
-          ],
+          const ['fechaAsignacion'],
         ),
       ),
       points: points,

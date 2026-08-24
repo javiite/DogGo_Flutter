@@ -396,11 +396,9 @@ class WalkRequestController extends ChangeNotifier {
         'latitudRecogida': location.latitude,
         'longitudRecogida': location.longitude,
         'direccionRecogida': location.displayAddress,
-        'ubicacionTexto': location.displayAddress,
         'referenciasRecogida': cleanNotes.isNotEmpty
             ? cleanNotes
             : location.reference,
-        'notas': cleanNotes,
       };
     }
 
@@ -521,18 +519,11 @@ class WalkRequestController extends ChangeNotifier {
     dynamic source = response['body'] ?? response;
 
     if (source is Map) {
-      source =
-          source['data'] ??
-          source['Data'] ??
-          source['paseo'] ??
-          source['Paseo'] ??
-          source['resultado'] ??
-          source['Resultado'] ??
-          source;
+      source = source['data'] ?? source;
     }
     if (source is Map) {
       final map = Map<String, dynamic>.from(source);
-      final walks = map['paseos'] ?? map['Paseos'];
+      final walks = map['paseos'];
       if (walks is List) {
         return walks
             .map(_extractPositiveId)
@@ -563,7 +554,7 @@ class WalkRequestController extends ChangeNotifier {
 
     final map = Map<String, dynamic>.from(source);
 
-    const directKeys = ['id', 'Id', 'paseoId', 'PaseoId', 'walkId', 'WalkId'];
+    const directKeys = ['id', 'paseoId'];
 
     for (final key in directKeys) {
       final id = _extractPositiveId(map[key]);
@@ -573,18 +564,7 @@ class WalkRequestController extends ChangeNotifier {
       }
     }
 
-    const nestedKeys = [
-      'data',
-      'Data',
-      'paseo',
-      'Paseo',
-      'resultado',
-      'Resultado',
-      'result',
-      'Result',
-      'value',
-      'Value',
-    ];
+    const nestedKeys = ['data', 'paseo'];
 
     for (final key in nestedKeys) {
       final id = _extractPositiveId(map[key]);
@@ -653,75 +633,24 @@ class WalkRequestController extends ChangeNotifier {
   }
 
   Future<PickupLocation?> _loadDefaultLocation() async {
-    for (final endpoint in _profileEndpoints) {
-      try {
-        final response = await ApiService.getAuth(endpoint);
-
-        if (!_isSuccessful(response)) {
-          continue;
-        }
-
-        final profile = _extractProfile(response);
-
-        if (profile.isEmpty) {
-          continue;
-        }
-
-        final ownerProfile = _nestedMap(profile, const [
-          'duenioPerfil',
-          'DuenioPerfil',
-          'dueñoPerfil',
-          'DueñoPerfil',
-          'perfilDuenio',
-          'PerfilDuenio',
-          'perfilDueño',
-          'PerfilDueño',
-        ]);
-
-        final source = ownerProfile.isEmpty ? profile : ownerProfile;
-
-        try {
-          return PickupLocation.fromMap(source);
-        } catch (_) {
-          continue;
-        }
-      } catch (_) {
-        continue;
-      }
+    try {
+      final response = await ApiService.getAuth('/api/duenio-perfil/mi-perfil');
+      if (!_isSuccessful(response)) return null;
+      final profile = _extractProfile(response);
+      return profile.isEmpty ? null : PickupLocation.fromMap(profile);
+    } catch (_) {
+      return null;
     }
-
-    return null;
   }
 
   Map<String, dynamic> _extractProfile(Map<String, dynamic> response) {
     dynamic data = response['body'] ?? response;
 
     if (data is Map) {
-      data =
-          data['data'] ??
-          data['perfil'] ??
-          data['usuario'] ??
-          data['duenioPerfil'] ??
-          data['dueñoPerfil'] ??
-          data;
+      data = data['data'] ?? data;
     }
 
     return _asMap(data);
-  }
-
-  Map<String, dynamic> _nestedMap(
-    Map<String, dynamic> source,
-    List<String> keys,
-  ) {
-    for (final key in keys) {
-      final value = source[key];
-
-      if (value is Map) {
-        return Map<String, dynamic>.from(value);
-      }
-    }
-
-    return const {};
   }
 
   bool _isSuccessful(Map<String, dynamic> response) {
@@ -791,19 +720,6 @@ class WalkRequestController extends ChangeNotifier {
     return message == null || message.isEmpty
         ? 'No se pudo completar la solicitud.'
         : message;
-  }
-
-  List<String> get _profileEndpoints {
-    return const [
-      '/api/perfil',
-      '/api/Perfil',
-      '/api/usuarios/perfil',
-      '/api/Usuarios/perfil',
-      '/api/auth/me',
-      '/api/Auth/me',
-      '/api/usuarios/me',
-      '/api/Usuarios/me',
-    ];
   }
 
   void _setState(WalkRequestState newState) {

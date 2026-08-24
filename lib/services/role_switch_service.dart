@@ -67,21 +67,9 @@ abstract final class RoleSwitchService {
       );
     }
 
-    final token = _firstText([
-      data['token'],
-      data['Token'],
-      data['jwt'],
-      data['Jwt'],
-      data['accessToken'],
-      data['AccessToken'],
-    ]);
+    final token = _firstText([data['token']]);
 
-    final rawRole = _firstText([
-      data['rol'],
-      data['Rol'],
-      data['role'],
-      data['Role'],
-    ]);
+    final rawRole = _firstText([data['rol']]);
 
     if (token == null || rawRole == null) {
       return const RoleSwitchResult.failure('La nueva sesión está incompleta.');
@@ -103,10 +91,8 @@ abstract final class RoleSwitchService {
           _firstText([body['message'], body['mensaje']]) ??
           'Modo ${mode.label} activado.',
       role: SessionService.normalizarRol(savedRole),
-      profileCreated: _asBool(data['perfilCreado'] ?? data['PerfilCreado']),
-      requiresProfileCompletion: _asBool(
-        data['requiereCompletarPerfil'] ?? data['RequiereCompletarPerfil'],
-      ),
+      profileCreated: _asBool(data['perfilCreado']),
+      requiresProfileCompletion: _asBool(data['requiereCompletarPerfil']),
     );
   }
 

@@ -32,206 +32,59 @@ class HomePet {
   }
 
   bool get hasImage {
-    return imageUrl.startsWith('http://') ||
-        imageUrl.startsWith('https://');
+    return imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
   }
 
-  factory HomePet.fromMap(
-    Map<String, dynamic> map, {
-    String? baseUrl,
-  }) {
-    final source = _unwrap(map);
-
-    final imageValue = _firstValue(
-      source,
-      const [
-        'fotoMiniaturaUrl',
-        'FotoMiniaturaUrl',
-        'fotoUrl',
-        'FotoUrl',
-        'imagenUrl',
-        'ImagenUrl',
-        'urlFoto',
-        'UrlFoto',
-
-        // Variantes usadas por paseos.
-        'perroFotoUrl',
-        'PerroFotoUrl',
-        'perroImagenUrl',
-        'PerroImagenUrl',
-        'fotoPerroUrl',
-        'FotoPerroUrl',
-        'imagenPerroUrl',
-        'ImagenPerroUrl',
-      ],
-    );
+  factory HomePet.fromMap(Map<String, dynamic> map, {String? baseUrl}) {
+    final imageValue = _firstValue(map, const ['fotoUrl']);
 
     return HomePet(
-      id: _toInt(
-        _firstValue(
-          source,
-          const [
-            'id',
-            'Id',
-            'perroId',
-            'PerroId',
-            'mascotaId',
-            'MascotaId',
-          ],
-        ),
-      ),
-      name: _text(
-        _firstValue(
-          source,
-          const [
-            'nombre',
-            'Nombre',
-            'name',
-            'Name',
-            'perroNombre',
-            'PerroNombre',
-            'nombrePerro',
-            'NombrePerro',
-          ],
-        ),
-        fallback: 'Mascota',
-      ),
+      id: _toInt(_firstValue(map, const ['id', 'perroId'])),
+      name: _text(_firstValue(map, const ['nombre']), fallback: 'Mascota'),
       breed: _text(
-        _firstValue(
-          source,
-          const [
-            'raza',
-            'Raza',
-            'breed',
-            'Breed',
-            'perroRaza',
-            'PerroRaza',
-            'razaPerro',
-            'RazaPerro',
-          ],
-        ),
+        _firstValue(map, const ['raza']),
         fallback: 'Raza por confirmar',
       ),
-      age: _toInt(
-        _firstValue(
-          source,
-          const [
-            'edad',
-            'Edad',
-            'age',
-            'Age',
-          ],
-        ),
-      ),
+      age: _toInt(_firstValue(map, const ['edad'])),
       size: _text(
-        _firstValue(
-          source,
-          const [
-            'tamano',
-            'Tamano',
-            'tamanio',
-            'Tamanio',
-            'tamaño',
-            'Tamaño',
-            'size',
-            'Size',
-          ],
-        ),
+        _firstValue(map, const ['tamanio']),
         fallback: 'No especificado',
       ),
-      notes: _text(
-        _firstValue(
-          source,
-          const [
-            'notas',
-            'Notas',
-            'observaciones',
-            'Observaciones',
-            'notes',
-            'Notes',
-          ],
-        ),
-        fallback: '',
-      ),
-      imageUrl: _resolveUrl(
-        imageValue?.toString() ?? '',
-        baseUrl,
-      ),
-      rawData:
-          Map<String, dynamic>.unmodifiable(
-        source,
-      ),
+      notes: _text(_firstValue(map, const ['notas']), fallback: ''),
+      imageUrl: _resolveUrl(imageValue?.toString() ?? '', baseUrl),
+      rawData: Map<String, dynamic>.unmodifiable(map),
     );
   }
 
-  static Map<String, dynamic> _unwrap(
-    Map<String, dynamic> map,
-  ) {
-    final nested = _firstValue(
-      map,
-      const [
-        'perro',
-        'Perro',
-        'mascota',
-        'Mascota',
-      ],
-    );
-
-    if (nested is Map<String, dynamic>) {
-      return nested;
-    }
-
-    if (nested is Map) {
-      return Map<String, dynamic>.from(
-        nested,
-      );
-    }
-
-    return map;
-  }
-
-  static String _resolveUrl(
-    String value,
-    String? baseUrl,
-  ) {
+  static String _resolveUrl(String value, String? baseUrl) {
     final cleanValue = value.trim();
 
-    if (cleanValue.isEmpty ||
-        cleanValue.toLowerCase() == 'null') {
+    if (cleanValue.isEmpty || cleanValue.toLowerCase() == 'null') {
       return '';
     }
 
-    if (cleanValue.startsWith('http://') ||
-        cleanValue.startsWith('https://')) {
+    if (cleanValue.startsWith('http://') || cleanValue.startsWith('https://')) {
       return cleanValue;
     }
 
-    var cleanBase =
-        baseUrl?.trim() ?? '';
+    var cleanBase = baseUrl?.trim() ?? '';
 
     while (cleanBase.endsWith('/')) {
-      cleanBase = cleanBase.substring(
-        0,
-        cleanBase.length - 1,
-      );
+      cleanBase = cleanBase.substring(0, cleanBase.length - 1);
     }
 
     if (cleanBase.isEmpty) {
       return cleanValue;
     }
 
-    final normalizedPath =
-        cleanValue.startsWith('/')
-            ? cleanValue
-            : '/$cleanValue';
+    final normalizedPath = cleanValue.startsWith('/')
+        ? cleanValue
+        : '/$cleanValue';
 
     return '$cleanBase$normalizedPath';
   }
 
-  static dynamic _firstValue(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
+  static dynamic _firstValue(Map<String, dynamic> map, List<String> keys) {
     for (final key in keys) {
       if (!map.containsKey(key)) {
         continue;
@@ -244,9 +97,7 @@ class HomePet {
       }
 
       if (value is String &&
-          (value.trim().isEmpty ||
-              value.trim().toLowerCase() ==
-                  'null')) {
+          (value.trim().isEmpty || value.trim().toLowerCase() == 'null')) {
         continue;
       }
 
@@ -265,20 +116,13 @@ class HomePet {
       return value.toInt();
     }
 
-    return int.tryParse(
-      value?.toString() ?? '',
-    );
+    return int.tryParse(value?.toString() ?? '');
   }
 
-  static String _text(
-    dynamic value, {
-    required String fallback,
-  }) {
-    final text =
-        value?.toString().trim() ?? '';
+  static String _text(dynamic value, {required String fallback}) {
+    final text = value?.toString().trim() ?? '';
 
-    if (text.isEmpty ||
-        text.toLowerCase() == 'null') {
+    if (text.isEmpty || text.toLowerCase() == 'null') {
       return fallback;
     }
 

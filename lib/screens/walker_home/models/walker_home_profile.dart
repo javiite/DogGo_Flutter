@@ -23,119 +23,59 @@ class WalkerHomeProfile {
     Map<String, dynamic> map, {
     String? baseUrl,
   }) {
-    final profile = _unwrap(map);
+    final profile = map;
 
     return WalkerHomeProfile(
       description: _text(
         _value(
           profile,
-          const [
-            'descripcion',
-            'Descripcion',
-            'description',
-            'Description',
-            'bio',
-            'Bio',
-          ],
+          const ['descripcion'],
         ),
       ),
       serviceZone: _text(
         _value(
           profile,
-          const [
-            'zonaServicio',
-            'ZonaServicio',
-            'zona',
-            'Zona',
-            'serviceZone',
-            'ServiceZone',
-          ],
+          const ['zonaServicio'],
         ),
       ),
       hourlyRate: _double(
             _value(
               profile,
-              const [
-                'tarifaPorHora',
-                'TarifaPorHora',
-                'tarifa',
-                'Tarifa',
-                'hourlyRate',
-                'HourlyRate',
-              ],
+              const ['tarifaPorHora'],
             ),
           ) ??
           0,
       experienceYears: _int(
             _value(
               profile,
-              const [
-                'experienciaAnios',
-                'ExperienciaAnios',
-                'experienciaAños',
-                'ExperienciaAños',
-                'experiencia',
-                'Experiencia',
-                'experienceYears',
-                'ExperienceYears',
-              ],
+              const ['experienciaAnios'],
             ),
           ) ??
           0,
       available: _bool(
         _value(
           profile,
-          const [
-            'disponible',
-            'Disponible',
-            'available',
-            'Available',
-          ],
+          const ['disponible'],
         ),
       ),
       rating: _double(
             _value(
               profile,
-              const [
-                'calificacionPromedio',
-                'CalificacionPromedio',
-                'promedioCalificacion',
-                'PromedioCalificacion',
-                'rating',
-                'Rating',
-              ],
+              const ['calificacionPromedio'],
             ),
           ) ??
           0,
       reviewCount: _int(
             _value(
               profile,
-              const [
-                'cantidadResenas',
-                'CantidadResenas',
-                'cantidadReseñas',
-                'CantidadReseñas',
-                'totalResenas',
-                'TotalResenas',
-                'reviewCount',
-                'ReviewCount',
-              ],
+              const ['cantidadResenas'],
             ),
           ) ??
           0,
       photoUrl: _publicUrl(
         _value(
           profile,
-          const [
-            'fotoUrl',
-            'FotoUrl',
-            'fotoPerfilUrl',
-            'FotoPerfilUrl',
-            'imagenUrl',
-            'ImagenUrl',
-            'foto',
-            'Foto',
-          ],
+          const ['fotoUrl'],
         ),
         baseUrl,
       ),
@@ -202,35 +142,6 @@ class WalkerHomeProfile {
           reviewCount ?? this.reviewCount,
       photoUrl: photoUrl ?? this.photoUrl,
     );
-  }
-
-  static Map<String, dynamic> _unwrap(
-    Map<String, dynamic> map,
-  ) {
-    final nested = _value(
-      map,
-      const [
-        'data',
-        'perfil',
-        'Perfil',
-        'paseador',
-        'Paseador',
-        'result',
-        'resultado',
-      ],
-    );
-
-    if (nested is Map<String, dynamic>) {
-      return nested;
-    }
-
-    if (nested is Map) {
-      return Map<String, dynamic>.from(
-        nested,
-      );
-    }
-
-    return map;
   }
 
   static dynamic _value(

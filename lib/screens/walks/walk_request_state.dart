@@ -71,18 +71,6 @@ class WalkRequestState {
         .toList(growable: false);
   }
 
-  // Compatibilidad con los widgets actuales.
-  Pet? get selectedPet {
-    final selected = selectedPets;
-
-    return selected.isEmpty ? null : selected.first;
-  }
-
-  // Compatibilidad temporal con el selector anterior.
-  int? get selectedPetId {
-    return selectedPetIds.isEmpty ? null : selectedPetIds.first;
-  }
-
   int get selectedPetCount {
     return selectedPets.length;
   }

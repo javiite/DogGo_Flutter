@@ -65,9 +65,9 @@ class LocationCatalogService {
   List<dynamic> _data(Map<String, dynamic> response) {
     final raw = response['body'] ?? response;
     if (raw is Map) {
-      final data = raw['data'] ?? raw['Data'];
+      final data = raw['data'];
       if (data is List) return data;
-      final message = raw['message'] ?? raw['Message'];
+      final message = raw['message'];
       if (message != null) throw Exception(message.toString());
     }
     throw Exception('El catálogo de ubicaciones no devolvió datos válidos.');

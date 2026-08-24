@@ -23,96 +23,15 @@ class ChatMessage {
     Map<String, dynamic> map,
   ) {
     return ChatMessage(
-      id: _integer(
-        _value(
-          map,
-          const [
-            'id',
-            'Id',
-            'mensajeId',
-            'MensajeId',
-            'messageId',
-            'MessageId',
-          ],
-        ),
-      ),
-      senderId: _integer(
-        _value(
-          map,
-          const [
-            'emisorId',
-            'EmisorId',
-            'usuarioId',
-            'UsuarioId',
-            'senderId',
-            'SenderId',
-            'fromUserId',
-            'FromUserId',
-          ],
-        ),
-      ),
+      id: _integer(map['id']),
+      senderId: _integer(map['emisorId']),
       senderName: _text(
-        _value(
-          map,
-          const [
-            'emisorNombre',
-            'EmisorNombre',
-            'usuarioNombre',
-            'UsuarioNombre',
-            'senderName',
-            'SenderName',
-            'nombreEmisor',
-            'NombreEmisor',
-          ],
-        ),
+        map['emisorNombreCompleto'],
         fallback: 'Usuario',
       ),
-      content: _text(
-        _value(
-          map,
-          const [
-            'contenido',
-            'Contenido',
-            'mensaje',
-            'Mensaje',
-            'texto',
-            'Texto',
-            'body',
-            'Body',
-          ],
-        ),
-      ),
-      sentAt: _dateTime(
-        _value(
-          map,
-          const [
-            'fecha',
-            'Fecha',
-            'fechaEnvio',
-            'FechaEnvio',
-            'createdAt',
-            'CreatedAt',
-            'timestamp',
-            'Timestamp',
-          ],
-        ),
-      ),
-      read: _boolean(
-        _value(
-          map,
-          const [
-            'leido',
-            'Leido',
-            'leído',
-            'Leído',
-            'isRead',
-            'IsRead',
-            'read',
-            'Read',
-          ],
-        ),
-      ),
-      systemMessage: _isSystemMessage(map),
+      content: _text(map['contenido']),
+      sentAt: _dateTime(map['fechaEnvio']),
+      read: _boolean(map['leido']),
       rawData: Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(map),
       ),
@@ -264,58 +183,6 @@ class ChatMessage {
     return List<ChatMessage>.unmodifiable(
       messages,
     );
-  }
-
-  static bool _isSystemMessage(
-    Map<String, dynamic> map,
-  ) {
-    final explicit = _boolean(
-      _value(
-        map,
-        const [
-          'esSistema',
-          'EsSistema',
-          'systemMessage',
-          'SystemMessage',
-          'isSystem',
-          'IsSystem',
-        ],
-      ),
-    );
-
-    if (explicit) {
-      return true;
-    }
-
-    final type = _text(
-      _value(
-        map,
-        const [
-          'tipo',
-          'Tipo',
-          'type',
-          'Type',
-        ],
-      ),
-    ).toLowerCase();
-
-    return type == 'sistema' ||
-        type == 'system';
-  }
-
-  static dynamic _value(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
-    for (final key in keys) {
-      final value = map[key];
-
-      if (value != null) {
-        return value;
-      }
-    }
-
-    return null;
   }
 
   static String _text(

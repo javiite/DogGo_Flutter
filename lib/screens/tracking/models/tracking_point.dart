@@ -20,39 +20,9 @@ class TrackingPoint {
   factory TrackingPoint.fromMap(
     Map<String, dynamic> map,
   ) {
-    final latitude = _decimal(
-      _value(
-        map,
-        const [
-          'latitud',
-          'Latitud',
-          'latitudActual',
-          'LatitudActual',
-          'latitude',
-          'Latitude',
-          'lat',
-          'Lat',
-        ],
-      ),
-    );
+    final latitude = _decimal(map['latitud']);
 
-    final longitude = _decimal(
-      _value(
-        map,
-        const [
-          'longitud',
-          'Longitud',
-          'longitudActual',
-          'LongitudActual',
-          'longitude',
-          'Longitude',
-          'lng',
-          'Lng',
-          'lon',
-          'Lon',
-        ],
-      ),
-    );
+    final longitude = _decimal(map['longitud']);
 
     if (!_validCoordinates(
       latitude,
@@ -64,60 +34,12 @@ class TrackingPoint {
     }
 
     return TrackingPoint(
-      id: _integer(
-        _value(
-          map,
-          const [
-            'id',
-            'Id',
-            'ubicacionId',
-            'UbicacionId',
-            'trackingId',
-            'TrackingId',
-          ],
-        ),
-      ),
+      id: _integer(map['id']),
       latitude: latitude!,
       longitude: longitude!,
-      recordedAt: _dateTime(
-        _value(
-          map,
-          const [
-            'fecha',
-            'Fecha',
-            'fechaRegistro',
-            'FechaRegistro',
-            'timestamp',
-            'Timestamp',
-            'createdAt',
-            'CreatedAt',
-          ],
-        ),
-      ),
-      accuracy: _decimal(
-        _value(
-          map,
-          const [
-            'precision',
-            'Precision',
-            'precisión',
-            'Precisión',
-            'accuracy',
-            'Accuracy',
-          ],
-        ),
-      ),
-      speed: _decimal(
-        _value(
-          map,
-          const [
-            'velocidad',
-            'Velocidad',
-            'speed',
-            'Speed',
-          ],
-        ),
-      ),
+      recordedAt: _dateTime(map['fechaCaptura']),
+      accuracy: _decimal(map['precisionGpsMetros']),
+      speed: _decimal(map['velocidadMetrosSegundo']),
       rawData: Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(map),
       ),
@@ -243,21 +165,6 @@ class TrackingPoint {
         latitude <= 90 &&
         longitude >= -180 &&
         longitude <= 180;
-  }
-
-  static dynamic _value(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
-    for (final key in keys) {
-      final value = map[key];
-
-      if (value != null) {
-        return value;
-      }
-    }
-
-    return null;
   }
 
   static int? _integer(dynamic value) {

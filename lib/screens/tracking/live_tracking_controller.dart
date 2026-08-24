@@ -264,7 +264,7 @@ class LiveTrackingController extends ChangeNotifier {
         fechaLectura: position.timestamp,
       );
 
-      final monitoring = response['monitoreoRuta'] ?? response['MonitoreoRuta'];
+      final monitoring = response['monitoreoRuta'];
       if (monitoring is Map) {
         _applyRouteStatus(Map<String, dynamic>.from(monitoring));
       }

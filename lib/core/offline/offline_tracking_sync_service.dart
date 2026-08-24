@@ -187,7 +187,7 @@ class OfflineTrackingSyncService {
 
   Set<String> _readIds(Map<String, dynamic> response, String key) {
     return _readItems(response, key)
-        .map((item) => item['clientPointId'] ?? item['ClientPointId'])
+        .map((item) => item['clientPointId'])
         .whereType<Object>()
         .map((value) => value.toString().trim())
         .where((value) => value.isNotEmpty)
@@ -198,13 +198,13 @@ class OfflineTrackingSyncService {
     Map<String, dynamic> response, {
     required int paseoId,
   }) {
-    final raw = response['monitoreoRuta'] ?? response['MonitoreoRuta'];
+    final raw = response['monitoreoRuta'];
     final items = raw is List ? raw : <dynamic>[?raw];
     final events = <RouteMonitoringEvent>[];
 
     for (final item in items.whereType<Map>()) {
       final wrapper = Map<String, dynamic>.from(item);
-      final resultRaw = wrapper['resultado'] ?? wrapper['Resultado'] ?? wrapper;
+      final resultRaw = wrapper['resultado'] ?? wrapper;
       if (resultRaw is! Map) continue;
 
       final result = Map<String, dynamic>.from(resultRaw);

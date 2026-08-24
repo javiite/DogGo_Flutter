@@ -139,13 +139,7 @@ class WalkDetailController extends ChangeNotifier {
     }
 
     try {
-      var response = await PaseoMascotasService.obtenerDetalle(id);
-
-      // Compatibilidad si el backend anterior
-      // sigue activo temporalmente.
-      if (response['success'] != true) {
-        response = await PaseosService.obtenerPaseoPorId(id);
-      }
+      final response = await PaseoMascotasService.obtenerDetalle(id);
 
       if (_disposed) {
         return;
@@ -813,7 +807,7 @@ class WalkDetailController extends ChangeNotifier {
       return null;
     }
 
-    final value = map['id'] ?? map['Id'] ?? map['paseoId'] ?? map['PaseoId'];
+    final value = map['id'];
 
     if (value is int) {
       return value;

@@ -61,13 +61,13 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   int? _programacionId(Map<String, dynamic> paseo) {
-    final value = paseo['programacionId'] ?? paseo['ProgramacionId'];
+    final value = paseo['programacionId'];
     if (value is int) return value;
     return int.tryParse(value?.toString() ?? '');
   }
 
   String _estado(Map<String, dynamic> paseo) {
-    return _texto(paseo['estado'] ?? paseo['Estado'], fallback: 'Pendiente');
+    return _texto(paseo['estado'], fallback: 'Pendiente');
   }
 
   String _normalizarEstado(String estado) {
@@ -77,11 +77,8 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   DateTime? _fechaPaseo(Map<String, dynamic> paseo) {
     final valor =
         paseo['fechaProgramada'] ??
-        paseo['FechaProgramada'] ??
         paseo['fechaInicio'] ??
-        paseo['FechaInicio'] ??
-        paseo['fechaFin'] ??
-        paseo['FechaFin'];
+        paseo['fechaFin'];
 
     if (valor == null) return null;
 
@@ -91,60 +88,46 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   String _nombrePerro(Map<String, dynamic> paseo) {
-    return _texto(
-      paseo['perroNombre'] ??
-          paseo['nombrePerro'] ??
-          paseo['perro']?['nombre'] ??
-          paseo['Perro']?['Nombre'],
-      fallback: 'Perro',
-    );
+    final perros = paseo['perros'];
+    if (perros is! List) return 'Mascota';
+    final nombres = perros
+        .whereType<Map>()
+        .map((perro) => _texto(perro['nombre'], fallback: ''))
+        .where((nombre) => nombre.isNotEmpty)
+        .toList(growable: false);
+    return nombres.isEmpty ? 'Mascota' : nombres.join(', ');
   }
 
   String _nombrePaseador(Map<String, dynamic> paseo) {
-    final nombre =
-        paseo['paseadorNombre'] ??
-        paseo['nombrePaseador'] ??
-        paseo['paseador']?['nombre'] ??
-        paseo['paseador']?['usuario']?['nombre'] ??
-        paseo['Paseador']?['Usuario']?['Nombre'];
-
-    final apellido =
-        paseo['paseadorApellido'] ??
-        paseo['apellidoPaseador'] ??
-        paseo['paseador']?['usuario']?['apellido'] ??
-        paseo['Paseador']?['Usuario']?['Apellido'];
+    final completo = _texto(
+      paseo['paseadorNombreCompleto'],
+      fallback: '',
+    );
+    if (completo.isNotEmpty) return completo;
+    final nombre = paseo['paseadorNombre'];
+    final apellido = paseo['paseadorApellido'];
 
     final nombreTxt = _texto(nombre, fallback: '');
     final apellidoTxt = _texto(apellido, fallback: '');
 
-    final completo = '$nombreTxt $apellidoTxt'.trim();
-
-    return completo.isEmpty ? 'Paseador no asignado' : completo;
+    final nombreCompleto = '$nombreTxt $apellidoTxt'.trim();
+    return nombreCompleto.isEmpty ? 'Paseador no asignado' : nombreCompleto;
   }
 
   String _nombreDuenio(Map<String, dynamic> paseo) {
-    final nombre =
-        paseo['duenioNombre'] ??
-        paseo['nombreDuenio'] ??
-        paseo['dueñoNombre'] ??
-        paseo['perro']?['duenio']?['nombre'] ??
-        paseo['perro']?['usuario']?['nombre'] ??
-        paseo['Perro']?['Usuario']?['Nombre'];
-
-    final apellido =
-        paseo['duenioApellido'] ??
-        paseo['apellidoDuenio'] ??
-        paseo['dueñoApellido'] ??
-        paseo['perro']?['duenio']?['apellido'] ??
-        paseo['perro']?['usuario']?['apellido'] ??
-        paseo['Perro']?['Usuario']?['Apellido'];
+    final completo = _texto(
+      paseo['duenioNombreCompleto'],
+      fallback: '',
+    );
+    if (completo.isNotEmpty) return completo;
+    final nombre = paseo['duenioNombre'];
+    final apellido = paseo['duenioApellido'];
 
     final nombreTxt = _texto(nombre, fallback: '');
     final apellidoTxt = _texto(apellido, fallback: '');
 
-    final completo = '$nombreTxt $apellidoTxt'.trim();
-
-    return completo.isEmpty ? 'Dueño' : completo;
+    final nombreCompleto = '$nombreTxt $apellidoTxt'.trim();
+    return nombreCompleto.isEmpty ? 'Dueño' : nombreCompleto;
   }
 
   String _hora(DateTime? fecha) {

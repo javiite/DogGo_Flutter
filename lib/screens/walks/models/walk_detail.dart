@@ -87,130 +87,27 @@ class WalkDetail {
   });
 
   factory WalkDetail.fromMap(Map<String, dynamic> map) {
-    final pet = _nestedMap(map, const ['perro', 'Perro', 'mascota', 'Mascota']);
-
-    final walker = _nestedMap(map, const [
-      'paseador',
-      'Paseador',
-      'walker',
-      'Walker',
-    ]);
-
-    final walkerUser = _nestedMap(walker, const [
-      'usuario',
-      'Usuario',
-      'user',
-      'User',
-    ]);
-
-    final owner = _nestedMap(map, const [
-      'duenio',
-      'Duenio',
-      'dueño',
-      'Dueño',
-      'propietario',
-      'Propietario',
-    ]);
-
-    final petOwner = _nestedMap(pet, const [
-      'duenio',
-      'Duenio',
-      'dueño',
-      'Dueño',
-      'usuario',
-      'Usuario',
-    ]);
-
-    final rawStatus = _text(
-      _value(map, const ['estado', 'Estado', 'status', 'Status']),
-    );
+    final rawStatus = _text(_value(map, const ['estado']));
 
     final parsedPets = WalkPet.listFrom(
       _mergePetProfiles(
-        _value(map, const ['perros', 'Perros', 'mascotas', 'Mascotas']),
-        _value(map, const ['perfilesMascotas', 'PerfilesMascotas']),
+        _value(map, const ['perros']),
+        _value(map, const ['perfilesMascotas']),
       ),
     );
 
-    final legacyPetId = _integer(_value(map, const ['perroId', 'PerroId']));
-
-    final legacyPetName = _text(
-      _value(map, const [
-            'perroNombre',
-            'PerroNombre',
-            'nombrePerro',
-            'NombrePerro',
-            'mascotaNombre',
-            'MascotaNombre',
-          ]) ??
-          _value(pet, const ['nombre', 'Nombre', 'name', 'Name']),
-      fallback: 'Mascota',
-    );
-
-    final legacyPetPhoto = _nullableText(
-      _value(map, const [
-            'perroFotoUrl',
-            'PerroFotoUrl',
-            'perroImagenUrl',
-            'PerroImagenUrl',
-            'fotoPerroUrl',
-            'FotoPerroUrl',
-          ]) ??
-          _value(pet, const ['fotoUrl', 'FotoUrl', 'imagenUrl', 'ImagenUrl']),
-    );
-
-    final allPets = parsedPets.isNotEmpty
-        ? parsedPets
-        : legacyPetId != null && legacyPetId > 0
-        ? [
-            WalkPet(
-              id: legacyPetId,
-              name: legacyPetName,
-              breed: _text(
-                _value(pet, const ['raza', 'Raza']),
-                fallback: 'Sin raza registrada',
-              ),
-              age: _integer(_value(pet, const ['edad', 'Edad'])),
-              size: _text(
-                _value(pet, const [
-                  'tamanio',
-                  'Tamanio',
-                  'tamano',
-                  'Tamano',
-                  'tamaño',
-                  'Tamaño',
-                ]),
-                fallback: 'Sin tamaño registrado',
-              ),
-              notes: _text(_value(pet, const ['notas', 'Notas'])),
-              photoPath: legacyPetPhoto,
-              requestedByOwner: true,
-              includedInProposal: true,
-              active: true,
-            ),
-          ]
-        : const <WalkPet>[];
+    final allPets = parsedPets;
 
     final requestedCount =
-        _integer(
-          _value(map, const [
-            'cantidadPerrosSolicitados',
-            'CantidadPerrosSolicitados',
-          ]),
-        ) ??
+        _integer(_value(map, const ['cantidadPerrosSolicitados'])) ??
         allPets.where((pet) => pet.requestedByOwner).length;
 
     final proposedCount =
-        _integer(
-          _value(map, const [
-            'cantidadPerrosPropuestos',
-            'CantidadPerrosPropuestos',
-          ]),
-        ) ??
+        _integer(_value(map, const ['cantidadPerrosPropuestos'])) ??
         allPets.where((pet) => pet.includedInProposal).length;
 
     final activeCount =
-        _integer(_value(map, const ['cantidadPerros', 'CantidadPerros'])) ??
+        _integer(_value(map, const ['cantidadPerros'])) ??
         allPets.where((pet) => pet.active).length;
 
     final primaryPet = allPets.isEmpty
@@ -218,210 +115,65 @@ class WalkDetail {
         : allPets.firstWhere((pet) => pet.active, orElse: () => allPets.first);
 
     return WalkDetail(
-      id: _integer(_value(map, const ['id', 'Id', 'paseoId', 'PaseoId'])) ?? 0,
+      id: _integer(_value(map, const ['id'])) ?? 0,
       status: _statusFrom(rawStatus),
       rawStatus: rawStatus,
-      scheduledAt: _dateTime(
-        _value(map, const [
-          'fechaProgramada',
-          'FechaProgramada',
-          'fecha',
-          'Fecha',
-        ]),
-      ),
-      startedAt: _dateTime(
-        _value(map, const [
-          'fechaInicio',
-          'FechaInicio',
-          'startedAt',
-          'StartedAt',
-        ]),
-      ),
-      finishedAt: _dateTime(
-        _value(map, const ['fechaFin', 'FechaFin', 'finishedAt', 'FinishedAt']),
-      ),
-      cancelledAt: _dateTime(
-        _value(map, const [
-          'fechaCancelacion',
-          'FechaCancelacion',
-          'fechaCancelación',
-          'FechaCancelación',
-          'cancelledAt',
-          'CancelledAt',
-        ]),
-      ),
-      durationMinutes:
-          _integer(
-            _value(map, const [
-              'duracionMinutos',
-              'DuracionMinutos',
-              'minutos',
-              'Minutos',
-            ]),
-          ) ??
-          0,
-      price: _decimal(
-        _value(map, const [
-          'precioFinal',
-          'PrecioFinal',
-          'precio',
-          'Precio',
-          'total',
-          'Total',
-        ]),
-      ),
-      basePrice: _decimal(_value(map, const ['precioBase', 'PrecioBase'])),
-      proposedPrice: _decimal(
-        _value(map, const ['precioPropuesto', 'PrecioPropuesto']),
-      ),
-      petName: primaryPet?.name ?? legacyPetName,
+      scheduledAt: _dateTime(_value(map, const ['fechaProgramada'])),
+      startedAt: _dateTime(_value(map, const ['fechaInicio'])),
+      finishedAt: _dateTime(_value(map, const ['fechaFin'])),
+      cancelledAt: _dateTime(_value(map, const ['fechaCancelacion'])),
+      durationMinutes: _integer(_value(map, const ['duracionMinutos'])) ?? 0,
+      price: _decimal(_value(map, const ['precio'])),
+      basePrice: _decimal(_value(map, const ['precioBase'])),
+      proposedPrice: _decimal(_value(map, const ['precioPropuesto'])),
+      petName: primaryPet?.name ?? 'Mascota',
       pets: List<WalkPet>.unmodifiable(allPets),
       requestedPetCount: requestedCount,
       proposedPetCount: proposedCount,
       activePetCount: activeCount,
       walkerName: _personName(
-        completeName: _value(map, const [
-          'paseadorNombreCompleto',
-          'PaseadorNombreCompleto',
-        ]),
-        directName: _value(map, const [
-          'paseadorNombre',
-          'PaseadorNombre',
-          'nombrePaseador',
-          'NombrePaseador',
-        ]),
-        directLastName: _value(map, const [
-          'paseadorApellido',
-          'PaseadorApellido',
-        ]),
-        person: walker,
-        user: walkerUser,
+        completeName: _value(map, const ['paseadorNombreCompleto']),
+        directName: _value(map, const ['paseadorNombre']),
+        directLastName: _value(map, const ['paseadorApellido']),
         fallback: 'Paseador no asignado',
       ),
       ownerName: _personName(
-        completeName: _value(map, const [
-          'duenioNombreCompleto',
-          'DuenioNombreCompleto',
-          'dueñoNombreCompleto',
-          'DueñoNombreCompleto',
-        ]),
-        directName: _value(map, const [
-          'duenioNombre',
-          'DuenioNombre',
-          'dueñoNombre',
-          'DueñoNombre',
-        ]),
-        directLastName: _value(map, const [
-          'duenioApellido',
-          'DuenioApellido',
-          'dueñoApellido',
-          'DueñoApellido',
-        ]),
-        person: owner.isEmpty ? petOwner : owner,
+        completeName: _value(map, const ['duenioNombreCompleto']),
+        directName: _value(map, const ['duenioNombre']),
+        directLastName: _value(map, const ['duenioApellido']),
         fallback: 'Dueño no disponible',
       ),
       pickupAddress: _text(
-        _value(map, const [
-          'ubicacionTexto',
-          'UbicacionTexto',
-          'direccionRecogida',
-          'DireccionRecogida',
-          'direccion',
-          'Direccion',
-        ]),
+        _value(map, const ['direccionRecogida']),
         fallback: 'Ubicación de recogida no definida',
       ),
       pickupReferences: _text(
-        _value(map, const [
-          'referenciasRecogida',
-          'ReferenciasRecogida',
-          'referencias',
-          'Referencias',
-        ]),
+        _value(map, const ['referenciasRecogida']),
         fallback: 'Sin referencias adicionales',
       ),
-      notes: _text(
-        _value(map, const ['notas', 'Notas', 'observaciones', 'Observaciones']),
-      ),
-      pickupLatitude: _decimal(
-        _value(map, const [
-          'latitudRecogida',
-          'LatitudRecogida',
-          'latRecogida',
-          'LatRecogida',
-          'latitud',
-          'Latitud',
-        ]),
-      ),
-      pickupLongitude: _decimal(
-        _value(map, const [
-          'longitudRecogida',
-          'LongitudRecogida',
-          'lngRecogida',
-          'LngRecogida',
-          'longitud',
-          'Longitud',
-        ]),
-      ),
-      petPhotoPath: primaryPet?.photoPath ?? legacyPetPhoto,
-      startPhotoPath: _nullableText(
-        _value(map, const [
-          'fotoInicioUrl',
-          'FotoInicioUrl',
-          'evidenciaInicioUrl',
-          'EvidenciaInicioUrl',
-        ]),
-      ),
-      endPhotoPath: _nullableText(
-        _value(map, const [
-          'fotoFinUrl',
-          'FotoFinUrl',
-          'evidenciaFinUrl',
-          'EvidenciaFinUrl',
-        ]),
-      ),
+      notes: '',
+      pickupLatitude: _decimal(_value(map, const ['latitudRecogida'])),
+      pickupLongitude: _decimal(_value(map, const ['longitudRecogida'])),
+      petPhotoPath: primaryPet?.photoPath,
+      startPhotoPath: _nullableText(_value(map, const ['fotoInicioUrl'])),
+      endPhotoPath: _nullableText(_value(map, const ['fotoFinUrl'])),
       cancellationReason: _nullableText(
-        _value(map, const [
-          'motivoCancelacion',
-          'MotivoCancelacion',
-          'motivoCancelación',
-          'MotivoCancelación',
-        ]),
+        _value(map, const ['motivoCancelacion']),
       ),
-      cancelledBy: _nullableText(
-        _value(map, const ['canceladoPor', 'CanceladoPor']),
-      ),
+      cancelledBy: _nullableText(_value(map, const ['canceladoPor'])),
       petChangeReason: _nullableText(
-        _value(map, const [
-          'motivoPropuestaCambioPerros',
-          'MotivoPropuestaCambioPerros',
-        ]),
+        _value(map, const ['motivoPropuestaCambioPerros']),
       ),
       petChangeProposedAt: _dateTime(
-        _value(map, const [
-          'fechaPropuestaCambioPerros',
-          'FechaPropuestaCambioPerros',
-        ]),
+        _value(map, const ['fechaPropuestaCambioPerros']),
       ),
       petChangeAnsweredAt: _dateTime(
-        _value(map, const [
-          'fechaRespuestaCambioPerros',
-          'FechaRespuestaCambioPerros',
-        ]),
+        _value(map, const ['fechaRespuestaCambioPerros']),
       ),
       petChangeAccepted: _nullableBoolean(
-        _value(map, const ['cambioPerrosAceptado', 'CambioPerrosAceptado']),
+        _value(map, const ['cambioPerrosAceptado']),
       ),
-      rated: _boolean(
-        _value(map, const [
-          'calificado',
-          'Calificado',
-          'tieneCalificacion',
-          'TieneCalificacion',
-          'rated',
-          'Rated',
-        ]),
-      ),
+      rated: _boolean(_value(map, const ['calificado'])),
       rawData: Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(map),
       ),
@@ -624,8 +376,6 @@ class WalkDetail {
     dynamic completeName,
     dynamic directName,
     dynamic directLastName,
-    Map<String, dynamic> person = const {},
-    Map<String, dynamic> user = const {},
     required String fallback,
   }) {
     final complete = _text(completeName);
@@ -643,38 +393,7 @@ class WalkDetail {
       return direct;
     }
 
-    final nestedComplete = _text(
-      _value(person, const [
-            'nombreCompleto',
-            'NombreCompleto',
-            'fullName',
-            'FullName',
-          ]) ??
-          _value(user, const [
-            'nombreCompleto',
-            'NombreCompleto',
-            'fullName',
-            'FullName',
-          ]),
-    );
-
-    if (nestedComplete.isNotEmpty) {
-      return nestedComplete;
-    }
-
-    final firstName = _text(
-      _value(person, const ['nombre', 'Nombre', 'name', 'Name']) ??
-          _value(user, const ['nombre', 'Nombre', 'name', 'Name']),
-    );
-
-    final lastName = _text(
-      _value(person, const ['apellido', 'Apellido', 'lastName', 'LastName']) ??
-          _value(user, const ['apellido', 'Apellido', 'lastName', 'LastName']),
-    );
-
-    final result = '$firstName $lastName'.trim();
-
-    return result.isEmpty ? fallback : result;
+    return fallback;
   }
 
   static String _formatDate(DateTime? date) {
@@ -744,7 +463,7 @@ class WalkDetail {
     if (profilesValue is List) {
       for (final item in profilesValue.whereType<Map>()) {
         final profile = Map<String, dynamic>.from(item);
-        final id = _integer(profile['perroId'] ?? profile['PerroId']);
+        final id = _integer(profile['perroId']);
         if (id != null) profiles[id] = profile;
       }
     }
@@ -753,30 +472,13 @@ class WalkDetail {
         .whereType<Map>()
         .map((item) {
           final pet = Map<String, dynamic>.from(item);
-          final id = _integer(
-            pet['perroId'] ?? pet['PerroId'] ?? pet['id'] ?? pet['Id'],
-          );
+          final id = _integer(pet['perroId']);
           return <String, dynamic>{
             ...pet,
             if (id != null && profiles[id] != null) ...profiles[id]!,
           };
         })
         .toList(growable: false);
-  }
-
-  static Map<String, dynamic> _nestedMap(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
-    for (final key in keys) {
-      final value = map[key];
-
-      if (value is Map) {
-        return Map<String, dynamic>.from(value);
-      }
-    }
-
-    return const {};
   }
 
   static String _text(dynamic value, {String fallback = ''}) {

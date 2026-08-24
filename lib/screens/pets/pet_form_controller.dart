@@ -57,22 +57,16 @@ class PetFormController extends ChangeNotifier {
              : Pet.fromMap(initialData).age?.toString() ?? '',
        ),
        weightController = TextEditingController(
-         text: _text(initialData, const ['peso', 'Peso']),
+         text: _text(initialData, const ['peso']),
        ),
        temperamentController = TextEditingController(
-         text: _text(initialData, const ['temperamento', 'Temperamento']),
+         text: _text(initialData, const ['temperamento']),
        ),
        fearsController = TextEditingController(
-         text: _text(initialData, const [
-           'miedosDetonantes',
-           'MiedosDetonantes',
-         ]),
+         text: _text(initialData, const ['miedosDetonantes']),
        ),
        commandsController = TextEditingController(
-         text: _text(initialData, const [
-           'comandosConocidos',
-           'ComandosConocidos',
-         ]),
+         text: _text(initialData, const ['comandosConocidos']),
        ),
        notesController = TextEditingController(
          text: initialData == null ? '' : Pet.fromMap(initialData).notes,
@@ -516,14 +510,7 @@ class PetFormController extends ChangeNotifier {
     if (value is int) return value;
 
     if (value is Map) {
-      final candidates = [
-        value['id'],
-        value['Id'],
-        value['perroId'],
-        value['PerroId'],
-        value['mascotaId'],
-        value['MascotaId'],
-      ];
+      final candidates = [value['id']];
 
       for (final candidate in candidates) {
         final id = candidate is int
@@ -533,12 +520,7 @@ class PetFormController extends ChangeNotifier {
         if (id != null) return id;
       }
 
-      final nested =
-          value['data'] ??
-          value['perro'] ??
-          value['mascota'] ??
-          value['resultado'] ??
-          value['result'];
+      final nested = value['data'];
 
       if (nested != null && nested != value) {
         return _extractPetId(nested);

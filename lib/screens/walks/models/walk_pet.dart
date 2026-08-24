@@ -51,85 +51,47 @@ class WalkPet {
 
   factory WalkPet.fromMap(Map<String, dynamic> map) {
     return WalkPet(
-      id: _integer(_value(map, const ['perroId', 'PerroId', 'id', 'Id'])) ?? 0,
-      name: _text(
-        _value(map, const ['nombre', 'Nombre', 'name', 'Name']),
-        fallback: 'Mascota',
-      ),
+      id: _integer(_value(map, const ['perroId'])) ?? 0,
+      name: _text(_value(map, const ['nombre']), fallback: 'Mascota'),
       breed: _text(
-        _value(map, const ['raza', 'Raza', 'breed', 'Breed']),
+        _value(map, const ['raza']),
         fallback: 'Sin raza registrada',
       ),
-      age: _integer(_value(map, const ['edad', 'Edad', 'age', 'Age'])),
+      age: _integer(_value(map, const ['edad'])),
       size: _text(
-        _value(map, const [
-          'tamanio',
-          'Tamanio',
-          'tamano',
-          'Tamano',
-          'tamaño',
-          'Tamaño',
-          'size',
-          'Size',
-        ]),
+        _value(map, const ['tamanio']),
         fallback: 'Sin tamaño registrado',
       ),
-      weight: _decimal(_value(map, const ['peso', 'Peso'])),
-      sex: _nullableText(_value(map, const ['sexo', 'Sexo'])),
-      sterilized: _nullableBoolean(
-        _value(map, const ['esterilizado', 'Esterilizado']),
-      ),
-      temperament: _nullableText(
-        _value(map, const ['temperamento', 'Temperamento']),
-      ),
-      energyLevel: _nullableText(
-        _value(map, const ['nivelEnergia', 'NivelEnergia']),
-      ),
+      weight: _decimal(_value(map, const ['peso'])),
+      sex: _nullableText(_value(map, const ['sexo'])),
+      sterilized: _nullableBoolean(_value(map, const ['esterilizado'])),
+      temperament: _nullableText(_value(map, const ['temperamento'])),
+      energyLevel: _nullableText(_value(map, const ['nivelEnergia'])),
       socialWithDogs: _nullableBoolean(
-        _value(map, const ['sociableConPerros', 'SociableConPerros']),
+        _value(map, const ['sociableConPerros']),
       ),
       socialWithPeople: _nullableBoolean(
-        _value(map, const ['sociableConPersonas', 'SociableConPersonas']),
+        _value(map, const ['sociableConPersonas']),
       ),
       socialWithChildren: _nullableBoolean(
-        _value(map, const ['sociableConNinos', 'SociableConNinos']),
+        _value(map, const ['sociableConNinos']),
       ),
-      leashBehavior: _nullableText(
-        _value(map, const ['comportamientoCorrea', 'ComportamientoCorrea']),
-      ),
-      reactive: _nullableBoolean(_value(map, const ['reactivo', 'Reactivo'])),
-      escapeRisk: _nullableBoolean(
-        _value(map, const ['riesgoEscape', 'RiesgoEscape']),
-      ),
-      fearsTriggers: _nullableText(
-        _value(map, const ['miedosDetonantes', 'MiedosDetonantes']),
-      ),
-      knownCommands: _nullableText(
-        _value(map, const ['comandosConocidos', 'ComandosConocidos']),
-      ),
-      notes: _text(_value(map, const ['notas', 'Notas', 'notes', 'Notes'])),
-      photoPath: _nullableText(
-        _value(map, const [
-          'fotoUrl',
-          'FotoUrl',
-          'imagenUrl',
-          'ImagenUrl',
-          'photoUrl',
-          'PhotoUrl',
-        ]),
-      ),
+      leashBehavior: _nullableText(_value(map, const ['comportamientoCorrea'])),
+      reactive: _nullableBoolean(_value(map, const ['reactivo'])),
+      escapeRisk: _nullableBoolean(_value(map, const ['riesgoEscape'])),
+      fearsTriggers: _nullableText(_value(map, const ['miedosDetonantes'])),
+      knownCommands: _nullableText(_value(map, const ['comandosConocidos'])),
+      notes: _text(_value(map, const ['notas'])),
+      photoPath: _nullableText(_value(map, const ['fotoUrl'])),
       requestedByOwner: _boolean(
-        _value(map, const ['solicitadoPorDuenio', 'SolicitadoPorDuenio']),
+        _value(map, const ['solicitadoPorDuenio']),
         fallback: true,
       ),
       includedInProposal: _boolean(
-        _value(map, const ['incluidoEnPropuesta', 'IncluidoEnPropuesta']),
+        _value(map, const ['incluidoEnPropuesta']),
         fallback: true,
       ),
-      active: _boolean(
-        _value(map, const ['activo', 'Activo', 'active', 'Active']),
-        fallback: true,
-      ),
+      active: _boolean(_value(map, const ['activo']), fallback: true),
     );
   }
 

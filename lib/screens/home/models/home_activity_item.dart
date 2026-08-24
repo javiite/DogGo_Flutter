@@ -53,48 +53,17 @@ class HomeActivityItem {
   }
 
   factory HomeActivityItem.fromMap(Map<String, dynamic> map) {
-    final typeValue = _firstValue(map, const [
-      'tipo',
-      'Tipo',
-      'type',
-      'Type',
-      'categoria',
-      'Categoria',
-    ]);
+    final typeValue = _firstValue(map, const ['tipo']);
 
-    final titleValue = _firstValue(map, const [
-      'titulo',
-      'Titulo',
-      'title',
-      'Title',
-    ]);
+    final titleValue = _firstValue(map, const ['titulo']);
 
-    final descriptionValue = _firstValue(map, const [
-      'mensaje',
-      'Mensaje',
-      'descripcion',
-      'Descripcion',
-      'description',
-      'Description',
-    ]);
+    final descriptionValue = _firstValue(map, const ['mensaje']);
 
-    final dateValue = _firstValue(map, const [
-      'fecha',
-      'Fecha',
-      'fechaCreacion',
-      'FechaCreacion',
-      'createdAt',
-      'CreatedAt',
-    ]);
+    final dateValue = _firstValue(map, const ['fechaCreacion']);
 
     return HomeActivityItem(
       id: _toInt(
-        _firstValue(map, const [
-          'id',
-          'Id',
-          'notificacionId',
-          'NotificacionId',
-        ]),
+        _firstValue(map, const ['id']),
       ),
       type: _typeFromValue('$typeValue $titleValue $descriptionValue'),
       title: titleValue?.toString().trim().isNotEmpty == true
@@ -105,14 +74,9 @@ class HomeActivityItem {
           : 'Tienes una nueva actualización.',
       occurredAt: _toDateTime(dateValue),
       referenceId: _toInt(
-        _firstValue(map, const [
-          'referenciaId',
-          'ReferenciaId',
-          'paseoId',
-          'PaseoId',
-        ]),
+        _firstValue(map, const ['referenciaId']),
       ),
-      read: _toBool(_firstValue(map, const ['leida', 'Leida', 'read', 'Read'])),
+      read: _toBool(_firstValue(map, const ['leida'])),
     );
   }
 

@@ -48,13 +48,7 @@ class UsuarioService {
       throw Exception(_mensajeError(body, errorDefault));
     }
 
-    final data =
-        body['data'] ??
-        body['usuario'] ??
-        body['perfil'] ??
-        body['resultado'] ??
-        body['result'] ??
-        body['value'];
+    final data = body['data'];
 
     if (data is Map<String, dynamic>) {
       return data;
@@ -68,33 +62,11 @@ class UsuarioService {
   }
 
   Future<Map<String, dynamic>> obtenerPerfil() async {
-    final endpoints = [
-      '/api/auth/perfil',
-      '/api/Auth/perfil',
-      '/api/auth/me',
-      '/api/Auth/me',
-      '/api/usuarios/perfil',
-      '/api/Usuarios/perfil',
-      '/api/usuario/perfil',
-      '/api/Usuario/perfil',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.getAuth(endpoint);
-
-        return _normalizarRespuesta(
-          respuesta,
-          errorDefault: 'No se pudo obtener el perfil.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo obtener el perfil.');
+    final respuesta = await ApiService.getAuth('/api/auth/perfil');
+    return _normalizarRespuesta(
+      respuesta,
+      errorDefault: 'No se pudo obtener el perfil.',
+    );
   }
 
   Future<Map<String, dynamic>> actualizarPerfil({
@@ -104,40 +76,14 @@ class UsuarioService {
   }) async {
     final body = {
       'nombre': nombre.trim(),
-      'Nombre': nombre.trim(),
       'apellido': apellido.trim(),
-      'Apellido': apellido.trim(),
       'telefono': telefono.trim(),
-      'Telefono': telefono.trim(),
     };
-
-    final endpoints = [
-      '/api/auth/perfil',
-      '/api/Auth/perfil',
-      '/api/auth/actualizar-perfil',
-      '/api/Auth/actualizar-perfil',
-      '/api/usuarios/perfil',
-      '/api/Usuarios/perfil',
-      '/api/usuario/perfil',
-      '/api/Usuario/perfil',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.putAuth(endpoint, body);
-
-        return _normalizarRespuesta(
-          respuesta,
-          errorDefault: 'No se pudo actualizar el perfil.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo actualizar el perfil.');
+    final respuesta = await ApiService.putAuth('/api/auth/perfil', body);
+    return _normalizarRespuesta(
+      respuesta,
+      errorDefault: 'No se pudo actualizar el perfil.',
+    );
   }
 
   Future<Map<String, dynamic>> cambiarPassword({
@@ -145,73 +91,25 @@ class UsuarioService {
     required String passwordNueva,
   }) async {
     final body = {
-      'passwordActual': passwordActual,
-      'PasswordActual': passwordActual,
-      'contrasenaActual': passwordActual,
-      'contraseñaActual': passwordActual,
       'currentPassword': passwordActual,
-      'oldPassword': passwordActual,
-      'passwordNueva': passwordNueva,
-      'PasswordNueva': passwordNueva,
-      'nuevaPassword': passwordNueva,
-      'NuevaPassword': passwordNueva,
       'newPassword': passwordNueva,
-      'password': passwordNueva,
     };
-
-    final endpoints = [
+    final respuesta = await ApiService.putAuth(
       '/api/auth/cambiar-password',
-      '/api/Auth/cambiar-password',
-      '/api/auth/change-password',
-      '/api/Auth/change-password',
-      '/api/usuarios/cambiar-password',
-      '/api/Usuarios/cambiar-password',
-      '/api/usuario/cambiar-password',
-      '/api/Usuario/cambiar-password',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.putAuth(endpoint, body);
-
-        return _normalizarRespuesta(
-          respuesta,
-          errorDefault: 'No se pudo cambiar la contraseña.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo cambiar la contraseña.');
+      body,
+    );
+    return _normalizarRespuesta(
+      respuesta,
+      errorDefault: 'No se pudo cambiar la contraseña.',
+    );
   }
 
   Future<Map<String, dynamic>> obtenerPerfilDuenio() async {
-    final endpoints = [
-      '/api/duenio-perfil/mi-perfil',
-      '/api/dueño-perfil/mi-perfil',
-      '/api/duenioPerfil/mi-perfil',
-      '/api/DuenioPerfil/mi-perfil',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.getAuth(endpoint);
-
-        return _normalizarRespuesta(
-          respuesta,
-          errorDefault: 'No se pudo obtener el perfil de dueño.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo obtener el perfil de dueño.');
+    final respuesta = await ApiService.getAuth('/api/duenio-perfil/mi-perfil');
+    return _normalizarRespuesta(
+      respuesta,
+      errorDefault: 'No se pudo obtener el perfil de dueño.',
+    );
   }
 
   Future<Map<String, dynamic>> actualizarPerfilDuenio({
@@ -227,79 +125,34 @@ class UsuarioService {
   }) async {
     final body = {
       'direccion': direccion?.trim(),
-      'Direccion': direccion?.trim(),
       'referenciasDireccion': referenciasDireccion?.trim(),
-      'ReferenciasDireccion': referenciasDireccion?.trim(),
       'zona': zona?.trim(),
-      'Zona': zona?.trim(),
       'latitud': latitud,
-      'Latitud': latitud,
       'longitud': longitud,
-      'Longitud': longitud,
       'descripcion': descripcion?.trim(),
-      'Descripcion': descripcion?.trim(),
       'preferenciasPaseo': preferenciasPaseo?.trim(),
-      'PreferenciasPaseo': preferenciasPaseo?.trim(),
       'estadoClave': estadoClave,
       'municipioClave': municipioClave,
     };
-
-    final endpoints = [
+    final respuesta = await ApiService.putAuth(
       '/api/duenio-perfil/mi-perfil',
-      '/api/dueño-perfil/mi-perfil',
-      '/api/duenioPerfil/mi-perfil',
-      '/api/DuenioPerfil/mi-perfil',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.putAuth(endpoint, body);
-
-        return _normalizarRespuesta(
-          respuesta,
-          errorDefault: 'No se pudo actualizar el perfil de dueño.',
-        );
-      } catch (e) {
-        ultimoError = Exception(e.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo actualizar el perfil de dueño.');
+      body,
+    );
+    return _normalizarRespuesta(
+      respuesta,
+      errorDefault: 'No se pudo actualizar el perfil de dueño.',
+    );
   }
 
   Future<Map<String, dynamic>> subirFotoPerfilDuenio(File foto) async {
-    final endpoints = [
+    final respuesta = await ApiService.postMultipartAuth(
       '/api/duenio-perfil/foto',
-      '/api/dueño-perfil/foto',
-      '/api/duenioPerfil/foto',
-      '/api/DuenioPerfil/foto',
-    ];
-
-    final nombresCampo = ['foto', 'fotoArchivo', 'archivo', 'file', 'imagen'];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      for (final campo in nombresCampo) {
-        try {
-          final respuesta = await ApiService.postMultipartAuth(
-            endpoint,
-            filePath: foto.path,
-            fileFieldName: campo,
-          );
-
-          return _normalizarRespuesta(
-            respuesta,
-            errorDefault: 'No se pudo subir la foto de perfil.',
-          );
-        } catch (e) {
-          ultimoError = Exception(e.toString());
-        }
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo subir la foto de perfil.');
+      filePath: foto.path,
+      fileFieldName: 'foto',
+    );
+    return _normalizarRespuesta(
+      respuesta,
+      errorDefault: 'No se pudo subir la foto de perfil.',
+    );
   }
 }

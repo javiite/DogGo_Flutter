@@ -1,9 +1,4 @@
-enum ProfileRole {
-  owner,
-  walker,
-  administrator,
-  unknown,
-}
+enum ProfileRole { owner, walker, administrator, unknown }
 
 class ProfileState {
   final bool loading;
@@ -47,10 +42,7 @@ class ProfileState {
     );
   }
 
-  dynamic _value(
-    Map<String, dynamic>? source,
-    List<String> keys,
-  ) {
+  dynamic _value(Map<String, dynamic>? source, List<String> keys) {
     if (source == null) return null;
 
     for (final key in keys) {
@@ -64,10 +56,7 @@ class ProfileState {
     return null;
   }
 
-  String _text(
-    dynamic value, {
-    String fallback = '',
-  }) {
+  String _text(dynamic value, {String fallback = ''}) {
     if (value == null) return fallback;
 
     final text = value.toString().trim();
@@ -84,15 +73,10 @@ class ProfileState {
     if (value is double) return value;
     if (value is int) return value.toDouble();
 
-    return double.tryParse(
-      value.toString().replaceAll(',', '.'),
-    );
+    return double.tryParse(value.toString().replaceAll(',', '.'));
   }
 
-  bool _safeBool(
-    dynamic value, {
-    bool fallback = false,
-  }) {
+  bool _safeBool(dynamic value, {bool fallback = false}) {
     if (value is bool) return value;
     if (value is num) return value != 0;
 
@@ -115,31 +99,13 @@ class ProfileState {
 
   String get firstName {
     return _text(
-      _value(
-        user,
-        const [
-          'nombre',
-          'Nombre',
-          'name',
-          'Name',
-          'firstName',
-          'FirstName',
-        ],
-      ),
+      _value(user, const ['nombre']),
     );
   }
 
   String get lastName {
     return _text(
-      _value(
-        user,
-        const [
-          'apellido',
-          'Apellido',
-          'lastName',
-          'LastName',
-        ],
-      ),
+      _value(user, const ['apellido']),
     );
   }
 
@@ -150,46 +116,21 @@ class ProfileState {
 
   String get email {
     return _text(
-      _value(
-        user,
-        const [
-          'email',
-          'Email',
-          'correo',
-          'Correo',
-        ],
-      ),
+      _value(user, const ['email']),
       fallback: 'Correo no disponible',
     );
   }
 
   String get phone {
     return _text(
-      _value(
-        user,
-        const [
-          'telefono',
-          'Telefono',
-          'teléfono',
-          'phone',
-          'Phone',
-        ],
-      ),
+      _value(user, const ['telefono']),
       fallback: 'No registrado',
     );
   }
 
   String get rawRole {
     return _text(
-      _value(
-        user,
-        const [
-          'rol',
-          'Rol',
-          'role',
-          'Role',
-        ],
-      ),
+      _value(user, const ['rol']),
       fallback: 'Usuario',
     );
   }
@@ -197,25 +138,15 @@ class ProfileState {
   ProfileRole get role {
     final normalized = rawRole.toLowerCase().trim();
 
-    if (normalized == 'paseador' ||
-        normalized == 'walker' ||
-        normalized.contains('paseador')) {
+    if (normalized == 'paseador') {
       return ProfileRole.walker;
     }
 
-    if (normalized == 'dueño' ||
-        normalized == 'dueno' ||
-        normalized == 'duenio' ||
-        normalized == 'owner' ||
-        normalized == 'cliente' ||
-        normalized.contains('dueño') ||
-        normalized.contains('dueno') ||
-        normalized.contains('duenio')) {
+    if (normalized == 'duenio') {
       return ProfileRole.owner;
     }
 
-    if (normalized == 'admin' ||
-        normalized.contains('administrador')) {
+    if (normalized == 'admin' || normalized == 'superadmin') {
       return ProfileRole.administrator;
     }
 
@@ -226,8 +157,7 @@ class ProfileState {
 
   bool get isWalker => role == ProfileRole.walker;
 
-  bool get isAdministrator =>
-      role == ProfileRole.administrator;
+  bool get isAdministrator => role == ProfileRole.administrator;
 
   String get roleLabel {
     switch (role) {
@@ -247,8 +177,7 @@ class ProfileState {
 
     if (path.isEmpty) return null;
 
-    if (path.startsWith('http://') ||
-        path.startsWith('https://')) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
@@ -260,156 +189,58 @@ class ProfileState {
         ? server.substring(0, server.length - 1)
         : server;
 
-    final cleanPath =
-        path.startsWith('/') ? path : '/$path';
+    final cleanPath = path.startsWith('/') ? path : '/$path';
 
     return '$cleanServer$cleanPath';
   }
 
   String? get profilePhotoUrl {
-    final walkerPhoto = _value(
-      walkerProfile,
-      const [
-        'fotoUrl',
-        'FotoUrl',
-        'fotoPerfilUrl',
-        'FotoPerfilUrl',
-        'imagenUrl',
-        'ImagenUrl',
-        'foto',
-        'Foto',
-      ],
-    );
+    final walkerPhoto = _value(walkerProfile, const ['fotoUrl']);
 
-    final ownerPhoto = _value(
-      ownerProfile,
-      const [
-        'fotoUrl',
-        'FotoUrl',
-        'fotoPerfilUrl',
-        'FotoPerfilUrl',
-        'imagenUrl',
-        'ImagenUrl',
-        'foto',
-        'Foto',
-      ],
-    );
+    final ownerPhoto = _value(ownerProfile, const ['fotoUrl']);
 
-    final userPhoto = _value(
-      user,
-      const [
-        'fotoUrl',
-        'FotoUrl',
-        'fotoPerfilUrl',
-        'FotoPerfilUrl',
-        'imagenUrl',
-        'ImagenUrl',
-        'foto',
-        'Foto',
-      ],
-    );
+    final userPhoto = _value(user, const ['fotoUrl']);
 
-    return publicUrl(
-      walkerPhoto ?? ownerPhoto ?? userPhoto,
-    );
+    return publicUrl(walkerPhoto ?? ownerPhoto ?? userPhoto);
   }
 
   String get ownerAddress {
     return _text(
-      _value(
-        ownerProfile,
-        const [
-          'direccion',
-          'Direccion',
-          'address',
-          'Address',
-        ],
-      ),
+      _value(ownerProfile, const ['direccion']),
     );
   }
 
   String get ownerZone {
-    return _text(
-      _value(
-        ownerProfile,
-        const [
-          'zona',
-          'Zona',
-          'zone',
-          'Zone',
-        ],
-      ),
-    );
+    return _text(_value(ownerProfile, const ['zona']));
   }
 
   String get ownerReferences {
     return _text(
-      _value(
-        ownerProfile,
-        const [
-          'referenciasDireccion',
-          'ReferenciasDireccion',
-          'referencias',
-          'Referencias',
-        ],
-      ),
+      _value(ownerProfile, const ['referenciasDireccion']),
     );
   }
 
   String get ownerDescription {
     return _text(
-      _value(
-        ownerProfile,
-        const [
-          'descripcion',
-          'Descripcion',
-          'descripción',
-          'description',
-          'Description',
-        ],
-      ),
+      _value(ownerProfile, const ['descripcion']),
     );
   }
 
   String get walkingPreferences {
     return _text(
-      _value(
-        ownerProfile,
-        const [
-          'preferenciasPaseo',
-          'PreferenciasPaseo',
-          'preferencias',
-          'Preferencias',
-        ],
-      ),
+      _value(ownerProfile, const ['preferenciasPaseo']),
     );
   }
 
   double? get ownerLatitude {
     return _safeDouble(
-      _value(
-        ownerProfile,
-        const [
-          'latitud',
-          'Latitud',
-          'latitude',
-          'Latitude',
-        ],
-      ),
+      _value(ownerProfile, const ['latitud']),
     );
   }
 
   double? get ownerLongitude {
     return _safeDouble(
-      _value(
-        ownerProfile,
-        const [
-          'longitud',
-          'Longitud',
-          'longitude',
-          'Longitude',
-        ],
-      ),
+      _value(ownerProfile, const ['longitud']),
     );
   }
 
@@ -419,50 +250,19 @@ class ProfileState {
 
   String get walkerDescription {
     return _text(
-      _value(
-        walkerProfile,
-        const [
-          'descripcion',
-          'Descripcion',
-          'descripción',
-          'bio',
-          'Bio',
-          'description',
-          'Description',
-        ],
-      ),
+      _value(walkerProfile, const ['descripcion']),
     );
   }
 
   String get walkerZone {
     return _text(
-      _value(
-        walkerProfile,
-        const [
-          'zonaServicio',
-          'ZonaServicio',
-          'zona',
-          'Zona',
-          'serviceZone',
-          'ServiceZone',
-        ],
-      ),
+      _value(walkerProfile, const ['zonaServicio']),
     );
   }
 
   double? get walkerHourlyRate {
     return _safeDouble(
-      _value(
-        walkerProfile,
-        const [
-          'tarifaPorHora',
-          'TarifaPorHora',
-          'tarifa',
-          'Tarifa',
-          'hourlyRate',
-          'HourlyRate',
-        ],
-      ),
+      _value(walkerProfile, const ['tarifaPorHora']),
     );
   }
 
@@ -475,19 +275,7 @@ class ProfileState {
   }
 
   int? get walkerExperienceYears {
-    final value = _value(
-      walkerProfile,
-      const [
-        'experienciaAnios',
-        'ExperienciaAnios',
-        'experienciaAños',
-        'ExperienciaAños',
-        'experiencia',
-        'Experiencia',
-        'experienceYears',
-        'ExperienceYears',
-      ],
-    );
+    final value = _value(walkerProfile, const ['experienciaAnios']);
 
     if (value is int) return value;
     if (value is double) return value.round();
@@ -509,15 +297,7 @@ class ProfileState {
 
   bool get walkerAvailable {
     return _safeBool(
-      _value(
-        walkerProfile,
-        const [
-          'disponible',
-          'Disponible',
-          'available',
-          'Available',
-        ],
-      ),
+      _value(walkerProfile, const ['disponible']),
       fallback: true,
     );
   }

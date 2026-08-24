@@ -12,11 +12,7 @@ class ChatService {
         String mensaje = 'Error al cargar mensajes.';
 
         if (body is Map) {
-          mensaje =
-              body['message']?.toString() ??
-              body['mensaje']?.toString() ??
-              body['error']?.toString() ??
-              mensaje;
+          mensaje = body['message']?.toString() ?? mensaje;
         } else if (body != null) {
           mensaje = body.toString();
         }
@@ -27,22 +23,15 @@ class ChatService {
       datos = body ?? respuesta;
 
       if (datos is Map) {
-        datos =
-            datos['data'] ??
-            datos['mensajes'] ??
-            datos['messages'] ??
-            datos['items'] ??
-            datos['resultado'] ??
-            datos['result'] ??
-            datos['value'];
+        datos = datos['data'];
       }
     }
 
     if (datos is! List) return [];
 
     return datos
-        .where((item) => item is Map)
-        .map((item) => Map<String, dynamic>.from(item as Map))
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 
@@ -57,11 +46,7 @@ class ChatService {
         String mensaje = 'Error en la solicitud.';
 
         if (body is Map) {
-          mensaje =
-              body['message']?.toString() ??
-              body['mensaje']?.toString() ??
-              body['error']?.toString() ??
-              mensaje;
+          mensaje = body['message']?.toString() ?? mensaje;
         } else if (body != null) {
           mensaje = body.toString();
         }
@@ -72,13 +57,7 @@ class ChatService {
       datos = body ?? respuesta;
 
       if (datos is Map) {
-        final interno =
-            datos['data'] ??
-            datos['mensaje'] ??
-            datos['message'] ??
-            datos['resultado'] ??
-            datos['result'] ??
-            datos['value'];
+        final interno = datos['data'];
 
         if (interno is Map) {
           datos = interno;

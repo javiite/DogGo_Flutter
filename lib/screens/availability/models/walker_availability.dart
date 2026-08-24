@@ -13,10 +13,10 @@ class WalkerScheduleSlot {
 
   factory WalkerScheduleSlot.fromMap(Map<String, dynamic> map) {
     return WalkerScheduleSlot(
-      weekday: _int(map['diaSemana'] ?? map['DiaSemana']),
-      start: _time(map['horaInicio'] ?? map['HoraInicio'], '09:00'),
-      end: _time(map['horaFin'] ?? map['HoraFin'], '18:00'),
-      active: _bool(map['activo'] ?? map['Activo'], true),
+      weekday: _int(map['diaSemana']),
+      start: _time(map['horaInicio'], '09:00'),
+      end: _time(map['horaFin'], '18:00'),
+      active: _bool(map['activo'], true),
     );
   }
 
@@ -70,10 +70,10 @@ class WalkerCalendarBlock {
 
   factory WalkerCalendarBlock.fromMap(Map<String, dynamic> map) {
     return WalkerCalendarBlock(
-      id: int.tryParse('${map['id'] ?? map['Id']}') ?? 0,
-      startUtc: _date(map['inicioUtc'] ?? map['InicioUtc']),
-      endUtc: _date(map['finUtc'] ?? map['FinUtc']),
-      reason: (map['motivo'] ?? map['Motivo'])?.toString(),
+      id: int.tryParse('${map['id']}') ?? 0,
+      startUtc: _date(map['inicioUtc']),
+      endUtc: _date(map['finUtc']),
+      reason: map['motivo']?.toString(),
     );
   }
 
@@ -105,19 +105,15 @@ class WalkerAvailability {
 
   factory WalkerAvailability.fromMap(Map<String, dynamic> map) {
     return WalkerAvailability(
-      walkerId: int.tryParse('${map['paseadorId'] ?? map['PaseadorId']}') ?? 0,
-      available: _bool(map['disponible'] ?? map['Disponible'], true),
-      timeZone:
-          (map['zonaHoraria'] ?? map['ZonaHoraria'])?.toString() ??
-          'America/Mexico_City',
+      walkerId: int.tryParse('${map['paseadorId']}') ?? 0,
+      available: _bool(map['disponible'], true),
+      timeZone: map['zonaHoraria']?.toString() ?? 'America/Mexico_City',
       schedules: _maps(
-        map['horarios'] ?? map['Horarios'],
+        map['horarios'],
       ).map(WalkerScheduleSlot.fromMap).toList(),
-      blocks: _maps(
-        map['bloqueos'] ?? map['Bloqueos'],
-      ).map(WalkerCalendarBlock.fromMap).toList(),
+      blocks: _maps(map['bloqueos']).map(WalkerCalendarBlock.fromMap).toList(),
       occupations: _maps(
-        map['ocupaciones'] ?? map['Ocupaciones'],
+        map['ocupaciones'],
       ).map(WalkerCalendarBlock.fromMap).toList(),
     );
   }

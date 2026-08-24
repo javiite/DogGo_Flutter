@@ -20,25 +20,6 @@ class PaseosService {
     };
   }
 
-  static Future<Map<String, dynamic>> obtenerPaseoPorId(int id) async {
-    final response = await ApiService.getAuth('/api/paseos/$id');
-
-    final statusCode = response['statusCode'];
-    final body = response['body'];
-
-    if (statusCode == 200 && body is Map && body['success'] == true) {
-      return {'success': true, 'data': body['data']};
-    }
-
-    return {
-      'success': false,
-      'message': body is Map
-          ? body['message'] ?? 'No se pudo obtener el paseo.'
-          : 'No se pudo obtener el paseo.',
-      'statusCode': statusCode,
-    };
-  }
-
   static Future<Map<String, dynamic>> obtenerProgramacion(int id) async {
     final response = await ApiService.getAuth('/api/paseos/programaciones/$id');
     return _normalizarRespuesta(response, 'Programación obtenida.');
@@ -134,10 +115,7 @@ class PaseosService {
     final data = <String, dynamic>{};
 
     if (motivo != null && motivo.trim().isNotEmpty) {
-      data['motivo'] = motivo.trim();
-      data['Motivo'] = motivo.trim();
       data['motivoCancelacion'] = motivo.trim();
-      data['MotivoCancelacion'] = motivo.trim();
     }
 
     final response = await ApiService.putAuth('/api/paseos/$id/cancelar', data);

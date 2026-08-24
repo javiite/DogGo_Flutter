@@ -230,11 +230,8 @@ class PerrosService {
       'nombre': nombre.trim(),
       'raza': raza.trim(),
       'edad': edad,
-      'tamano': tamano.trim(),
       'tamanio': tamano.trim(),
-      'tamaño': tamano.trim(),
       'notas': notas.trim(),
-      'observaciones': notas.trim(),
       'peso': peso,
       'sexo': sexo,
       'esterilizado': esterilizado,
@@ -254,7 +251,6 @@ class PerrosService {
 
     if (photo.isNotEmpty) {
       data['fotoUrl'] = photo;
-      data['imagenUrl'] = photo;
     }
 
     return data;
@@ -286,7 +282,7 @@ class PerrosService {
                   response['message'] ??
                   fallback)
               .toString(),
-      'data': body['data'] ?? body['Data'],
+      'data': body['data'],
       'statusCode': statusCode,
     };
   }

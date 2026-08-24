@@ -17,19 +17,9 @@ class PlacesProfileLocationService {
       final profile =
           _extractMap(response['perfil']) ?? response;
 
-      final latitude = _toDouble(
-        profile['latitud'] ??
-            profile['Latitud'] ??
-            profile['latitude'] ??
-            profile['Latitude'],
-      );
+      final latitude = _toDouble(profile['latitud']);
 
-      final longitude = _toDouble(
-        profile['longitud'] ??
-            profile['Longitud'] ??
-            profile['longitude'] ??
-            profile['Longitude'],
-      );
+      final longitude = _toDouble(profile['longitud']);
 
       if (!_validCoordinates(
         latitude,
@@ -38,21 +28,9 @@ class PlacesProfileLocationService {
         return null;
       }
 
-      final address = _firstText([
-        profile['direccion'],
-        profile['Direccion'],
-        profile['direccionRecogida'],
-        profile['DireccionRecogida'],
-        profile['address'],
-        profile['Address'],
-      ]);
+      final address = _firstText([profile['direccion']]);
 
-      final zone = _firstText([
-        profile['zona'],
-        profile['Zona'],
-        profile['zone'],
-        profile['Zone'],
-      ]);
+      final zone = _firstText([profile['zona']]);
 
       final locationText = address ??
           zone ??

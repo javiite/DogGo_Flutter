@@ -18,114 +18,18 @@ class WalkerReview {
   factory WalkerReview.fromMap(
     Map<String, dynamic> map,
   ) {
-    final owner = _safeMap(
-      _firstValue(
-        map,
-        const [
-          'duenio',
-          'Dueño',
-          'dueno',
-          'Dueno',
-          'usuario',
-          'Usuario',
-          'cliente',
-          'Cliente',
-        ],
-      ),
-    );
-
-    final authorValue = _firstValue(
-          map,
-          const [
-            'duenioNombre',
-            'DueñoNombre',
-            'duenoNombre',
-            'DuenoNombre',
-            'clienteNombre',
-            'ClienteNombre',
-            'autor',
-            'Autor',
-            'authorName',
-            'AuthorName',
-          ],
-        ) ??
-        _firstValue(
-          owner,
-          const [
-            'nombreCompleto',
-            'NombreCompleto',
-            'nombre',
-            'Nombre',
-            'name',
-            'Name',
-          ],
-        );
-
     return WalkerReview(
-      id: _integer(
-        _firstValue(
-          map,
-          const [
-            'id',
-            'Id',
-            'calificacionId',
-            'CalificacionId',
-            'reviewId',
-            'ReviewId',
-          ],
-        ),
-      ),
+      id: _integer(map['id']),
       authorName: _text(
-        authorValue,
+        map['duenioNombreCompleto'],
         fallback: 'Dueño DogGo',
       ),
       comment: _text(
-        _firstValue(
-          map,
-          const [
-            'comentario',
-            'Comentario',
-            'resena',
-            'Resena',
-            'reseña',
-            'Reseña',
-            'mensaje',
-            'Mensaje',
-            'comment',
-            'Comment',
-          ],
-        ),
+        map['comentario'],
         fallback: 'Sin comentario escrito.',
       ),
-      rating: _decimal(
-            _firstValue(
-              map,
-              const [
-                'puntaje',
-                'Puntaje',
-                'rating',
-                'Rating',
-                'calificacion',
-                'Calificacion',
-                'calificación',
-                'Calificación',
-              ],
-            ),
-          ) ??
-          0,
-      createdAt: _dateTime(
-        _firstValue(
-          map,
-          const [
-            'fecha',
-            'Fecha',
-            'fechaCreacion',
-            'FechaCreacion',
-            'createdAt',
-            'CreatedAt',
-          ],
-        ),
-      ),
+      rating: _decimal(map['puntaje']) ?? 0,
+      createdAt: _dateTime(map['fecha']),
       rawData: Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(map),
       ),
@@ -202,35 +106,6 @@ class WalkerReview {
           ),
         )
         .toList(growable: false);
-  }
-
-  static dynamic _firstValue(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
-    for (final key in keys) {
-      final value = map[key];
-
-      if (value != null) {
-        return value;
-      }
-    }
-
-    return null;
-  }
-
-  static Map<String, dynamic> _safeMap(
-    dynamic value,
-  ) {
-    if (value is Map<String, dynamic>) {
-      return value;
-    }
-
-    if (value is Map) {
-      return Map<String, dynamic>.from(value);
-    }
-
-    return const {};
   }
 
   static String _text(

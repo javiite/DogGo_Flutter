@@ -12,15 +12,15 @@ class WalkRequestAvailability {
   factory WalkRequestAvailability.fromMap(Map<String, dynamic> map) {
     final periods = <WalkUnavailablePeriod>[
       ..._maps(
-        map['bloqueos'] ?? map['Bloqueos'],
+        map['bloqueos'],
       ).map((item) => WalkUnavailablePeriod.fromMap(item, occupied: false)),
       ..._maps(
-        map['ocupaciones'] ?? map['Ocupaciones'],
+        map['ocupaciones'],
       ).map((item) => WalkUnavailablePeriod.fromMap(item, occupied: true)),
     ];
     return WalkRequestAvailability(
-      available: _bool(map['disponible'] ?? map['Disponible']),
-      schedules: _maps(map['horarios'] ?? map['Horarios'])
+      available: _bool(map['disponible']),
+      schedules: _maps(map['horarios'])
           .map(WalkAvailabilitySchedule.fromMap)
           .where((item) => item.active)
           .toList(),
@@ -118,10 +118,10 @@ class WalkAvailabilitySchedule {
 
   factory WalkAvailabilitySchedule.fromMap(Map<String, dynamic> map) =>
       WalkAvailabilitySchedule(
-        int.tryParse('${map['diaSemana'] ?? map['DiaSemana']}') ?? 0,
-        _minutes(map['horaInicio'] ?? map['HoraInicio']),
-        _minutes(map['horaFin'] ?? map['HoraFin']),
-        WalkRequestAvailability._bool(map['activo'] ?? map['Activo']),
+        int.tryParse('${map['diaSemana']}') ?? 0,
+        _minutes(map['horaInicio']),
+        _minutes(map['horaFin']),
+        WalkRequestAvailability._bool(map['activo']),
       );
 
   static int _minutes(dynamic value) {
@@ -141,8 +141,8 @@ class WalkUnavailablePeriod {
     Map<String, dynamic> map, {
     required bool occupied,
   }) => WalkUnavailablePeriod(
-    DateTime.parse('${map['inicioUtc'] ?? map['InicioUtc']}').toUtc(),
-    DateTime.parse('${map['finUtc'] ?? map['FinUtc']}').toUtc(),
+    DateTime.parse('${map['inicioUtc']}').toUtc(),
+    DateTime.parse('${map['finUtc']}').toUtc(),
     occupied,
   );
 }

@@ -50,126 +50,47 @@ class Pet {
   });
 
   factory Pet.fromMap(Map<String, dynamic> map) {
-    final parsedPhotos = PetPhoto.listFrom(
-      _value(map, const [
-        'fotos',
-        'Fotos',
-        'photos',
-        'Photos',
-        'galeria',
-        'Galeria',
-      ]),
-    );
+    final parsedPhotos = PetPhoto.listFrom(_value(map, const ['fotos']));
 
-    final legacyPhoto = _safeNullableText(
-      _value(map, const [
-        'fotoUrl',
-        'FotoUrl',
-        'foto',
-        'Foto',
-        'imagenUrl',
-        'ImagenUrl',
-        'urlFoto',
-        'UrlFoto',
-        'fotoPerroUrl',
-        'FotoPerroUrl',
-        'photoUrl',
-        'PhotoUrl',
-      ]),
-    );
+    final directPhoto = _safeNullableText(_value(map, const ['fotoUrl']));
 
     final primaryGalleryPhoto = parsedPhotos
         .where((photo) => photo.isPrimary)
         .firstOrNull;
 
     return Pet(
-      id:
-          _safeInt(
-            _value(map, const [
-              'id',
-              'Id',
-              'perroId',
-              'PerroId',
-              'mascotaId',
-              'MascotaId',
-            ]),
-          ) ??
-          0,
-      name: _safeText(
-        _value(map, const [
-          'nombre',
-          'Nombre',
-          'nombrePerro',
-          'NombrePerro',
-          'name',
-          'Name',
-        ]),
-        fallback: 'Mascota',
-      ),
+      id: _safeInt(_value(map, const ['id'])) ?? 0,
+      name: _safeText(_value(map, const ['nombre']), fallback: 'Mascota'),
       breed: _safeText(
-        _value(map, const ['raza', 'Raza', 'breed', 'Breed']),
+        _value(map, const ['raza']),
         fallback: 'Sin raza registrada',
       ),
-      age: _safeInt(_value(map, const ['edad', 'Edad', 'age', 'Age'])),
+      age: _safeInt(_value(map, const ['edad'])),
       size: _safeText(
-        _value(map, const [
-          'tamano',
-          'Tamano',
-          'tamanio',
-          'Tamanio',
-          'tamaño',
-          'Tamaño',
-          'size',
-          'Size',
-        ]),
+        _value(map, const ['tamanio']),
         fallback: 'Sin tamaño registrado',
       ),
-      weight: _safeDouble(_value(map, const ['peso', 'Peso'])),
-      sex: _safeNullableText(_value(map, const ['sexo', 'Sexo'])),
-      sterilized: _safeBool(
-        _value(map, const ['esterilizado', 'Esterilizado']),
-      ),
-      temperament: _safeNullableText(
-        _value(map, const ['temperamento', 'Temperamento']),
-      ),
-      energyLevel: _safeNullableText(
-        _value(map, const ['nivelEnergia', 'NivelEnergia']),
-      ),
-      socialWithDogs: _safeBool(
-        _value(map, const ['sociableConPerros', 'SociableConPerros']),
-      ),
-      socialWithPeople: _safeBool(
-        _value(map, const ['sociableConPersonas', 'SociableConPersonas']),
-      ),
-      socialWithChildren: _safeBool(
-        _value(map, const ['sociableConNinos', 'SociableConNinos']),
-      ),
+      weight: _safeDouble(_value(map, const ['peso'])),
+      sex: _safeNullableText(_value(map, const ['sexo'])),
+      sterilized: _safeBool(_value(map, const ['esterilizado'])),
+      temperament: _safeNullableText(_value(map, const ['temperamento'])),
+      energyLevel: _safeNullableText(_value(map, const ['nivelEnergia'])),
+      socialWithDogs: _safeBool(_value(map, const ['sociableConPerros'])),
+      socialWithPeople: _safeBool(_value(map, const ['sociableConPersonas'])),
+      socialWithChildren: _safeBool(_value(map, const ['sociableConNinos'])),
       leashBehavior: _safeNullableText(
-        _value(map, const ['comportamientoCorrea', 'ComportamientoCorrea']),
+        _value(map, const ['comportamientoCorrea']),
       ),
-      reactive: _safeBool(_value(map, const ['reactivo', 'Reactivo'])),
-      escapeRisk: _safeBool(
-        _value(map, const ['riesgoEscape', 'RiesgoEscape']),
-      ),
-      fearsTriggers: _safeNullableText(
-        _value(map, const ['miedosDetonantes', 'MiedosDetonantes']),
-      ),
+      reactive: _safeBool(_value(map, const ['reactivo'])),
+      escapeRisk: _safeBool(_value(map, const ['riesgoEscape'])),
+      fearsTriggers: _safeNullableText(_value(map, const ['miedosDetonantes'])),
       knownCommands: _safeNullableText(
-        _value(map, const ['comandosConocidos', 'ComandosConocidos']),
+        _value(map, const ['comandosConocidos']),
       ),
-      notes: _safeText(
-        _value(map, const [
-          'notas',
-          'Notas',
-          'observaciones',
-          'Observaciones',
-          'notes',
-          'Notes',
-        ]),
-      ),
+      notes: _safeText(_value(map, const ['notas'])),
       photoPath:
           primaryGalleryPhoto?.url ??
-          legacyPhoto ??
+          directPhoto ??
           (parsedPhotos.isEmpty ? null : parsedPhotos.first.url),
       photos: parsedPhotos,
       rawData: Map<String, dynamic>.unmodifiable(

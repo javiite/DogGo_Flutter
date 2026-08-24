@@ -220,51 +220,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
       return walk.walkerName;
     }
 
-    final raw = walk.rawData;
-
-    final directName =
-        raw['nombreDuenio'] ??
-        raw['NombreDuenio'] ??
-        raw['nombreDueño'] ??
-        raw['NombreDueño'];
-
-    final directLastName =
-        raw['apellidoDuenio'] ??
-        raw['ApellidoDuenio'] ??
-        raw['apellidoDueño'] ??
-        raw['ApellidoDueño'];
-
-    final pet = raw['perro'] ?? raw['Perro'];
-
-    dynamic owner;
-
-    if (pet is Map) {
-      owner =
-          pet['usuario'] ??
-          pet['Usuario'] ??
-          pet['duenio'] ??
-          pet['Duenio'] ??
-          pet['dueño'] ??
-          pet['Dueño'];
-    }
-
-    dynamic nestedName;
-    dynamic nestedLastName;
-
-    if (owner is Map) {
-      nestedName = owner['nombre'] ?? owner['Nombre'];
-
-      nestedLastName = owner['apellido'] ?? owner['Apellido'];
-    }
-
-    final name = (directName ?? nestedName)?.toString().trim() ?? '';
-
-    final lastName =
-        (directLastName ?? nestedLastName)?.toString().trim() ?? '';
-
-    final fullName = '$name $lastName'.trim();
-
-    return fullName.isEmpty ? 'Dueño de ${walk.petName}' : fullName;
+    return walk.ownerName.isEmpty ? 'Dueño de ${walk.petName}' : walk.ownerName;
   }
 
   Future<void> _confirmCancel(HomeWalk walk) async {

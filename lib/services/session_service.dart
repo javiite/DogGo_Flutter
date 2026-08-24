@@ -25,8 +25,7 @@ class SessionService {
         payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
         payload['sub'] ??
         payload['id'] ??
-        payload['usuarioId'] ??
-        payload['UsuarioId'];
+        payload['usuarioId'];
 
     final id = _intSeguro(valor);
 
@@ -52,8 +51,7 @@ class SessionService {
     final valor =
         payload['role'] ??
         payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
-        payload['rol'] ??
-        payload['Rol'];
+        payload['rol'];
 
     final rol = valor?.toString().trim();
 
@@ -80,8 +78,7 @@ class SessionService {
         payload['unique_name'] ??
         payload['name'] ??
         payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
-        payload['nombre'] ??
-        payload['Nombre'];
+        payload['nombre'];
 
     final nombre = valor?.toString().trim();
 
@@ -106,8 +103,7 @@ class SessionService {
 
     final valor =
         payload['email'] ??
-        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
-        payload['Email'];
+        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'];
 
     final email = valor?.toString().trim();
 
@@ -156,34 +152,19 @@ class SessionService {
   }
 
   static Future<void> guardarSesionDesdeLogin(Map<String, dynamic> data) async {
-    final token =
-        data['token'] ??
-        data['Token'] ??
-        data['jwt'] ??
-        data['Jwt'] ??
-        data['accessToken'] ??
-        data['AccessToken'];
+    final token = data['token'];
 
     if (token == null || token.toString().trim().isEmpty) {
       return;
     }
 
-    final usuarioId = _intSeguro(
-      data['usuarioId'] ??
-          data['UsuarioId'] ??
-          data['id'] ??
-          data['Id'] ??
-          data['userId'] ??
-          data['UserId'],
-    );
+    final usuarioId = _intSeguro(data['usuarioId']);
 
-    final rol = data['rol'] ?? data['Rol'] ?? data['role'] ?? data['Role'];
+    final rol = data['rol'];
 
-    final nombre =
-        data['nombre'] ?? data['Nombre'] ?? data['name'] ?? data['Name'];
+    final nombre = data['nombre'];
 
-    final email =
-        data['email'] ?? data['Email'] ?? data['correo'] ?? data['Correo'];
+    final email = data['email'];
 
     await guardarSesion(
       token: token.toString(),
@@ -291,8 +272,7 @@ class SessionService {
             payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
             payload['sub'] ??
             payload['id'] ??
-            payload['usuarioId'] ??
-            payload['UsuarioId'],
+            payload['usuarioId'],
       );
 
       if (id != null) {
@@ -305,8 +285,7 @@ class SessionService {
       final rol =
           payload['role'] ??
           payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
-          payload['rol'] ??
-          payload['Rol'];
+          payload['rol'];
 
       if (rol != null && rol.toString().trim().isNotEmpty) {
         await StorageService.guardarRol(rol.toString());
@@ -319,8 +298,7 @@ class SessionService {
           payload['unique_name'] ??
           payload['name'] ??
           payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
-          payload['nombre'] ??
-          payload['Nombre'];
+          payload['nombre'];
 
       if (nombre != null && nombre.toString().trim().isNotEmpty) {
         await StorageService.guardarNombre(nombre.toString());
@@ -331,8 +309,7 @@ class SessionService {
     if (emailActual == null || emailActual.trim().isEmpty) {
       final email =
           payload['email'] ??
-          payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
-          payload['Email'];
+          payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'];
 
       if (email != null && email.toString().trim().isNotEmpty) {
         await StorageService.guardarEmail(email.toString());

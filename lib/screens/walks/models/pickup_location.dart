@@ -14,39 +14,9 @@ class PickupLocation {
   factory PickupLocation.fromMap(
     Map<String, dynamic> map,
   ) {
-    final latitude = _decimal(
-      _value(
-        map,
-        const [
-          'latitudRecogida',
-          'LatitudRecogida',
-          'latitud',
-          'Latitud',
-          'lat',
-          'Lat',
-          'latitude',
-          'Latitude',
-        ],
-      ),
-    );
+    final latitude = _decimal(map['latitudRecogida']);
 
-    final longitude = _decimal(
-      _value(
-        map,
-        const [
-          'longitudRecogida',
-          'LongitudRecogida',
-          'longitud',
-          'Longitud',
-          'lng',
-          'Lng',
-          'lon',
-          'Lon',
-          'longitude',
-          'Longitude',
-        ],
-      ),
-    );
+    final longitude = _decimal(map['longitudRecogida']);
 
     if (latitude == null || longitude == null) {
       throw const FormatException(
@@ -55,39 +25,11 @@ class PickupLocation {
     }
 
     final address = _text(
-      _value(
-        map,
-        const [
-          'direccionRecogida',
-          'DireccionRecogida',
-          'direccion',
-          'Direccion',
-          'ubicacionTexto',
-          'UbicacionTexto',
-          'ubicacionRecogidaTexto',
-          'UbicacionRecogidaTexto',
-          'texto',
-          'Texto',
-          'address',
-          'Address',
-        ],
-      ),
+      map['direccionRecogida'],
       fallback: 'Ubicación seleccionada',
     );
 
-    final reference = _text(
-      _value(
-        map,
-        const [
-          'referenciasRecogida',
-          'ReferenciasRecogida',
-          'referencia',
-          'Referencia',
-          'reference',
-          'Reference',
-        ],
-      ),
-    );
+    final reference = _text(map['referenciasRecogida']);
 
     return PickupLocation(
       latitude: latitude,
@@ -122,21 +64,6 @@ class PickupLocation {
       address: address ?? this.address,
       reference: reference ?? this.reference,
     );
-  }
-
-  static dynamic _value(
-    Map<String, dynamic> map,
-    List<String> keys,
-  ) {
-    for (final key in keys) {
-      final value = map[key];
-
-      if (value != null) {
-        return value;
-      }
-    }
-
-    return null;
   }
 
   static String _text(

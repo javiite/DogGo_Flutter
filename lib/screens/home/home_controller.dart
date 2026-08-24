@@ -131,16 +131,7 @@ class HomeController extends ChangeNotifier {
       return null;
     }
 
-    const photoKeys = [
-      'fotoUrl',
-      'FotoUrl',
-      'fotoPerfilUrl',
-      'FotoPerfilUrl',
-      'imagenUrl',
-      'ImagenUrl',
-      'foto',
-      'Foto',
-    ];
+    const photoKeys = ['fotoUrl'];
 
     for (final key in photoKeys) {
       final value = source[key];
@@ -151,22 +142,7 @@ class HomeController extends ChangeNotifier {
       }
     }
 
-    const nestedKeys = [
-      'data',
-      'Data',
-      'perfil',
-      'Perfil',
-      'usuario',
-      'Usuario',
-      'duenio',
-      'Duenio',
-      'dueño',
-      'Dueño',
-      'paseador',
-      'Paseador',
-      'result',
-      'resultado',
-    ];
+    const nestedKeys = ['data'];
 
     for (final key in nestedKeys) {
       final value = _findProfilePhoto(source[key]);
@@ -481,9 +457,6 @@ class HomeController extends ChangeNotifier {
           return <String, dynamic>{
             ...notification,
             'leida': true,
-            'Leida': true,
-            'read': true,
-            'Read': true,
           };
         })
         .toList(growable: false);
@@ -535,26 +508,14 @@ class HomeController extends ChangeNotifier {
   }
 
   DateTime _notificationDate(Map<String, dynamic> notification) {
-    final value = HomeState.firstValue(notification, const [
-      'fecha',
-      'Fecha',
-      'fechaCreacion',
-      'FechaCreacion',
-      'createdAt',
-      'CreatedAt',
-    ]);
+    final value = HomeState.firstValue(notification, const ['fechaCreacion']);
 
     return DateTime.tryParse(value?.toString() ?? '') ??
         DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   int? _notificationId(Map<String, dynamic> notification) {
-    final value = HomeState.firstValue(notification, const [
-      'id',
-      'Id',
-      'notificacionId',
-      'NotificacionId',
-    ]);
+    final value = HomeState.firstValue(notification, const ['id']);
 
     if (value is int) {
       return value;

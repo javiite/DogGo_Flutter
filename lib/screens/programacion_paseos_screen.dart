@@ -59,7 +59,7 @@ class _ProgramacionPaseosScreenState extends State<ProgramacionPaseosScreen> {
         );
       }
       final data = _map(response['data']);
-      final rawWalks = data['paseos'] ?? data['Paseos'];
+      final rawWalks = data['paseos'];
       final walks = rawWalks is List
           ? rawWalks
                 .whereType<Map>()
@@ -73,8 +73,8 @@ class _ProgramacionPaseosScreenState extends State<ProgramacionPaseosScreen> {
           : <Pet>[];
       if (!mounted) return;
       setState(() {
-        _viewerIsOwner = data['esDuenio'] == true || data['EsDuenio'] == true;
-        _status = '${data['estado'] ?? data['Estado'] ?? ''}';
+        _viewerIsOwner = data['esDuenio'] == true;
+        _status = '${data['estado'] ?? ''}';
         _walks = walks;
         _pets = pets;
         _loading = false;
@@ -730,7 +730,7 @@ class _WalkCard extends StatelessWidget {
   });
 
   String get _reason =>
-      '${walk.rawData['motivoCancelacion'] ?? walk.rawData['MotivoCancelacion'] ?? ''}'
+      '${walk.rawData['motivoCancelacion'] ?? ''}'
           .trim();
 
   Color get _statusColor {

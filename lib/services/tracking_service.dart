@@ -10,15 +10,7 @@ class TrackingService {
       dynamic data = body;
 
       if (body is Map) {
-        data =
-            body['data'] ??
-            body['ubicacion'] ??
-            body['tracking'] ??
-            body['ultimaUbicacion'] ??
-            body['resultado'] ??
-            body['result'] ??
-            body['value'] ??
-            body;
+        data = body['data'] ?? body;
       }
 
       final normalized = data is Map
@@ -26,11 +18,11 @@ class TrackingService {
           : <String, dynamic>{'success': true, 'data': data};
 
       if (body is Map) {
-        final monitoring = body['monitoreoRuta'] ?? body['MonitoreoRuta'];
+        final monitoring = body['monitoreoRuta'];
         if (monitoring != null) {
           normalized['monitoreoRuta'] = monitoring;
         }
-        normalized['success'] = body['success'] ?? body['Success'] ?? true;
+        normalized['success'] = body['success'] ?? true;
       }
 
       return normalized;
@@ -60,15 +52,7 @@ class TrackingService {
       dynamic data = body;
 
       if (body is Map) {
-        data =
-            body['data'] ??
-            body['ubicaciones'] ??
-            body['historial'] ??
-            body['ruta'] ??
-            body['items'] ??
-            body['resultado'] ??
-            body['result'] ??
-            body['value'];
+        data = body['data'];
       }
 
       if (data is List) {
@@ -104,52 +88,18 @@ class TrackingService {
     DateTime? fechaLectura,
   }) async {
     final body = <String, dynamic>{
-      'paseoId': paseoId,
-      'PaseoId': paseoId,
-
       'latitud': latitud,
-      'Latitud': latitud,
-
       'longitud': longitud,
-      'Longitud': longitud,
-
-      'latitudActual': latitud,
-      'LatitudActual': latitud,
-
-      'longitudActual': longitud,
-      'LongitudActual': longitud,
-
       'precisionGpsMetros': ?precisionGpsMetros,
-
-      'PrecisionGpsMetros': ?precisionGpsMetros,
-
       if (fechaLectura != null)
-        'fechaLectura': fechaLectura.toUtc().toIso8601String(),
-
-      if (fechaLectura != null)
-        'FechaLectura': fechaLectura.toUtc().toIso8601String(),
+        'fechaCaptura': fechaLectura.toUtc().toIso8601String(),
     };
 
-    final endpoints = [
+    final respuesta = await ApiService.postAuth(
       '/api/paseos/$paseoId/ubicacion',
-      '/api/Paseos/$paseoId/ubicacion',
-      '/api/paseos/$paseoId/tracking',
-      '/api/Paseos/$paseoId/tracking',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.postAuth(endpoint, body);
-
-        return _normalizarRespuesta(respuesta);
-      } catch (error) {
-        ultimoError = Exception(error.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo enviar la ubicación.');
+      body,
+    );
+    return _normalizarRespuesta(respuesta);
   }
 
   Future<Map<String, dynamic>> enviarUbicacionesLote({
@@ -174,56 +124,18 @@ class TrackingService {
   }
 
   Future<Map<String, dynamic>> obtenerUltimaUbicacion(int paseoId) async {
-    final endpoints = [
+    final respuesta = await ApiService.getAuth(
       '/api/paseos/$paseoId/ubicacion',
-      '/api/Paseos/$paseoId/ubicacion',
-      '/api/paseos/$paseoId/ultima-ubicacion',
-      '/api/Paseos/$paseoId/ultima-ubicacion',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.getAuth(endpoint);
-
-        return _normalizarRespuesta(respuesta);
-      } catch (error) {
-        ultimoError = Exception(error.toString());
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo obtener la última ubicación.');
+    );
+    return _normalizarRespuesta(respuesta);
   }
 
   Future<List<Map<String, dynamic>>> obtenerHistorialUbicaciones(
     int paseoId,
   ) async {
-    final endpoints = [
+    final respuesta = await ApiService.getAuth(
       '/api/paseos/$paseoId/ubicaciones',
-      '/api/Paseos/$paseoId/ubicaciones',
-      '/api/paseos/$paseoId/historial-ubicaciones',
-      '/api/Paseos/$paseoId/historial-ubicaciones',
-      '/api/paseos/$paseoId/ruta',
-      '/api/Paseos/$paseoId/ruta',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.getAuth(endpoint);
-
-        return _normalizarLista(respuesta);
-      } catch (error) {
-        ultimoError = Exception(error.toString());
-      }
-    }
-
-    throw ultimoError ??
-        Exception(
-          'No se pudo obtener el historial '
-          'de ubicaciones.',
-        );
+    );
+    return _normalizarLista(respuesta);
   }
 }

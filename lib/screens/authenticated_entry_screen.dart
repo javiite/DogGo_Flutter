@@ -9,23 +9,17 @@ import '../theme/doggo_theme.dart';
 import 'home_screen.dart';
 import 'profile_completion_screen.dart';
 
-class AuthenticatedEntryScreen
-    extends StatefulWidget {
-  const AuthenticatedEntryScreen({
-    super.key,
-  });
+class AuthenticatedEntryScreen extends StatefulWidget {
+  const AuthenticatedEntryScreen({super.key});
 
   @override
-  State<AuthenticatedEntryScreen>
-      createState() {
+  State<AuthenticatedEntryScreen> createState() {
     return _AuthenticatedEntryScreenState();
   }
 }
 
-class _AuthenticatedEntryScreenState
-    extends State<AuthenticatedEntryScreen> {
-  final UsuarioService _usuarioService =
-      UsuarioService();
+class _AuthenticatedEntryScreenState extends State<AuthenticatedEntryScreen> {
+  final UsuarioService _usuarioService = UsuarioService();
 
   bool _loading = true;
   bool _skipCheck = false;
@@ -46,52 +40,38 @@ class _AuthenticatedEntryScreenState
     });
 
     try {
-      final role =
-          await SessionService.obtenerRol();
+      final role = await SessionService.obtenerRol();
 
       if (!mounted) {
         return;
       }
 
       if (SessionService.esDuenioRol(role)) {
-        final profile =
-            await _usuarioService
-                .obtenerPerfilDuenio();
+        final profile = await _usuarioService.obtenerPerfilDuenio();
 
         if (!mounted) {
           return;
         }
 
-        if (!_ownerProfileComplete(
-          profile,
-        )) {
+        if (!_ownerProfileComplete(profile)) {
           setState(() {
             _loading = false;
-            _incompleteMode =
-                DogGoRoleMode.owner;
+            _incompleteMode = DogGoRoleMode.owner;
           });
 
           return;
         }
-      } else if (
-          SessionService.esPaseadorRol(
-        role,
-      )) {
-        final profile =
-            await PaseadoresService
-                .obtenerMiPerfilPaseador();
+      } else if (SessionService.esPaseadorRol(role)) {
+        final profile = await PaseadoresService.obtenerMiPerfilPaseador();
 
         if (!mounted) {
           return;
         }
 
-        if (!_walkerProfileComplete(
-          profile,
-        )) {
+        if (!_walkerProfileComplete(profile)) {
           setState(() {
             _loading = false;
-            _incompleteMode =
-                DogGoRoleMode.walker;
+            _incompleteMode = DogGoRoleMode.walker;
           });
 
           return;
@@ -113,64 +93,22 @@ class _AuthenticatedEntryScreenState
     }
   }
 
-  bool _ownerProfileComplete(
-    Map<String, dynamic> profile,
-  ) {
-    final address = _firstText([
-      profile['direccion'],
-      profile['Direccion'],
-      profile['direccionRecogida'],
-      profile['DireccionRecogida'],
-      profile['address'],
-      profile['Address'],
-    ]);
+  bool _ownerProfileComplete(Map<String, dynamic> profile) {
+    final address = _firstText([profile['direccion']]);
 
-    final latitude = _toDouble(
-      profile['latitud'] ??
-          profile['Latitud'] ??
-          profile['latitude'] ??
-          profile['Latitude'],
-    );
+    final latitude = _toDouble(profile['latitud']);
 
-    final longitude = _toDouble(
-      profile['longitud'] ??
-          profile['Longitud'] ??
-          profile['longitude'] ??
-          profile['Longitude'],
-    );
+    final longitude = _toDouble(profile['longitud']);
 
-    return address != null &&
-        latitude != null &&
-        longitude != null;
+    return address != null && latitude != null && longitude != null;
   }
 
-  bool _walkerProfileComplete(
-    Map<String, dynamic> profile,
-  ) {
-    final description = _firstText([
-      profile['descripcion'],
-      profile['Descripcion'],
-      profile['description'],
-      profile['Description'],
-    ]);
+  bool _walkerProfileComplete(Map<String, dynamic> profile) {
+    final description = _firstText([profile['descripcion']]);
 
-    final zone = _firstText([
-      profile['zonaServicio'],
-      profile['ZonaServicio'],
-      profile['zona'],
-      profile['Zona'],
-      profile['serviceZone'],
-      profile['ServiceZone'],
-    ]);
+    final zone = _firstText([profile['zonaServicio']]);
 
-    final hourlyRate = _toDouble(
-      profile['tarifaPorHora'] ??
-          profile['TarifaPorHora'] ??
-          profile['tarifa'] ??
-          profile['Tarifa'] ??
-          profile['hourlyRate'] ??
-          profile['HourlyRate'],
-    );
+    final hourlyRate = _toDouble(profile['tarifaPorHora']);
 
     return description != null &&
         zone != null &&
@@ -178,16 +116,11 @@ class _AuthenticatedEntryScreenState
         hourlyRate > 0;
   }
 
-  String? _firstText(
-    List<dynamic> values,
-  ) {
+  String? _firstText(List<dynamic> values) {
     for (final value in values) {
-      final text =
-          value?.toString().trim();
+      final text = value?.toString().trim();
 
-      if (text != null &&
-          text.isNotEmpty &&
-          text.toLowerCase() != 'null') {
+      if (text != null && text.isNotEmpty && text.toLowerCase() != 'null') {
         return text;
       }
     }
@@ -204,10 +137,7 @@ class _AuthenticatedEntryScreenState
       return value.toDouble();
     }
 
-    final text = value
-        .toString()
-        .trim()
-        .replaceAll(',', '.');
+    final text = value.toString().trim().replaceAll(',', '.');
 
     return double.tryParse(text);
   }
@@ -215,19 +145,11 @@ class _AuthenticatedEntryScreenState
   String _cleanError(Object error) {
     final message = error
         .toString()
-        .replaceFirst(
-          'Exception: ',
-          '',
-        )
-        .replaceFirst(
-          'ApiException: ',
-          '',
-        )
+        .replaceFirst('Exception: ', '')
+        .replaceFirst('ApiException: ', '')
         .trim();
 
-    return message.isEmpty
-        ? 'No se pudo revisar tu perfil.'
-        : message;
+    return message.isEmpty ? 'No se pudo revisar tu perfil.' : message;
   }
 
   @override
@@ -238,18 +160,14 @@ class _AuthenticatedEntryScreenState
 
     if (_loading) {
       return const Scaffold(
-        backgroundColor:
-            DogGoTheme.cream,
+        backgroundColor: DogGoTheme.cream,
         body: Center(
           child: Column(
-            mainAxisSize:
-                MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text(
-                'Revisando tu perfil...',
-              ),
+              Text('Revisando tu perfil...'),
             ],
           ),
         ),
@@ -258,38 +176,27 @@ class _AuthenticatedEntryScreenState
 
     if (_error != null) {
       return Scaffold(
-        backgroundColor:
-            DogGoTheme.cream,
+        backgroundColor: DogGoTheme.cream,
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.all(
-                24,
-              ),
+              padding: const EdgeInsets.all(24),
               child: Column(
-                mainAxisSize:
-                    MainAxisSize.min,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   DogGoErrorView(
-                    title:
-                        'No pudimos revisar tu perfil',
+                    title: 'No pudimos revisar tu perfil',
                     message: _error!,
-                    onRetry:
-                        _checkProfile,
+                    onRetry: _checkProfile,
                   ),
-                  const SizedBox(
-                    height: 12,
-                  ),
+                  const SizedBox(height: 12),
                   TextButton(
                     onPressed: () {
                       setState(() {
                         _skipCheck = true;
                       });
                     },
-                    child: const Text(
-                      'Entrar de todas formas',
-                    ),
+                    child: const Text('Entrar de todas formas'),
                   ),
                 ],
               ),
@@ -299,13 +206,10 @@ class _AuthenticatedEntryScreenState
       );
     }
 
-    final incompleteMode =
-        _incompleteMode;
+    final incompleteMode = _incompleteMode;
 
     if (incompleteMode != null) {
-      return ProfileCompletionScreen(
-        mode: incompleteMode,
-      );
+      return ProfileCompletionScreen(mode: incompleteMode);
     }
 
     return const HomeScreen();

@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -40,37 +39,19 @@ class EditProfileController extends ChangeNotifier {
        _imagePicker = imagePicker ?? ImagePicker() {
     nameController = TextEditingController(
       text: _text(
-        _value(initialProfile, const [
-          'nombre',
-          'Nombre',
-          'name',
-          'Name',
-          'firstName',
-          'FirstName',
-        ]),
+        _value(initialProfile, const ['nombre']),
       ),
     );
 
     lastNameController = TextEditingController(
       text: _text(
-        _value(initialProfile, const [
-          'apellido',
-          'Apellido',
-          'lastName',
-          'LastName',
-        ]),
+        _value(initialProfile, const ['apellido']),
       ),
     );
 
     phoneController = TextEditingController(
       text: _text(
-        _value(initialProfile, const [
-          'telefono',
-          'Telefono',
-          'teléfono',
-          'phone',
-          'Phone',
-        ]),
+        _value(initialProfile, const ['telefono']),
       ),
     );
 
@@ -140,70 +121,40 @@ class EditProfileController extends ChangeNotifier {
       if (_disposed) return;
 
       addressController.text = _text(
-        _value(profile, const ['direccion', 'Direccion', 'address', 'Address']),
+        _value(profile, const ['direccion']),
       );
 
       referencesController.text = _text(
-        _value(profile, const [
-          'referenciasDireccion',
-          'ReferenciasDireccion',
-          'referencias',
-          'Referencias',
-        ]),
+        _value(profile, const ['referenciasDireccion']),
       );
 
       zoneController.text = _text(
-        _value(profile, const ['zona', 'Zona', 'zone', 'Zone']),
+        _value(profile, const ['zona']),
       );
 
       descriptionController.text = _text(
-        _value(profile, const [
-          'descripcion',
-          'Descripcion',
-          'descripción',
-          'description',
-          'Description',
-        ]),
+        _value(profile, const ['descripcion']),
       );
 
       preferencesController.text = _text(
-        _value(profile, const [
-          'preferenciasPaseo',
-          'PreferenciasPaseo',
-          'preferencias',
-          'Preferencias',
-        ]),
+        _value(profile, const ['preferenciasPaseo']),
       );
 
-      final photo = _value(profile, const [
-        'fotoUrl',
-        'FotoUrl',
-        'fotoPerfilUrl',
-        'FotoPerfilUrl',
-        'imagenUrl',
-        'ImagenUrl',
-        'foto',
-        'Foto',
-      ]);
+      final photo = _value(profile, const ['fotoUrl']);
 
       final latitude = EditProfileState.safeDouble(
-        _value(profile, const ['latitud', 'Latitud', 'latitude', 'Latitude']),
+        _value(profile, const ['latitud']),
       );
 
       final longitude = EditProfileState.safeDouble(
-        _value(profile, const [
-          'longitud',
-          'Longitud',
-          'longitude',
-          'Longitude',
-        ]),
+        _value(profile, const ['longitud']),
       );
 
       final stateCode = _text(
-        _value(profile, const ['estadoClave', 'EstadoClave']),
+        _value(profile, const ['estadoClave']),
       );
       final municipalityCode = _text(
-        _value(profile, const ['municipioClave', 'MunicipioClave']),
+        _value(profile, const ['municipioClave']),
       );
 
       if (stateCode.isNotEmpty) {

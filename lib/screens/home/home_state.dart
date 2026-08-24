@@ -41,34 +41,24 @@ class HomeState {
   bool get isWalker {
     final normalized = _normalize(role);
 
-    return normalized == 'paseador' ||
-        normalized == 'walker' ||
-        normalized == 'dogwalker';
+    return normalized == 'paseador';
   }
 
   bool get isOwner {
     final normalized = _normalize(role);
 
-    return normalized == 'dueno' ||
-        normalized == 'duenio' ||
-        normalized == 'owner' ||
-        normalized == 'cliente';
+    return normalized == 'duenio';
   }
 
   bool get isAdmin {
     final normalized = _normalize(role);
 
-    return normalized == 'admin' || normalized == 'administrador';
+    return normalized == 'admin' || normalized == 'superadmin';
   }
 
   int get unreadNotifications {
     return notifications.where((notification) {
-      final value = firstValue(notification, const [
-        'leida',
-        'Leida',
-        'read',
-        'Read',
-      ]);
+      final value = firstValue(notification, const ['leida']);
 
       return !_toBool(value);
     }).length;

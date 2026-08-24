@@ -62,8 +62,7 @@ class OfflineWalkCacheRepository {
   }
 
   int? _readId(Map<String, dynamic> walk) {
-    final value =
-        walk['id'] ?? walk['Id'] ?? walk['paseoId'] ?? walk['PaseoId'];
+    final value = walk['id'];
 
     if (value is int) return value;
     if (value is num) return value.toInt();

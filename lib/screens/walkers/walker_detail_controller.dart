@@ -13,11 +13,8 @@ class WalkerDetailController extends ChangeNotifier {
   bool _disposed = false;
   bool _reviewsRequestInProgress = false;
 
-  WalkerDetailController({
-    required Map<String, dynamic> walkerData,
-  }) : _state = WalkerDetailState(
-          walker: Walker.fromMap(walkerData),
-        );
+  WalkerDetailController({required Map<String, dynamic> walkerData})
+    : _state = WalkerDetailState(walker: Walker.fromMap(walkerData));
 
   WalkerDetailState get state => _state;
 
@@ -37,18 +34,13 @@ class WalkerDetailController extends ChangeNotifier {
 
   Future<void> _loadBaseUrl() async {
     try {
-      final baseUrl =
-          await StorageService.obtenerBaseUrl();
+      final baseUrl = await StorageService.obtenerBaseUrl();
 
       if (_disposed) {
         return;
       }
 
-      _setState(
-        _state.copyWith(
-          baseUrl: baseUrl,
-        ),
-      );
+      _setState(_state.copyWith(baseUrl: baseUrl));
     } catch (_) {
       // El perfil puede mostrarse aunque no se consiga
       // recuperar la URL del servidor.
@@ -73,83 +65,52 @@ class WalkerDetailController extends ChangeNotifier {
 
     _reviewsRequestInProgress = true;
 
-    _setState(
-      _state.copyWith(
-        loadingReviews: true,
-        clearReviewsError: true,
-      ),
-    );
+    _setState(_state.copyWith(loadingReviews: true, clearReviewsError: true));
 
-    Object? lastError;
+    try {
+      final response = await ApiService.getAuth(
+        '/api/paseadores/${_state.walker.id}/resenas',
+      );
 
-    for (final endpoint in _reviewEndpoints) {
-      try {
-        final response =
-            await ApiService.getAuth(endpoint);
+      if (_disposed) {
+        return;
+      }
 
-        if (_disposed) {
-          return;
-        }
-
-        if (!_isSuccessful(response)) {
-          lastError = Exception(
-            _responseMessage(
-              response,
-              fallback:
-                  'No se pudieron cargar las reseñas.',
-            ),
-          );
-          continue;
-        }
-
-        final reviews = WalkerReview.listFrom(
-          _extractList(response),
-        );
-
-        _setState(
-          _state.copyWith(
-            loadingReviews: false,
-            reviews: reviews,
-            clearReviewsError: true,
+      if (!_isSuccessful(response)) {
+        throw Exception(
+          _responseMessage(
+            response,
+            fallback: 'No se pudieron cargar las reseñas.',
           ),
         );
-
-        return;
-      } catch (error) {
-        lastError = error;
       }
+
+      final reviews = WalkerReview.listFrom(_extractList(response));
+
+      _setState(
+        _state.copyWith(
+          loadingReviews: false,
+          reviews: reviews,
+          clearReviewsError: true,
+        ),
+      );
+    } catch (error) {
+      if (_disposed) {
+        return;
+      }
+
+      _setState(
+        _state.copyWith(
+          loadingReviews: false,
+          reviewsError: _cleanError(error),
+        ),
+      );
+    } finally {
+      _reviewsRequestInProgress = false;
     }
-
-    if (_disposed) {
-      return;
-    }
-
-    _setState(
-      _state.copyWith(
-        loadingReviews: false,
-        reviewsError: _cleanError(lastError),
-      ),
-    );
-
-    _reviewsRequestInProgress = false;
   }
 
-  List<String> get _reviewEndpoints {
-    final id = _state.walker.id;
-
-    return [
-      '/api/paseadores/$id/calificaciones',
-      '/api/Paseadores/$id/calificaciones',
-      '/api/calificaciones/paseador/$id',
-      '/api/Calificaciones/paseador/$id',
-      '/api/paseadores/$id/reviews',
-      '/api/Paseadores/$id/reviews',
-    ];
-  }
-
-  bool _isSuccessful(
-    Map<String, dynamic> response,
-  ) {
+  bool _isSuccessful(Map<String, dynamic> response) {
     final statusCode = response['statusCode'];
 
     if (statusCode is int) {
@@ -163,31 +124,15 @@ class WalkerDetailController extends ChangeNotifier {
     return true;
   }
 
-  dynamic _extractList(
-    Map<String, dynamic> response,
-  ) {
+  dynamic _extractList(Map<String, dynamic> response) {
     dynamic data = response['body'] ?? response;
 
     if (data is Map) {
-      data = data['data'] ??
-          data['calificaciones'] ??
-          data['reviews'] ??
-          data['resenas'] ??
-          data['reseñas'] ??
-          data['items'] ??
-          data['resultado'] ??
-          data['result'] ??
-          data['value'];
+      data = data['data'];
     }
 
     if (data is Map) {
-      data = data['data'] ??
-          data['calificaciones'] ??
-          data['reviews'] ??
-          data['resenas'] ??
-          data['reseñas'] ??
-          data['items'] ??
-          data['value'];
+      data = data['resenas'];
     }
 
     return data is List ? data : const [];
@@ -197,13 +142,10 @@ class WalkerDetailController extends ChangeNotifier {
     Map<String, dynamic> response, {
     required String fallback,
   }) {
-    dynamic source =
-        response['body'] ?? response;
+    dynamic source = response['body'] ?? response;
 
     if (source is Map) {
-      final value = source['message'] ??
-          source['mensaje'] ??
-          source['error'];
+      final value = source['message'];
 
       final message = value?.toString().trim();
 
@@ -212,15 +154,11 @@ class WalkerDetailController extends ChangeNotifier {
       }
     }
 
-    final value = response['message'] ??
-        response['mensaje'] ??
-        response['error'];
+    final value = response['message'];
 
     final message = value?.toString().trim();
 
-    return message == null || message.isEmpty
-        ? fallback
-        : message;
+    return message == null || message.isEmpty ? fallback : message;
   }
 
   String _cleanError(Object? error) {
@@ -241,9 +179,7 @@ class WalkerDetailController extends ChangeNotifier {
     return message;
   }
 
-  void _setState(
-    WalkerDetailState newState,
-  ) {
+  void _setState(WalkerDetailState newState) {
     if (_disposed) {
       return;
     }
