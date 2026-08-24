@@ -1,19 +1,15 @@
 import 'api_service.dart';
 import 'session_service.dart';
-import 'storage_service.dart';
 
 class AuthService {
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
-    final response = await ApiService.post(
-      '/api/auth/login',
-      {
-        'email': email.trim(),
-        'password': password,
-      },
-    );
+    final response = await ApiService.post('/api/auth/login', {
+      'email': email.trim(),
+      'password': password,
+    });
 
     final statusCode = response['statusCode'];
     final body = _bodyComoMapa(response['body']);
@@ -51,17 +47,14 @@ class AuthService {
     required String telefono,
     required String rol,
   }) async {
-    final response = await ApiService.post(
-      '/api/auth/register',
-      {
-        'nombre': nombre.trim(),
-        'apellido': apellido.trim(),
-        'email': email.trim(),
-        'password': password,
-        'telefono': telefono.trim(),
-        'rol': _rolParaApi(rol),
-      },
-    );
+    final response = await ApiService.post('/api/auth/register', {
+      'nombre': nombre.trim(),
+      'apellido': apellido.trim(),
+      'email': email.trim(),
+      'password': password,
+      'telefono': telefono.trim(),
+      'rol': _rolParaApi(rol),
+    });
 
     final statusCode = response['statusCode'];
     final body = _bodyComoMapa(response['body']);
@@ -85,13 +78,10 @@ class AuthService {
     required String email,
     required String codigo,
   }) async {
-    final response = await ApiService.post(
-      '/api/auth/confirmar-correo',
-      {
-        'email': email.trim(),
-        'codigo': codigo.trim(),
-      },
-    );
+    final response = await ApiService.post('/api/auth/confirmar-correo', {
+      'email': email.trim(),
+      'codigo': codigo.trim(),
+    });
 
     final statusCode = response['statusCode'];
     final body = _bodyComoMapa(response['body']);
@@ -113,12 +103,9 @@ class AuthService {
   static Future<Map<String, dynamic>> solicitarRecuperacion({
     required String email,
   }) async {
-    final response = await ApiService.post(
-      '/api/auth/forgot-password',
-      {
-        'email': email.trim(),
-      },
-    );
+    final response = await ApiService.post('/api/auth/forgot-password', {
+      'email': email.trim(),
+    });
 
     final statusCode = response['statusCode'];
     final body = _bodyComoMapa(response['body']);
@@ -142,14 +129,11 @@ class AuthService {
     required String codigo,
     required String nuevaPassword,
   }) async {
-    final response = await ApiService.post(
-      '/api/auth/reset-password',
-      {
-        'email': email.trim(),
-        'codigo': codigo.trim(),
-        'nuevaPassword': nuevaPassword,
-      },
-    );
+    final response = await ApiService.post('/api/auth/reset-password', {
+      'email': email.trim(),
+      'codigo': codigo.trim(),
+      'nuevaPassword': nuevaPassword,
+    });
 
     final statusCode = response['statusCode'];
     final body = _bodyComoMapa(response['body']);
@@ -171,7 +155,7 @@ class AuthService {
   }
 
   static Future<void> cerrarSesion() async {
-    await StorageService.limpiarSesion();
+    await SessionService.cerrarSesion();
   }
 
   static String _rolParaApi(String rol) {

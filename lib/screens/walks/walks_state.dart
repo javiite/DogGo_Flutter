@@ -34,9 +34,7 @@ class WalksState {
   bool get isWalker {
     final value = _normalize(role);
 
-    return value == 'paseador' ||
-        value == 'walker' ||
-        value == 'dogwalker';
+    return value == 'paseador' || value == 'walker' || value == 'dogwalker';
   }
 
   bool get isEmpty => !loading && walks.isEmpty;
@@ -47,8 +45,7 @@ class WalksState {
 
   HomeWalk? get activeWalk {
     for (final walk in walks) {
-      if (walk.status ==
-          HomeWalkStatus.inProgress) {
+      if (walk.status == HomeWalkStatus.inProgress) {
         return walk;
       }
     }
@@ -60,8 +57,7 @@ class WalksState {
     final query = searchQuery.trim().toLowerCase();
 
     final result = walks.where((walk) {
-      if (selectedStatus != null &&
-          walk.status != selectedStatus) {
+      if (selectedStatus != null && walk.status != selectedStatus) {
         return false;
       }
 
@@ -83,14 +79,12 @@ class WalksState {
       final firstActive =
           first.status == HomeWalkStatus.pending ||
           first.status == HomeWalkStatus.accepted ||
-          first.status ==
-              HomeWalkStatus.inProgress;
+          first.status == HomeWalkStatus.inProgress;
 
       final secondActive =
           second.status == HomeWalkStatus.pending ||
           second.status == HomeWalkStatus.accepted ||
-          second.status ==
-              HomeWalkStatus.inProgress;
+          second.status == HomeWalkStatus.inProgress;
 
       if (firstActive != secondActive) {
         return firstActive ? -1 : 1;
@@ -99,8 +93,7 @@ class WalksState {
       final firstDate = first.scheduledAt;
       final secondDate = second.scheduledAt;
 
-      if (firstDate == null &&
-          secondDate == null) {
+      if (firstDate == null && secondDate == null) {
         return 0;
       }
 
@@ -118,46 +111,34 @@ class WalksState {
   }
 
   int countByStatus(HomeWalkStatus status) {
-    return walks
-        .where((walk) => walk.status == status)
-        .length;
+    return walks.where((walk) => walk.status == status).length;
   }
 
   bool isActionRunningFor(HomeWalk walk) {
-    return walk.id != null &&
-        actionWalkId == walk.id;
+    return walk.id != null && actionWalkId == walk.id;
   }
 
   bool canAccept(HomeWalk walk) {
-    return isWalker &&
-        walk.status == HomeWalkStatus.pending;
+    return isWalker && walk.status == HomeWalkStatus.pending;
   }
 
   bool canReject(HomeWalk walk) {
-    return isWalker &&
-        walk.status == HomeWalkStatus.pending;
+    return isWalker && walk.status == HomeWalkStatus.pending;
   }
 
   bool canStart(HomeWalk walk) {
-    return isWalker &&
-        walk.status == HomeWalkStatus.accepted;
+    return isWalker && walk.status == HomeWalkStatus.accepted;
   }
 
   bool canFinish(HomeWalk walk) {
-    return isWalker &&
-        walk.status ==
-            HomeWalkStatus.inProgress;
+    return isWalker && walk.status == HomeWalkStatus.inProgress;
   }
 
   bool canCancel(HomeWalk walk) {
     if (!isOwner && !isWalker) return false;
 
-    return walk.status !=
-            HomeWalkStatus.completed &&
-        walk.status !=
-            HomeWalkStatus.cancelled &&
-        walk.status !=
-            HomeWalkStatus.rejected;
+    return walk.status == HomeWalkStatus.pending ||
+        walk.status == HomeWalkStatus.accepted;
   }
 
   WalksState copyWith({
@@ -182,11 +163,8 @@ class WalksState {
       selectedStatus: clearSelectedStatus
           ? null
           : selectedStatus ?? this.selectedStatus,
-      searchQuery:
-          searchQuery ?? this.searchQuery,
-      actionWalkId: clearActionWalk
-          ? null
-          : actionWalkId ?? this.actionWalkId,
+      searchQuery: searchQuery ?? this.searchQuery,
+      actionWalkId: clearActionWalk ? null : actionWalkId ?? this.actionWalkId,
     );
   }
 

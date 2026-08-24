@@ -41,9 +41,7 @@ class WalkDetailState {
   bool get isWalker {
     final value = _normalizeRole(role);
 
-    return value == 'paseador' ||
-        value == 'walker' ||
-        value == 'dogwalker';
+    return value == 'paseador' || value == 'walker' || value == 'dogwalker';
   }
 
   bool get isOwner {
@@ -58,8 +56,7 @@ class WalkDetailState {
   bool get isAdmin {
     final value = _normalizeRole(role);
 
-    return value == 'admin' ||
-        value == 'administrador';
+    return value == 'admin' || value == 'administrador';
   }
 
   int? get walkId {
@@ -102,19 +99,17 @@ class WalkDetailState {
   }
 
   bool get canEditRequestedPets {
-  final current = walk;
+    final current = walk;
 
-  return !acting &&
-      isOwner &&
-      current != null &&
-      current.isPending &&
-      !current.hasPendingPetProposal;
+    return !acting &&
+        isOwner &&
+        current != null &&
+        current.isPending &&
+        !current.hasPendingPetProposal;
   }
 
   bool get canRespondPetChange {
-    return !acting &&
-        isOwner &&
-        hasPendingPetProposal;
+    return !acting && isOwner && hasPendingPetProposal;
   }
 
   bool get canStart {
@@ -144,11 +139,7 @@ class WalkDetailState {
       return false;
     }
 
-    if (current.isFinished) {
-      return false;
-    }
-
-    return isWalker || isOwner;
+    return (isWalker || isOwner) && (current.isPending || current.isAccepted);
   }
 
   bool get canRate {
@@ -174,8 +165,7 @@ class WalkDetailState {
   bool get canOpenMap {
     final current = walk;
 
-    if (current == null ||
-        !current.hasValidId) {
+    if (current == null || !current.hasValidId) {
       return false;
     }
 
@@ -197,8 +187,7 @@ class WalkDetailState {
   }
 
   bool get canOpenTracking {
-    return isWalker &&
-        walk?.isInProgress == true;
+    return isWalker && walk?.isInProgress == true;
   }
 
   String get statusMessage {
@@ -269,29 +258,23 @@ class WalkDetailState {
     }
   }
 
-  WalkDetailRecommendedAction
-      get recommendedAction {
+  WalkDetailRecommendedAction get recommendedAction {
     final current = walk;
 
     if (current == null) {
-      return WalkDetailRecommendedAction
-          .unavailable;
+      return WalkDetailRecommendedAction.unavailable;
     }
 
     if (current.hasPendingPetProposal) {
       return isOwner
-          ? WalkDetailRecommendedAction
-              .reviewRequest
-          : WalkDetailRecommendedAction
-              .waitForWalker;
+          ? WalkDetailRecommendedAction.reviewRequest
+          : WalkDetailRecommendedAction.waitForWalker;
     }
 
     if (current.isPending) {
       return isWalker
-          ? WalkDetailRecommendedAction
-              .reviewRequest
-          : WalkDetailRecommendedAction
-              .waitForWalker;
+          ? WalkDetailRecommendedAction.reviewRequest
+          : WalkDetailRecommendedAction.waitForWalker;
     }
 
     if (current.isAccepted) {
@@ -301,38 +284,30 @@ class WalkDetailState {
     }
 
     if (current.isInProgress) {
-      if (!current.hasStartEvidence &&
-          isWalker) {
-        return WalkDetailRecommendedAction
-            .uploadStartEvidence;
+      if (!current.hasStartEvidence && isWalker) {
+        return WalkDetailRecommendedAction.uploadStartEvidence;
       }
 
       if (!current.hasEndEvidence) {
         return isWalker
-            ? WalkDetailRecommendedAction
-                .activateTracking
-            : WalkDetailRecommendedAction
-                .followRoute;
+            ? WalkDetailRecommendedAction.activateTracking
+            : WalkDetailRecommendedAction.followRoute;
       }
 
       return isWalker
-          ? WalkDetailRecommendedAction
-              .finishWalk
-          : WalkDetailRecommendedAction
-              .followRoute;
+          ? WalkDetailRecommendedAction.finishWalk
+          : WalkDetailRecommendedAction.followRoute;
     }
 
     if (current.isCompleted) {
       if (isOwner && !current.rated) {
-        return WalkDetailRecommendedAction
-            .rateExperience;
+        return WalkDetailRecommendedAction.rateExperience;
       }
 
       return WalkDetailRecommendedAction.completed;
     }
 
-    if (current.isCancelled ||
-        current.isRejected) {
+    if (current.isCancelled || current.isRejected) {
       return WalkDetailRecommendedAction.cancelled;
     }
 
@@ -343,9 +318,7 @@ class WalkDetailState {
     final current = walk;
 
     if (current?.hasPendingPetProposal == true) {
-      return isOwner
-          ? 'Revisa la propuesta'
-          : 'Esperando respuesta';
+      return isOwner ? 'Revisa la propuesta' : 'Esperando respuesta';
     }
 
     switch (recommendedAction) {
@@ -445,22 +418,15 @@ class WalkDetailState {
     return WalkDetailState(
       loading: loading ?? this.loading,
       acting: acting ?? this.acting,
-      error: clearError
-          ? null
-          : error ?? this.error,
+      error: clearError ? null : error ?? this.error,
       baseUrl: baseUrl ?? this.baseUrl,
       role: role ?? this.role,
-      requestedId:
-          requestedId ?? this.requestedId,
-      walk: clearWalk
-          ? null
-          : walk ?? this.walk,
+      requestedId: requestedId ?? this.requestedId,
+      walk: clearWalk ? null : walk ?? this.walk,
     );
   }
 
-  static String _normalizeRole(
-    String value,
-  ) {
+  static String _normalizeRole(String value) {
     return value
         .trim()
         .toLowerCase()
@@ -471,9 +437,6 @@ class WalkDetailState {
         .replaceAll('ú', 'u')
         .replaceAll('ü', 'u')
         .replaceAll('ñ', 'n')
-        .replaceAll(
-          RegExp(r'[\s_\-]'),
-          '',
-        );
+        .replaceAll(RegExp(r'[\s_\-]'), '');
   }
 }

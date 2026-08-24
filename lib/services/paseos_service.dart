@@ -115,7 +115,7 @@ class PaseosService {
     final data = <String, dynamic>{};
 
     if (motivo != null && motivo.trim().isNotEmpty) {
-      data['motivoCancelacion'] = motivo.trim();
+      data['motivo'] = motivo.trim();
     }
 
     final response = await ApiService.putAuth('/api/paseos/$id/cancelar', data);

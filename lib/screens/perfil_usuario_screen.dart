@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/paseadores_service.dart';
+import '../services/session_service.dart';
 import '../services/storage_service.dart';
 import '../services/usuario_service.dart';
 import '../theme/doggo_theme.dart';
@@ -67,10 +68,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
 
       Map<String, dynamic>? perfilPaseador;
 
-      final rol = _texto(
-        perfil['rol'],
-        fallback: '',
-      );
+      final rol = _texto(perfil['rol'], fallback: '');
 
       final esPaseador = rol.toLowerCase().contains('paseador');
 
@@ -162,17 +160,11 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   }
 
   String get _nombre {
-    return _texto(
-      _valorUsuario(['nombre']),
-      fallback: '',
-    );
+    return _texto(_valorUsuario(['nombre']), fallback: '');
   }
 
   String get _apellido {
-    return _texto(
-      _valorUsuario(['apellido']),
-      fallback: '',
-    );
+    return _texto(_valorUsuario(['apellido']), fallback: '');
   }
 
   String get _nombreCompleto {
@@ -181,10 +173,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   }
 
   String get _email {
-    return _texto(
-      _valorUsuario(['email']),
-      fallback: 'Correo no disponible',
-    );
+    return _texto(_valorUsuario(['email']), fallback: 'Correo no disponible');
   }
 
   String get _telefono {
@@ -195,10 +184,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   }
 
   String get _rol {
-    return _texto(
-      _valorUsuario(['rol']),
-      fallback: 'Usuario',
-    );
+    return _texto(_valorUsuario(['rol']), fallback: 'Usuario');
   }
 
   bool get _esPaseador {
@@ -244,15 +230,14 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   String? get _fotoPaseadorUrl {
     if (!_esPaseador) return null;
 
-    return _urlPublica(
-      _valorPaseador(['fotoUrl']),
-    );
+    return _urlPublica(_valorPaseador(['fotoUrl']));
   }
 
   String get _descripcionPaseador {
     return _texto(
       _valorPaseador(['descripcion']),
-      fallback: 'Agrega una descripción profesional para que los dueños conozcan tu experiencia.',
+      fallback:
+          'Agrega una descripción profesional para que los dueños conozcan tu experiencia.',
     );
   }
 
@@ -304,17 +289,18 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
 
     if (!_esPaseador || _perfilPaseador == null) return false;
 
-    final tieneDescripcion =
-        _texto(_valorPaseador(['descripcion']), fallback: '')
-            .isNotEmpty;
+    final tieneDescripcion = _texto(
+      _valorPaseador(['descripcion']),
+      fallback: '',
+    ).isNotEmpty;
 
-    final tieneZona =
-        _texto(_valorPaseador(['zonaServicio']), fallback: '')
-            .isNotEmpty;
+    final tieneZona = _texto(
+      _valorPaseador(['zonaServicio']),
+      fallback: '',
+    ).isNotEmpty;
 
-    final tarifa = double.tryParse(
-          _valorPaseador(['tarifaPorHora'])?.toString() ?? '',
-        ) ??
+    final tarifa =
+        double.tryParse(_valorPaseador(['tarifaPorHora'])?.toString() ?? '') ??
         0;
 
     final tieneFoto = _fotoPaseadorUrl != null;
@@ -327,11 +313,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
 
     final actualizado = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditarPerfilScreen(
-          perfil: _perfil!,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => EditarPerfilScreen(perfil: _perfil!)),
     );
 
     if (actualizado == true) {
@@ -342,9 +324,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   Future<void> _abrirPerfilPaseador() async {
     final actualizado = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const EditarPerfilPaseadorScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const EditarPerfilPaseadorScreen()),
     );
 
     if (actualizado == true) {
@@ -355,19 +335,12 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
   Future<void> _abrirCambiarPassword() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CambiarPasswordScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const CambiarPasswordScreen()),
     );
   }
 
   Future<void> _abrir(Widget screen) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => screen,
-      ),
-    );
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 
     if (mounted) {
       await _cargarTodo();
@@ -407,15 +380,13 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
 
     if (confirmar != true) return;
 
-    await StorageService.limpiarSesion();
+    await SessionService.cerrarSesion();
 
     if (!mounted) return;
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
     );
   }
@@ -428,45 +399,45 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
         child: _cargando
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? _buildError()
-                : FadeTransition(
-                    opacity: _fade,
-                    child: RefreshIndicator(
-                      onRefresh: _cargarTodo,
-                      child: CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
-                        slivers: [
-                          SliverToBoxAdapter(child: _buildTopBar()),
-                          SliverToBoxAdapter(child: _buildHeader()),
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
-                              child: Column(
-                                children: [
-                                  _buildEstadoCuenta(),
-                                  const SizedBox(height: 14),
-                                  if (_esPaseador) ...[
-                                    _buildPerfilProfesionalCard(),
-                                    const SizedBox(height: 14),
-                                  ],
-                                  _buildDatosPersonales(),
-                                  const SizedBox(height: 14),
-                                  _buildPanelRol(),
-                                  const SizedBox(height: 14),
-                                  _buildAccionesPrincipales(),
-                                  const SizedBox(height: 14),
-                                  _buildCuenta(),
-                                  const SizedBox(height: 34),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+            ? _buildError()
+            : FadeTransition(
+                opacity: _fade,
+                child: RefreshIndicator(
+                  onRefresh: _cargarTodo,
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
                     ),
+                    slivers: [
+                      SliverToBoxAdapter(child: _buildTopBar()),
+                      SliverToBoxAdapter(child: _buildHeader()),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                          child: Column(
+                            children: [
+                              _buildEstadoCuenta(),
+                              const SizedBox(height: 14),
+                              if (_esPaseador) ...[
+                                _buildPerfilProfesionalCard(),
+                                const SizedBox(height: 14),
+                              ],
+                              _buildDatosPersonales(),
+                              const SizedBox(height: 14),
+                              _buildPanelRol(),
+                              const SizedBox(height: 14),
+                              _buildAccionesPrincipales(),
+                              const SizedBox(height: 14),
+                              _buildCuenta(),
+                              const SizedBox(height: 34),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+              ),
       ),
     );
   }
@@ -477,19 +448,14 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
       decoration: BoxDecoration(
         color: DogGoTheme.cream2,
         border: Border(
-          bottom: BorderSide(
-            color: DogGoTheme.border.withOpacity(.8),
-          ),
+          bottom: BorderSide(color: DogGoTheme.border.withOpacity(.8)),
         ),
       ),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: DogGoTheme.ink,
-            ),
+            icon: const Icon(Icons.arrow_back_rounded, color: DogGoTheme.ink),
           ),
           const SizedBox(width: 4),
           const DogGoLogo(size: 38),
@@ -497,10 +463,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargarTodo,
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: DogGoTheme.ink,
-            ),
+            icon: const Icon(Icons.refresh_rounded, color: DogGoTheme.ink),
           ),
         ],
       ),
@@ -575,15 +538,9 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '👤 PERFIL DOGGO',
-            style: DogGoTheme.label(size: 11),
-          ),
+          Text('👤 PERFIL DOGGO', style: DogGoTheme.label(size: 11)),
           const SizedBox(height: 10),
-          Text(
-            'Mi perfil',
-            style: DogGoTheme.title(size: 34),
-          ),
+          Text('Mi perfil', style: DogGoTheme.title(size: 34)),
           const SizedBox(height: 10),
           Text(
             _esPaseador
@@ -677,10 +634,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
                         _nombreCompleto,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: DogGoTheme.title(
-                          size: 24,
-                          color: Colors.white,
-                        ),
+                        style: DogGoTheme.title(size: 24, color: Colors.white),
                       ),
                       const SizedBox(height: 5),
                       Text(
@@ -733,20 +687,25 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
           _EstadoItem(
             value: _rolBonito,
             label: 'Rol',
-            icono:
-                _esPaseador ? Icons.directions_walk_rounded : Icons.pets_rounded,
+            icono: _esPaseador
+                ? Icons.directions_walk_rounded
+                : Icons.pets_rounded,
             color: _esPaseador ? DogGoTheme.purple : DogGoTheme.teal,
-            surface: _esPaseador ? DogGoTheme.purpleLight : DogGoTheme.tealLight,
+            surface: _esPaseador
+                ? DogGoTheme.purpleLight
+                : DogGoTheme.tealLight,
           ),
           _DividerSmall(),
           _EstadoItem(
             value: _emailConfirmado ? 'Confirmado' : 'Pendiente',
             label: 'Correo',
-            icono:
-                _emailConfirmado ? Icons.verified_rounded : Icons.warning_rounded,
+            icono: _emailConfirmado
+                ? Icons.verified_rounded
+                : Icons.warning_rounded,
             color: _emailConfirmado ? DogGoTheme.green : DogGoTheme.orange,
-            surface:
-                _emailConfirmado ? DogGoTheme.greenLight : DogGoTheme.orangeLight,
+            surface: _emailConfirmado
+                ? DogGoTheme.greenLight
+                : DogGoTheme.orangeLight,
           ),
           _DividerSmall(),
           _EstadoItem(
@@ -932,7 +891,9 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
       surface: _esPaseador ? DogGoTheme.purpleLight : DogGoTheme.tealLight,
       children: [
         _ActionRow(
-          icon: _esPaseador ? Icons.route_rounded : Icons.directions_walk_rounded,
+          icon: _esPaseador
+              ? Icons.route_rounded
+              : Icons.directions_walk_rounded,
           title: _esPaseador ? 'Mis paseos asignados' : 'Mis paseos',
           subtitle: _esPaseador
               ? 'Acepta, inicia, finaliza y comparte ubicación.'
@@ -1013,33 +974,21 @@ class _HeaderChip extends StatelessWidget {
   final String texto;
   final IconData icono;
 
-  const _HeaderChip({
-    required this.texto,
-    required this.icono,
-  });
+  const _HeaderChip({required this.texto, required this.icono});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(.16),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withOpacity(.24),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(.24)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icono,
-            color: Colors.white,
-            size: 16,
-          ),
+          Icon(icono, color: Colors.white, size: 16),
           const SizedBox(width: 6),
           Text(
             texto,
@@ -1107,11 +1056,7 @@ class _EstadoItem extends StatelessWidget {
               color: surface,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icono,
-              color: color,
-              size: 19,
-            ),
+            child: Icon(icono, color: color, size: 19),
           ),
           const SizedBox(height: 5),
           Text(
@@ -1124,10 +1069,7 @@ class _EstadoItem extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          Text(
-            label,
-            style: DogGoTheme.subtitle(size: 9.5),
-          ),
+          Text(label, style: DogGoTheme.subtitle(size: 9.5)),
         ],
       ),
     );
@@ -1137,11 +1079,7 @@ class _EstadoItem extends StatelessWidget {
 class _DividerSmall extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 42,
-      color: DogGoTheme.border,
-    );
+    return Container(width: 1, height: 42, color: DogGoTheme.border);
   }
 }
 
@@ -1174,19 +1112,10 @@ class _SectionCard extends StatelessWidget {
                   color: surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  icono,
-                  color: color,
-                  size: 22,
-                ),
+                child: Icon(icono, color: color, size: 22),
               ),
               const SizedBox(width: 11),
-              Expanded(
-                child: Text(
-                  title,
-                  style: DogGoTheme.title(size: 18),
-                ),
-              ),
+              Expanded(child: Text(title, style: DogGoTheme.title(size: 18))),
             ],
           ),
           const SizedBox(height: 12),
@@ -1225,21 +1154,14 @@ class _InfoRow extends StatelessWidget {
               color: surface,
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 21,
-            ),
+            child: Icon(icon, color: color, size: 21),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: DogGoTheme.subtitle(size: 11.5),
-                ),
+                Text(title, style: DogGoTheme.subtitle(size: 11.5)),
                 const SizedBox(height: 2),
                 Text(
                   value,
@@ -1294,11 +1216,7 @@ class _ActionRow extends StatelessWidget {
                   color: surface,
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 22,
-                ),
+                child: Icon(icon, color: color, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1314,10 +1232,7 @@ class _ActionRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: DogGoTheme.subtitle(size: 11.5),
-                    ),
+                    Text(subtitle, style: DogGoTheme.subtitle(size: 11.5)),
                   ],
                 ),
               ),
@@ -1350,10 +1265,7 @@ class _InfoPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(18),
@@ -1361,11 +1273,7 @@ class _InfoPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: color,
-            size: 15,
-          ),
+          Icon(icon, color: color, size: 15),
           const SizedBox(width: 5),
           Text(
             text,

@@ -73,6 +73,12 @@ Al recuperar conectividad, el servicio offline intenta enviar el trabajo pendien
 
 ## Organización del código
 
+`ApiService` es el único cliente HTTP y concentra headers, token, timeouts,
+multipart y errores. `SessionService` es la autoridad de la sesión: guarda y lee
+el JWT, valida su expiración, actualiza datos del usuario y detiene el tracking al
+cerrar sesión. La búsqueda móvil de paseadores comparte el endpoint paginado con
+la web pública.
+
 ```text
 lib/
 ├── app.dart / main.dart       Arranque y composición principal

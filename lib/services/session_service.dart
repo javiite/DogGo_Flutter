@@ -5,7 +5,13 @@ import 'background_tracking_service.dart';
 
 class SessionService {
   static Future<String?> obtenerToken() async {
-    return StorageService.obtenerToken();
+    final token = await StorageService.obtenerToken();
+    if (token == null || token.trim().isEmpty) return null;
+    if (_tokenExpiro(token)) {
+      await cerrarSesion();
+      return null;
+    }
+    return token;
   }
 
   static Future<int?> obtenerUsuarioId() async {
@@ -115,8 +121,7 @@ class SessionService {
   }
 
   static Future<bool> haySesionActiva() async {
-    final token = await StorageService.obtenerToken();
-    return token != null && token.trim().isNotEmpty;
+    return await obtenerToken() != null;
   }
 
   static Future<bool> estaLogueado() async {
@@ -176,11 +181,7 @@ class SessionService {
   }
 
   static Future<void> limpiarSesion() async {
-    await StorageService.limpiarToken();
-    await StorageService.limpiarUsuarioId();
-    await StorageService.limpiarRol();
-    await StorageService.limpiarNombre();
-    await StorageService.limpiarEmail();
+    await StorageService.limpiarSesion();
   }
 
   static Future<void> cerrarSesion() async {
@@ -189,8 +190,7 @@ class SessionService {
   }
 
   static Future<void> logout() async {
-    await BackgroundTrackingService.detenerTracking();
-    await limpiarSesion();
+    await cerrarSesion();
   }
 
   static String normalizarRol(String? rol) {
@@ -350,5 +350,16 @@ class SessionService {
     if (valor is int) return valor;
 
     return int.tryParse(valor.toString());
+  }
+
+  static bool _tokenExpiro(String token) {
+    final payload = _leerPayloadJwt(token);
+    final exp = _intSeguro(payload?['exp']);
+    if (exp == null) return false;
+    final expiration = DateTime.fromMillisecondsSinceEpoch(
+      exp * 1000,
+      isUtc: true,
+    );
+    return !expiration.isAfter(DateTime.now().toUtc());
   }
 }

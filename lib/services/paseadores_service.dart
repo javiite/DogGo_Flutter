@@ -1,21 +1,21 @@
-import 'dart:convert';
 import 'dart:io';
-
-import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 import 'storage_service.dart';
 
 class PaseadoresService {
   static Future<Map<String, dynamic>> obtenerPaseadores() async {
-    final response = await ApiService.getAuth('/api/paseadores/cercanos');
+    final response = await ApiService.getAuth(
+      '/api/paseadores/buscar?pagina=1&tamanioPagina=50',
+    );
 
     final statusCode = response['statusCode'];
     final body = response['body'];
 
     if (statusCode == 200 && body is Map && body['success'] == true) {
       final currentUserId = await StorageService.obtenerUsuarioId();
-      final walkers = _normalizarLista(body['data'])
+      final data = _bodySeguro(body['data']);
+      final walkers = _normalizarLista(data['elementos'])
           .where((item) {
             if (currentUserId == null || item is! Map) return true;
             final value = item['usuarioId'];
@@ -118,36 +118,11 @@ class PaseadoresService {
     required File archivo,
     required String fieldName,
   }) async {
-    final baseUrl = await ApiService.obtenerBaseUrl();
-    final token = await ApiService.obtenerToken();
-
-    if (token == null || token.isEmpty) {
-      throw Exception('No hay token guardado. Inicia sesión otra vez.');
-    }
-
-    final url = Uri.parse('$baseUrl$endpoint');
-
-    final request = http.MultipartRequest('POST', url);
-
-    request.headers['Authorization'] = 'Bearer $token';
-    request.headers['Accept'] = 'application/json';
-
-    request.files.add(
-      await http.MultipartFile.fromPath(fieldName, archivo.path),
+    return ApiService.postMultipartAuth(
+      endpoint,
+      filePath: archivo.path,
+      fileFieldName: fieldName,
     );
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-
-    dynamic responseBody;
-
-    try {
-      responseBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-    } catch (_) {
-      responseBody = {'success': false, 'message': response.body};
-    }
-
-    return {'statusCode': response.statusCode, 'body': responseBody};
   }
 
   static Map<String, dynamic> _normalizarRespuesta(

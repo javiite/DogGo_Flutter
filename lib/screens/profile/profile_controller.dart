@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/errors/api_exception.dart';
 import '../../services/paseadores_service.dart';
+import '../../services/session_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/usuario_service.dart';
 import 'profile_state.dart';
@@ -13,9 +14,8 @@ class ProfileController extends ChangeNotifier {
   bool _disposed = false;
   bool _requestInProgress = false;
 
-  ProfileController({
-    UsuarioService? usuarioService,
-  }) : _usuarioService = usuarioService ?? UsuarioService();
+  ProfileController({UsuarioService? usuarioService})
+    : _usuarioService = usuarioService ?? UsuarioService();
 
   ProfileState get state => _state;
 
@@ -36,12 +36,7 @@ class ProfileController extends ChangeNotifier {
 
     _requestInProgress = true;
 
-    _setState(
-      _state.copyWith(
-        loading: true,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(loading: true, clearError: true));
 
     try {
       final results = await Future.wait<dynamic>([
@@ -85,12 +80,7 @@ class ProfileController extends ChangeNotifier {
     } catch (error) {
       if (_disposed) return;
 
-      _setState(
-        _state.copyWith(
-          loading: false,
-          error: _cleanError(error),
-        ),
-      );
+      _setState(_state.copyWith(loading: false, error: _cleanError(error)));
     } finally {
       _requestInProgress = false;
     }
@@ -98,8 +88,7 @@ class ProfileController extends ChangeNotifier {
 
   Future<Map<String, dynamic>?> _loadOwnerProfile() async {
     try {
-      final response =
-          await _usuarioService.obtenerPerfilDuenio();
+      final response = await _usuarioService.obtenerPerfilDuenio();
 
       return _asMap(response);
     } catch (error) {
@@ -114,8 +103,7 @@ class ProfileController extends ChangeNotifier {
 
   Future<Map<String, dynamic>?> _loadWalkerProfile() async {
     try {
-      final response =
-          await PaseadoresService.obtenerMiPerfilPaseador();
+      final response = await PaseadoresService.obtenerMiPerfilPaseador();
 
       return _asMap(response);
     } catch (error) {
@@ -130,15 +118,11 @@ class ProfileController extends ChangeNotifier {
 
   Future<bool> closeSession() async {
     try {
-      await StorageService.limpiarSesion();
+      await SessionService.cerrarSesion();
       return true;
     } catch (error) {
       if (!_disposed) {
-        _setState(
-          _state.copyWith(
-            error: _cleanError(error),
-          ),
-        );
+        _setState(_state.copyWith(error: _cleanError(error)));
       }
 
       return false;
@@ -148,11 +132,7 @@ class ProfileController extends ChangeNotifier {
   void clearError() {
     if (_state.error == null) return;
 
-    _setState(
-      _state.copyWith(
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(clearError: true));
   }
 
   Map<String, dynamic> _asMap(dynamic value) {
