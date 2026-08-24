@@ -301,9 +301,10 @@ class PetFormController extends ChangeNotifier {
         message =
             'La mascota se registró, pero el servidor no devolvió su identificador para subir la fotografía.';
       } else {
-        final photoResponse = await PerrosService.subirFotoPerro(
+        final photoResponse = await PerrosService.agregarFotoGaleria(
           id: petId,
           filePath: selectedPhoto.path,
+          hacerPrincipal: true,
         );
 
         if (photoResponse['success'] == true) {
@@ -377,9 +378,10 @@ class PetFormController extends ChangeNotifier {
     );
 
     if (selectedPhoto != null) {
-      final photoResponse = await PerrosService.subirFotoPerro(
+      final photoResponse = await PerrosService.agregarFotoGaleria(
         id: pet.id,
         filePath: selectedPhoto.path,
+        hacerPrincipal: true,
       );
 
       if (photoResponse['success'] == true) {

@@ -149,21 +149,6 @@ class PerrosService {
     );
   }
 
-  // Método anterior: sube una foto y la convierte
-  // directamente en la portada.
-  static Future<Map<String, dynamic>> subirFotoPerro({
-    required int id,
-    required String filePath,
-  }) async {
-    final response = await ApiService.postMultipartAuth(
-      '/api/perros/$id/foto',
-      filePath: filePath,
-      fileFieldName: 'foto',
-    );
-
-    return _normalizeResponse(response, fallback: 'No se pudo subir la foto.');
-  }
-
   static Future<Map<String, dynamic>> agregarFotoGaleria({
     required int id,
     required String filePath,

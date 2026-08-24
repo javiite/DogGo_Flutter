@@ -12,7 +12,8 @@ class ChatService {
         String mensaje = 'Error al cargar mensajes.';
 
         if (body is Map) {
-          mensaje = body['message']?.toString() ??
+          mensaje =
+              body['message']?.toString() ??
               body['mensaje']?.toString() ??
               body['error']?.toString() ??
               mensaje;
@@ -26,7 +27,8 @@ class ChatService {
       datos = body ?? respuesta;
 
       if (datos is Map) {
-        datos = datos['data'] ??
+        datos =
+            datos['data'] ??
             datos['mensajes'] ??
             datos['messages'] ??
             datos['items'] ??
@@ -55,7 +57,8 @@ class ChatService {
         String mensaje = 'Error en la solicitud.';
 
         if (body is Map) {
-          mensaje = body['message']?.toString() ??
+          mensaje =
+              body['message']?.toString() ??
               body['mensaje']?.toString() ??
               body['error']?.toString() ??
               mensaje;
@@ -69,7 +72,8 @@ class ChatService {
       datos = body ?? respuesta;
 
       if (datos is Map) {
-        final interno = datos['data'] ??
+        final interno =
+            datos['data'] ??
             datos['mensaje'] ??
             datos['message'] ??
             datos['resultado'] ??
@@ -85,38 +89,14 @@ class ChatService {
     if (datos is Map<String, dynamic>) return datos;
     if (datos is Map) return Map<String, dynamic>.from(datos);
 
-    return {
-      'success': true,
-      'data': datos,
-    };
+    return {'success': true, 'data': datos};
   }
 
   Future<List<Map<String, dynamic>>> obtenerMensajesPaseo(int paseoId) async {
-    final endpoints = [
-      '/api/chat/paseo/$paseoId',
+    final respuesta = await ApiService.getAuth(
       '/api/chat/paseos/$paseoId/mensajes',
-      '/api/Chat/paseo/$paseoId',
-      '/api/Chat/paseos/$paseoId/mensajes',
-      '/api/chat/$paseoId',
-      '/api/Chat/$paseoId',
-      '/api/mensajes/paseo/$paseoId',
-      '/api/Mensajes/paseo/$paseoId',
-      '/api/paseos/$paseoId/chat',
-      '/api/Paseos/$paseoId/chat',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.getAuth(endpoint);
-        return _normalizarLista(respuesta);
-      } catch (e) {
-        ultimoError = Exception(e.toString().replaceFirst('Exception: ', ''));
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudieron cargar los mensajes.');
+    );
+    return _normalizarLista(respuesta);
   }
 
   Future<Map<String, dynamic>> enviarMensaje({
@@ -129,65 +109,17 @@ class ChatService {
       throw Exception('Escribe un mensaje antes de enviarlo.');
     }
 
-    final body = {
-      'paseoId': paseoId,
-      'PaseoId': paseoId,
-      'contenido': texto,
-      'Contenido': texto,
-      'mensaje': texto,
-      'Mensaje': texto,
-      'texto': texto,
-      'Texto': texto,
-    };
-
-    final endpoints = [
-      '/api/chat/paseo/$paseoId/mensajes',
+    final respuesta = await ApiService.postAuth(
       '/api/chat/paseos/$paseoId/mensajes',
-      '/api/Chat/paseo/$paseoId/mensajes',
-      '/api/Chat/paseos/$paseoId/mensajes',
-      '/api/chat/enviar',
-      '/api/Chat/enviar',
-      '/api/chat',
-      '/api/Chat',
-      '/api/mensajes',
-      '/api/Mensajes',
-      '/api/paseos/$paseoId/chat',
-      '/api/Paseos/$paseoId/chat',
-    ];
-
-    Exception? ultimoError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.postAuth(endpoint, body);
-        return _normalizarRespuesta(respuesta);
-      } catch (e) {
-        ultimoError = Exception(e.toString().replaceFirst('Exception: ', ''));
-      }
-    }
-
-    throw ultimoError ?? Exception('No se pudo enviar el mensaje.');
+      {'contenido': texto},
+    );
+    return _normalizarRespuesta(respuesta);
   }
 
   Future<void> marcarComoLeidos(int paseoId) async {
-    final endpoints = [
-      '/api/chat/paseo/$paseoId/leidos',
+    final respuesta = await ApiService.putAuth(
       '/api/chat/paseos/$paseoId/leidos',
-      '/api/Chat/paseo/$paseoId/leidos',
-      '/api/Chat/paseos/$paseoId/leidos',
-    ];
-
-    for (final endpoint in endpoints) {
-      try {
-        final respuesta = await ApiService.putAuth(endpoint);
-        final statusCode = respuesta['statusCode'];
-
-        if (statusCode is int && statusCode >= 200 && statusCode < 300) {
-          return;
-        }
-      } catch (_) {
-        continue;
-      }
-    }
+    );
+    _normalizarRespuesta(respuesta);
   }
 }

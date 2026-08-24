@@ -387,54 +387,20 @@ class WalkRequestController extends ChangeNotifier {
     _setState(_state.copyWith(saving: true, clearError: true));
 
     Map<String, dynamic> bodyFor(WalkScheduleDraft walk) {
-      final primaryPetId = walk.petIds.first;
-      final price = _state.priceForWalk(walk);
       return <String, dynamic>{
         'paseadorId': _state.walker.id,
-        'PaseadorId': _state.walker.id,
-
-        // Primer perro para compatibilidad.
-        'perroId': primaryPetId,
-        'PerroId': primaryPetId,
-
-        // Selección múltiple real.
         'perroIds': walk.petIds,
-        'PerroIds': walk.petIds,
-
         'duracionMinutos': walk.durationMinutes,
-        'DuracionMinutos': walk.durationMinutes,
-
         'esProgramado': true,
-        'EsProgramado': true,
-
         'fechaProgramada': walk.startsAt.toIso8601String(),
-        'FechaProgramada': walk.startsAt.toIso8601String(),
-
         'latitudRecogida': location.latitude,
-        'LatitudRecogida': location.latitude,
-
         'longitudRecogida': location.longitude,
-        'LongitudRecogida': location.longitude,
-
         'direccionRecogida': location.displayAddress,
-        'DireccionRecogida': location.displayAddress,
-
         'ubicacionTexto': location.displayAddress,
-        'UbicacionTexto': location.displayAddress,
-
         'referenciasRecogida': cleanNotes.isNotEmpty
             ? cleanNotes
             : location.reference,
-        'ReferenciasRecogida': cleanNotes.isNotEmpty
-            ? cleanNotes
-            : location.reference,
-
         'notas': cleanNotes,
-        'Notas': cleanNotes,
-
-        // El backend vuelve a calcularlo.
-        'precio': price,
-        'Precio': price,
       };
     }
 
