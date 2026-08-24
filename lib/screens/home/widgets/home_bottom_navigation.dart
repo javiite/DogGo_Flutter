@@ -35,12 +35,10 @@ class HomeBottomNavigation extends StatelessWidget {
         height: 76,
         decoration: BoxDecoration(
           color: DogGoTheme.card,
-          border: const Border(
-            top: BorderSide(color: DogGoTheme.border),
-          ),
+          border: const Border(top: BorderSide(color: DogGoTheme.border)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(.035),
+              color: Colors.black.withValues(alpha: .035),
               blurRadius: 14,
               offset: const Offset(0, -4),
             ),
@@ -111,10 +109,7 @@ class _BottomNavigationItem extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 4,
-            vertical: 8,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -122,11 +117,7 @@ class _BottomNavigationItem extends StatelessWidget {
                 scale: active ? 1.05 : 1,
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 23,
-                ),
+                child: Icon(icon, color: color, size: 23),
               ),
               const SizedBox(height: 4),
               Text(
@@ -136,9 +127,7 @@ class _BottomNavigationItem extends StatelessWidget {
                 style: DogGoTheme.body(
                   size: 10,
                   color: color,
-                  weight: active
-                      ? FontWeight.w900
-                      : FontWeight.w600,
+                  weight: active ? FontWeight.w900 : FontWeight.w600,
                 ),
               ),
             ],

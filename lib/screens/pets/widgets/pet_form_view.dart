@@ -588,36 +588,89 @@ class _ThreeWayChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: DogGoTheme.body(size: 13.5, weight: FontWeight.w700),
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: DogGoTheme.body(size: 13.5, weight: FontWeight.w700),
+          ),
+          const SizedBox(height: DogGoSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: _ChoiceOption(
+                  label: const Text('Sí'),
+                  selected: value == true,
+                  onTap: () => onChanged(true),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ChoiceOption(
+                  label: const Text('No'),
+                  selected: value == false,
+                  onTap: () => onChanged(false),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ChoiceOption(
+                  label: const Text('No lo sé'),
+                  selected: value == null,
+                  onTap: () => onChanged(null),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChoiceOption extends StatelessWidget {
+  final Widget label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ChoiceOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? DogGoTheme.teal : DogGoTheme.cream2,
+      borderRadius: BorderRadius.circular(DogGoRadius.medium),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(DogGoRadius.medium),
+            border: Border.all(
+              color: selected ? DogGoTheme.teal : DogGoTheme.border,
+            ),
+          ),
+          child: DefaultTextStyle.merge(
+            textAlign: TextAlign.center,
+            style: DogGoTheme.body(
+              size: 12,
+              color: selected ? Colors.white : DogGoTheme.ink,
+              weight: FontWeight.w800,
+            ),
+            child: label,
+          ),
         ),
-        const SizedBox(height: DogGoSpacing.sm),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ChoiceChip(
-              label: const Text('Sí'),
-              selected: value == true,
-              onSelected: (_) => onChanged(true),
-            ),
-            ChoiceChip(
-              label: const Text('No'),
-              selected: value == false,
-              onSelected: (_) => onChanged(false),
-            ),
-            ChoiceChip(
-              label: const Text('No lo sé'),
-              selected: value == null,
-              onSelected: (_) => onChanged(null),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
   }
 }

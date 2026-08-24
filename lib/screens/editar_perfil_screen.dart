@@ -13,6 +13,7 @@ import '../widgets/doggo_map_preview.dart';
 import 'profile/edit_profile_controller.dart';
 import 'profile/edit_profile_state.dart';
 import 'seleccionar_ubicacion_screen.dart';
+import 'location/widgets/searchable_location_field.dart';
 
 class EditarPerfilScreen extends StatefulWidget {
   final Map<String, dynamic> perfil;
@@ -415,21 +416,13 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             },
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
-          DropdownButtonFormField<String>(
-            initialValue: state.selectedStateCode,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Estado',
-              prefixIcon: Icon(Icons.map_outlined),
-            ),
-            items: state.states
-                .map(
-                  (item) => DropdownMenuItem(
-                    value: item.code,
-                    child: Text(item.name),
-                  ),
-                )
-                .toList(),
+          SearchableLocationField(
+            label: 'Estado',
+            icon: Icons.map_outlined,
+            items: state.states,
+            value: state.selectedStateCode,
+            valueOf: (item) => item.code,
+            labelOf: (item) => item.name,
             onChanged: state.saving ? null : _controller.selectState,
             validator: (value) =>
                 value == null ? 'Selecciona tu estado.' : null,
@@ -669,7 +662,7 @@ class _ProfilePhoto extends StatelessWidget {
       return Image.file(
         selectedPhoto!,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) {
+        errorBuilder: (_, _, _) {
           return const _PhotoPlaceholder();
         },
       );
@@ -682,7 +675,7 @@ class _ProfilePhoto extends StatelessWidget {
       return Image.network(
         url,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) {
+        errorBuilder: (_, _, _) {
           return const _PhotoPlaceholder();
         },
       );

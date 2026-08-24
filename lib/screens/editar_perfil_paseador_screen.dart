@@ -11,6 +11,8 @@ import '../theme/doggo_theme.dart';
 import 'profile/edit_walker_profile_controller.dart';
 import 'profile/edit_walker_profile_state.dart';
 import 'profile/widgets/walker_coverage_map.dart';
+import 'availability/availability_screen.dart';
+import 'location/widgets/searchable_location_field.dart';
 
 class EditarPerfilPaseadorScreen extends StatefulWidget {
   const EditarPerfilPaseadorScreen({super.key});
@@ -395,21 +397,13 @@ class _EditarPerfilPaseadorScreenState
             validator: _controller.validateDescription,
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
-          DropdownButtonFormField<String>(
-            initialValue: _controller.state.selectedStateCode,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Estado',
-              prefixIcon: Icon(Icons.map_outlined),
-            ),
-            items: _controller.state.states
-                .map(
-                  (item) => DropdownMenuItem(
-                    value: item.code,
-                    child: Text(item.name, overflow: TextOverflow.ellipsis),
-                  ),
-                )
-                .toList(),
+          SearchableLocationField(
+            label: 'Estado',
+            icon: Icons.map_outlined,
+            items: _controller.state.states,
+            value: _controller.state.selectedStateCode,
+            valueOf: (item) => item.code,
+            labelOf: (item) => item.name,
             onChanged: _controller.state.saving
                 ? null
                 : _controller.selectState,
@@ -542,36 +536,56 @@ class _EditarPerfilPaseadorScreenState
       title: 'Disponibilidad',
       subtitle: 'Indica si actualmente puedes recibir solicitudes.',
       icon: Icons.event_available_outlined,
-      child: SwitchListTile.adaptive(
-        contentPadding: EdgeInsets.zero,
-        value: state.available,
-        onChanged: state.saving ? null : _controller.setAvailable,
-        secondary: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: state.available
-                ? DogGoTheme.greenLight
-                : DogGoTheme.redLight,
-            borderRadius: BorderRadius.circular(DogGoRadius.medium),
+      child: Column(
+        children: [
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: state.available,
+            onChanged: state.saving ? null : _controller.setAvailable,
+            secondary: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: state.available
+                    ? DogGoTheme.greenLight
+                    : DogGoTheme.redLight,
+                borderRadius: BorderRadius.circular(DogGoRadius.medium),
+              ),
+              child: Icon(
+                state.available
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.pause_circle_outline_rounded,
+                color: state.available ? DogGoTheme.green : DogGoTheme.red,
+              ),
+            ),
+            title: Text(
+              state.available ? 'Disponible para paseos' : 'No disponible',
+              style: DogGoTheme.body(weight: FontWeight.w800),
+            ),
+            subtitle: Text(
+              state.available
+                  ? 'Los dueños podrán encontrarte.'
+                  : 'Tu perfil permanecerá visible, pero pausado.',
+              style: DogGoTheme.subtitle(size: 12),
+            ),
           ),
-          child: Icon(
-            state.available
-                ? Icons.check_circle_outline_rounded
-                : Icons.pause_circle_outline_rounded,
-            color: state.available ? DogGoTheme.green : DogGoTheme.red,
+          const Divider(height: DogGoSpacing.largeGap),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: state.saving
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AvailabilityScreen(),
+                      ),
+                    ),
+              icon: const Icon(Icons.calendar_month_outlined),
+              label: const Text('Configurar días y horarios'),
+            ),
           ),
-        ),
-        title: Text(
-          state.available ? 'Disponible para paseos' : 'No disponible',
-          style: DogGoTheme.body(weight: FontWeight.w800),
-        ),
-        subtitle: Text(
-          state.available
-              ? 'Los dueños podrán encontrarte.'
-              : 'Tu perfil permanecerá visible, pero pausado.',
-          style: DogGoTheme.subtitle(size: 12),
-        ),
+        ],
       ),
     );
   }
