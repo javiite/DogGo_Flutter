@@ -12,6 +12,7 @@ import 'editar_perfil_paseador_screen.dart';
 import 'editar_perfil_screen.dart';
 import 'profile/profile_controller.dart';
 import 'profile/profile_state.dart';
+import 'verificacion_paseador_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -38,9 +39,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Future<void> _openScreen(Widget screen) async {
     final updated = await Navigator.push<bool>(
       context,
-      MaterialPageRoute<bool>(
-        builder: (_) => screen,
-      ),
+      MaterialPageRoute<bool>(builder: (_) => screen),
     );
 
     if (!mounted) return;
@@ -51,23 +50,19 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Future<void> _editProfile() {
-    return _openScreen(
-      EditarPerfilScreen(
-        perfil: _controller.state.user,
-      ),
-    );
+    return _openScreen(EditarPerfilScreen(perfil: _controller.state.user));
   }
 
   Future<void> _editWalkerProfile() {
-    return _openScreen(
-      const EditarPerfilPaseadorScreen(),
-    );
+    return _openScreen(const EditarPerfilPaseadorScreen());
+  }
+
+  Future<void> _openWalkerVerification() {
+    return _openScreen(const VerificacionPaseadorScreen());
   }
 
   Future<void> _changePassword() {
-    return _openScreen(
-      const CambiarPasswordScreen(),
-    );
+    return _openScreen(const CambiarPasswordScreen());
   }
 
   void _openNamed(String route) {
@@ -80,9 +75,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Cerrar sesión'),
-          content: const Text(
-            '¿Seguro que quieres cerrar tu sesión en DogGo?',
-          ),
+          content: const Text('¿Seguro que quieres cerrar tu sesión en DogGo?'),
           actions: [
             TextButton(
               onPressed: () {
@@ -115,19 +108,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
     if (!closed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'No se pudo cerrar la sesión. Inténtalo nuevamente.',
-          ),
+          content: Text('No se pudo cerrar la sesión. Inténtalo nuevamente.'),
         ),
       );
       return;
     }
 
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.login,
-      (_) => false,
-    );
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
   }
 
   @override
@@ -143,8 +130,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
             actions: [
               IconButton(
                 tooltip: 'Recargar perfil',
-                onPressed:
-                    state.loading ? null : _controller.refresh,
+                onPressed: state.loading ? null : _controller.refresh,
                 icon: const Icon(Icons.refresh_rounded),
               ),
               const SizedBox(width: 6),
@@ -158,17 +144,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   Widget _buildBody(ProfileState state) {
     if (state.loading && state.user.isEmpty) {
-      return const DogGoLoadingView(
-        message: 'Cargando tu perfil...',
-      );
+      return const DogGoLoadingView(message: 'Cargando tu perfil...');
     }
 
     if (state.error != null && state.user.isEmpty) {
       return Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(
-            DogGoSpacing.screenHorizontal,
-          ),
+          padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
           child: DogGoErrorView(
             title: 'No pudimos cargar tu perfil',
             message: state.error!,
@@ -306,9 +288,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
               color: state.walkerProfileComplete
                   ? DogGoTheme.greenLight
                   : DogGoTheme.orangeLight,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
             ),
             child: Column(
               children: [
@@ -328,9 +308,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         state.walkerProfileComplete
                             ? 'Perfil completo'
                             : 'Perfil al ${state.walkerCompletionPercentage}%',
-                        style: DogGoTheme.body(
-                          weight: FontWeight.w800,
-                        ),
+                        style: DogGoTheme.body(weight: FontWeight.w800),
                       ),
                     ),
                     _StatusPill(
@@ -343,17 +321,58 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 ),
                 const SizedBox(height: DogGoSpacing.md),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.pill,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.pill),
                   child: LinearProgressIndicator(
                     value: completion,
                     minHeight: 8,
                     color: state.walkerProfileComplete
                         ? DogGoTheme.green
                         : DogGoTheme.orange,
-                    backgroundColor:
-                        Colors.white.withValues(alpha: 0.75),
+                    backgroundColor: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: DogGoSpacing.md),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(DogGoSpacing.md),
+            decoration: BoxDecoration(
+              color: DogGoTheme.tealLight,
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
+              border: Border.all(color: DogGoTheme.teal.withValues(alpha: .22)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.verified_user_rounded,
+                      color: DogGoTheme.teal,
+                    ),
+                    const SizedBox(width: DogGoSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Verificación profesional',
+                        style: DogGoTheme.body(weight: FontWeight.w900),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: DogGoSpacing.xs),
+                Text(
+                  'Carga tu identificación y comprobante para aparecer ante los dueños.',
+                  style: DogGoTheme.subtitle(size: 12.5),
+                ),
+                const SizedBox(height: DogGoSpacing.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _openWalkerVerification,
+                    icon: const Icon(Icons.upload_file_rounded),
+                    label: const Text('Abrir verificación'),
                   ),
                 ),
               ],
@@ -405,8 +424,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Widget _buildGenericSection(ProfileState state) {
     return _ProfileCard(
       title: 'Cuenta DogGo',
-      subtitle:
-          'Esta cuenta no tiene un perfil especializado asociado.',
+      subtitle: 'Esta cuenta no tiene un perfil especializado asociado.',
       icon: Icons.account_circle_outlined,
       iconColor: DogGoTheme.purple,
       iconBackground: DogGoTheme.purpleLight,
@@ -517,9 +535,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
           foregroundColor: DogGoTheme.red,
-          side: const BorderSide(
-            color: DogGoTheme.red,
-          ),
+          side: const BorderSide(color: DogGoTheme.red),
         ),
         onPressed: _logout,
         icon: const Icon(Icons.logout_rounded),
@@ -532,9 +548,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
 class _ProfileHeader extends StatelessWidget {
   final ProfileState state;
 
-  const _ProfileHeader({
-    required this.state,
-  });
+  const _ProfileHeader({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -545,12 +559,8 @@ class _ProfileHeader extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
+        border: Border.all(color: DogGoTheme.border),
         boxShadow: DogGoTheme.elevatedShadow(),
       ),
       child: Column(
@@ -560,10 +570,7 @@ class _ProfileHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(22, 26, 22, 24),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  DogGoTheme.teal,
-                  DogGoTheme.tealDark,
-                ],
+                colors: [DogGoTheme.teal, DogGoTheme.tealDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -580,10 +587,7 @@ class _ProfileHeader extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 4,
-                        ),
+                        border: Border.all(color: Colors.white, width: 4),
                       ),
                       child: photo == null
                           ? const Icon(
@@ -594,7 +598,7 @@ class _ProfileHeader extends StatelessWidget {
                           : Image.network(
                               photo,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) {
+                              errorBuilder: (context, error, stackTrace) {
                                 return const Icon(
                                   Icons.person_rounded,
                                   color: Colors.white,
@@ -609,10 +613,7 @@ class _ProfileHeader extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: DogGoTheme.orange,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 3,
-                        ),
+                        border: Border.all(color: Colors.white, width: 3),
                       ),
                       child: Icon(
                         state.isWalker
@@ -628,10 +629,7 @@ class _ProfileHeader extends StatelessWidget {
                 Text(
                   state.fullName,
                   textAlign: TextAlign.center,
-                  style: DogGoTheme.title(
-                    size: 27,
-                    color: Colors.white,
-                  ),
+                  style: DogGoTheme.title(size: 27, color: Colors.white),
                 ),
                 const SizedBox(height: DogGoSpacing.xs),
                 Text(
@@ -650,9 +648,7 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(
-                      DogGoRadius.pill,
-                    ),
+                    borderRadius: BorderRadius.circular(DogGoRadius.pill),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.25),
                     ),
@@ -699,12 +695,8 @@ class _ProfileCard extends StatelessWidget {
       padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
         boxShadow: DogGoTheme.softShadow(),
       ),
       child: Column(
@@ -718,34 +710,18 @@ class _ProfileCard extends StatelessWidget {
                 height: 43,
                 decoration: BoxDecoration(
                   color: iconBackground,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 22,
-                ),
+                child: Icon(icon, color: iconColor, size: 22),
               ),
               const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: DogGoTheme.title(
-                        size: 17,
-                      ),
-                    ),
+                    Text(title, style: DogGoTheme.title(size: 17)),
                     const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: DogGoTheme.subtitle(
-                        size: 12.5,
-                      ),
-                    ),
+                    Text(subtitle, style: DogGoTheme.subtitle(size: 12.5)),
                   ],
                 ),
               ),
@@ -774,24 +750,14 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: DogGoTheme.divider,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: DogGoTheme.divider)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: DogGoTheme.teal,
-            size: 20,
-          ),
+          Icon(icon, color: DogGoTheme.teal, size: 20),
           const SizedBox(width: DogGoSpacing.compactGap),
           Expanded(
             child: Column(
@@ -806,12 +772,7 @@ class _InfoRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  value,
-                  style: DogGoTheme.body(
-                    size: 13.5,
-                  ),
-                ),
+                Text(value, style: DogGoTheme.body(size: 13.5)),
               ],
             ),
           ),
@@ -839,14 +800,10 @@ class _ActionTile extends StatelessWidget {
     return Semantics(
       button: true,
       child: InkWell(
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 11,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 11),
           child: Row(
             children: [
               Container(
@@ -854,15 +811,9 @@ class _ActionTile extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: DogGoTheme.tealLight,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  icon,
-                  color: DogGoTheme.teal,
-                  size: 21,
-                ),
+                child: Icon(icon, color: DogGoTheme.teal, size: 21),
               ),
               const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
@@ -871,24 +822,14 @@ class _ActionTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: DogGoTheme.body(
-                        weight: FontWeight.w800,
-                      ),
+                      style: DogGoTheme.body(weight: FontWeight.w800),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: DogGoTheme.subtitle(
-                        size: 12,
-                      ),
-                    ),
+                    Text(subtitle, style: DogGoTheme.subtitle(size: 12)),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: DogGoTheme.muted,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: DogGoTheme.muted),
             ],
           ),
         ),
@@ -901,32 +842,20 @@ class _StatusPill extends StatelessWidget {
   final String text;
   final bool active;
 
-  const _StatusPill({
-    required this.text,
-    required this.active,
-  });
+  const _StatusPill({required this.text, required this.active});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: active
-            ? DogGoTheme.greenLight
-            : DogGoTheme.redLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.pill,
-        ),
+        color: active ? DogGoTheme.greenLight : DogGoTheme.redLight,
+        borderRadius: BorderRadius.circular(DogGoRadius.pill),
       ),
       child: Text(
         text,
         style: DogGoTheme.caption(
-          color: active
-              ? DogGoTheme.green
-              : DogGoTheme.red,
+          color: active ? DogGoTheme.green : DogGoTheme.red,
           weight: FontWeight.w800,
         ),
       ),
@@ -941,24 +870,14 @@ class _ProfileFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Icon(
-          Icons.pets_rounded,
-          color: DogGoTheme.teal,
-          size: 23,
-        ),
+        const Icon(Icons.pets_rounded, color: DogGoTheme.teal, size: 23),
         const SizedBox(height: DogGoSpacing.sm),
         Text(
           'DogGo',
-          style: DogGoTheme.title(
-            size: 16,
-            color: DogGoTheme.teal,
-          ),
+          style: DogGoTheme.title(size: 16, color: DogGoTheme.teal),
         ),
         const SizedBox(height: 3),
-        Text(
-          'Paseos felices, mascotas felices',
-          style: DogGoTheme.caption(),
-        ),
+        Text('Paseos felices, mascotas felices', style: DogGoTheme.caption()),
       ],
     );
   }

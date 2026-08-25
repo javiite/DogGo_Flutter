@@ -13,7 +13,6 @@ import 'editar_perfil_paseador_screen.dart';
 import 'login_screen.dart';
 import 'mis_paseos_screen.dart';
 import 'mis_perros_screen.dart';
-import 'verificacion_paseador_screen.dart';
 
 class PerfilUsuarioScreen extends StatefulWidget {
   const PerfilUsuarioScreen({super.key});
@@ -331,15 +330,6 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
     if (actualizado == true) {
       await _cargarTodo();
     }
-  }
-
-  Future<void> _abrirVerificacionPaseador() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const VerificacionPaseadorScreen()),
-    );
-
-    if (mounted) await _cargarTodo();
   }
 
   Future<void> _abrirCambiarPassword() async {
@@ -900,15 +890,6 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen>
       color: _esPaseador ? DogGoTheme.purple : DogGoTheme.teal,
       surface: _esPaseador ? DogGoTheme.purpleLight : DogGoTheme.tealLight,
       children: [
-        if (_esPaseador)
-          _ActionRow(
-            icon: Icons.verified_user_rounded,
-            title: 'Verificación profesional',
-            subtitle: 'Carga tus documentos y consulta el estado de revisión.',
-            color: DogGoTheme.green,
-            surface: DogGoTheme.greenLight,
-            onTap: _abrirVerificacionPaseador,
-          ),
         _ActionRow(
           icon: _esPaseador
               ? Icons.route_rounded
