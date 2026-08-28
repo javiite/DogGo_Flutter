@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_network_image.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
+import '../shared/widgets/doggo_sticky_action_bar.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -193,18 +196,23 @@ class _EditarPerfilPaseadorScreenState
 
         return PopScope(
           canPop: !state.saving,
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('Perfil de paseador'),
-              actions: [
-                TextButton(
-                  onPressed: state.saving ? null : _save,
-                  child: const Text('Guardar'),
-                ),
-                const SizedBox(width: DogGoSpacing.sm),
-              ],
-            ),
+          child: DogGoScreenScaffold(
+            title: 'Perfil de paseador',
             body: _buildBody(state),
+            bottomNavigationBar: state.loading
+                ? null
+                : DogGoStickyActionBar(
+                    primaryLabel: state.saving
+                        ? 'Guardando perfil...'
+                        : 'Guardar perfil',
+                    primaryIcon: Icons.save_outlined,
+                    onPrimary: state.saving ? null : _save,
+                    secondaryLabel: 'Cancelar',
+                    secondaryIcon: Icons.close_rounded,
+                    onSecondary: state.saving
+                        ? null
+                        : () => Navigator.pop(context, false),
+                  ),
           ),
         );
       },
@@ -260,10 +268,6 @@ class _EditarPerfilPaseadorScreenState
           _buildProfessionalInformation(),
           const SizedBox(height: DogGoSpacing.md),
           _buildAvailabilityCard(state),
-          const SizedBox(height: DogGoSpacing.lg),
-          _buildSaveButton(state),
-          const SizedBox(height: DogGoSpacing.md),
-          _buildCancelButton(state),
         ],
       ),
     );
@@ -589,40 +593,6 @@ class _EditarPerfilPaseadorScreenState
       ),
     );
   }
-
-  Widget _buildSaveButton(EditWalkerProfileState state) {
-    return SizedBox(
-      height: 54,
-      child: ElevatedButton.icon(
-        onPressed: state.saving ? null : _save,
-        icon: state.saving
-            ? const SizedBox(
-                width: 19,
-                height: 19,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.save_outlined),
-        label: Text(state.saving ? 'Guardando perfil...' : 'Guardar perfil'),
-      ),
-    );
-  }
-
-  Widget _buildCancelButton(EditWalkerProfileState state) {
-    return SizedBox(
-      height: 50,
-      child: TextButton(
-        onPressed: state.saving
-            ? null
-            : () {
-                Navigator.pop(context, false);
-              },
-        child: const Text('Cancelar'),
-      ),
-    );
-  }
 }
 
 class _WalkerCard extends StatelessWidget {
@@ -727,12 +697,10 @@ class _WalkerPhoto extends StatelessWidget {
 
     if (url != null &&
         (url.startsWith('http://') || url.startsWith('https://'))) {
-      return Image.network(
-        url,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) {
-          return const _WalkerPlaceholder();
-        },
+      return DogGoNetworkImage(
+        url: url,
+        semanticLabel: 'Fotografía profesional del paseador',
+        fallback: const _WalkerPlaceholder(),
       );
     }
 

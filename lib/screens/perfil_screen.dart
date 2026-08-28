@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../core/navigation/app_routes.dart';
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_network_image.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -124,18 +126,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
       builder: (context, _) {
         final state = _controller.state;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Mi perfil'),
-            actions: [
-              IconButton(
-                tooltip: 'Recargar perfil',
-                onPressed: state.loading ? null : _controller.refresh,
-                icon: const Icon(Icons.refresh_rounded),
-              ),
-              const SizedBox(width: 6),
-            ],
-          ),
+        return DogGoScreenScaffold(
+          title: 'Mi perfil',
+          actions: [
+            IconButton(
+              tooltip: 'Recargar perfil',
+              onPressed: state.loading ? null : _controller.refresh,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+            const SizedBox(width: 6),
+          ],
           body: _buildBody(state),
         );
       },
@@ -501,6 +501,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
             subtitle: 'Revisa tus paseos y su estado.',
             onTap: () => _openNamed(AppRoutes.walks),
           ),
+          _ActionTile(
+            icon: Icons.auto_awesome_rounded,
+            title: 'DogGo 360',
+            subtitle: state.isOwner
+                ? 'Planificación, matching, cuidados, logros y familia.'
+                : 'Planificación, llegadas, acuerdos y confianza.',
+            onTap: () => _openNamed(AppRoutes.advanced),
+          ),
           if (state.isOwner)
             _ActionTile(
               icon: Icons.search_rounded,
@@ -589,23 +597,15 @@ class _ProfileHeader extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 4),
                       ),
-                      child: photo == null
-                          ? const Icon(
-                              Icons.person_rounded,
-                              color: Colors.white,
-                              size: 58,
-                            )
-                          : Image.network(
-                              photo,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.person_rounded,
-                                  color: Colors.white,
-                                  size: 58,
-                                );
-                              },
-                            ),
+                      child: DogGoNetworkImage(
+                        url: photo,
+                        semanticLabel: 'Fotografía de ${state.fullName}',
+                        fallback: const Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 58,
+                        ),
+                      ),
                     ),
                     Container(
                       width: 36,

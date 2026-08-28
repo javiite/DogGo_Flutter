@@ -47,13 +47,15 @@ class HomeState {
   bool get isOwner {
     final normalized = _normalize(role);
 
-    return normalized == 'duenio';
+    return normalized == 'dueno' || normalized == 'duenio';
   }
 
   bool get isAdmin {
     final normalized = _normalize(role);
 
-    return normalized == 'admin' || normalized == 'superadmin';
+    return normalized == 'admin' ||
+        normalized == 'administrador' ||
+        normalized == 'superadmin';
   }
 
   int get unreadNotifications {
@@ -156,6 +158,48 @@ class HomeState {
     }
 
     return upcoming.isEmpty ? null : upcoming.first;
+  }
+
+  HomeWalk? get operationalWalk {
+    final routeAlert = routeAlertWalk;
+
+    if (routeAlert != null) {
+      return routeAlert;
+    }
+
+    for (final walk in upcomingWalks) {
+      if (walk.isInProgress) {
+        return walk;
+      }
+    }
+
+    return null;
+  }
+
+  HomeWalk? get nextScheduledWalk {
+    for (final walk in upcomingWalks) {
+      if (!walk.isInProgress) {
+        return walk;
+      }
+    }
+
+    return null;
+  }
+
+  HomeWalk? upcomingWalkForPet(HomePet pet) {
+    final petId = pet.id;
+
+    if (petId == null || petId <= 0) {
+      return null;
+    }
+
+    for (final walk in upcomingWalks) {
+      if (walk.effectivePets.any((walkPet) => walkPet.id == petId)) {
+        return walk;
+      }
+    }
+
+    return null;
   }
 
   HomeWalk? get routeAlertWalk {

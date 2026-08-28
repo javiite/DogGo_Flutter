@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../screens/authenticated_entry_screen.dart';
 import '../../screens/availability/availability_screen.dart';
+import '../../screens/advanced/advanced_experience_screen.dart';
+import '../../screens/conversations_screen.dart';
 import '../../screens/login_screen.dart';
 import '../../screens/mis_perros_screen.dart';
 import '../../screens/mis_paseos_screen.dart';
@@ -18,6 +20,8 @@ abstract final class AppRoutes {
   static const String notifications = '/notifications';
   static const String profile = '/profile';
   static const String availability = '/walker/availability';
+  static const String advanced = '/doggo-360';
+  static const String conversations = '/conversations';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -44,6 +48,12 @@ abstract final class AppRoutes {
 
       case availability:
         return _route(settings, const AvailabilityScreen());
+
+      case advanced:
+        return _route(settings, const AdvancedExperienceScreen());
+
+      case conversations:
+        return _route(settings, const ConversationsScreen());
 
       default:
         return _route(settings, const _RouteNotFoundScreen());

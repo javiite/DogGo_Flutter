@@ -4,7 +4,7 @@ import '../../../theme/doggo_theme.dart';
 
 class HomeShortcutsSection extends StatelessWidget {
   final bool isWalker;
-  final VoidCallback onPetsOrProfile;
+  final VoidCallback onPrimaryAction;
   final VoidCallback onAgenda;
   final VoidCallback onWalks;
   final VoidCallback onExplore;
@@ -12,7 +12,7 @@ class HomeShortcutsSection extends StatelessWidget {
   const HomeShortcutsSection({
     super.key,
     required this.isWalker,
-    required this.onPetsOrProfile,
+    required this.onPrimaryAction,
     required this.onAgenda,
     required this.onWalks,
     required this.onExplore,
@@ -22,14 +22,16 @@ class HomeShortcutsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final shortcuts = [
       _ShortcutData(
-        icon: isWalker ? Icons.badge_outlined : Icons.pets_rounded,
-        label: isWalker ? 'Mi perfil' : 'Mis mascotas',
+        icon: isWalker
+            ? Icons.badge_outlined
+            : Icons.add_circle_outline_rounded,
+        label: isWalker ? 'Mi perfil' : 'Agregar perro',
         subtitle: isWalker
             ? 'Información profesional'
-            : 'Perfiles y fotografías',
+            : 'Crear un nuevo perfil',
         color: DogGoTheme.teal,
         background: DogGoTheme.tealLight,
-        onTap: onPetsOrProfile,
+        onTap: onPrimaryAction,
       ),
       _ShortcutData(
         icon: Icons.calendar_month_rounded,

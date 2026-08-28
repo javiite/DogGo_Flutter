@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
+import '../shared/widgets/doggo_progress_steps.dart';
 import '../widgets/doggo_logo.dart';
 import 'confirmar_correo_screen.dart';
 
@@ -17,22 +18,16 @@ class RegisterScreen extends StatefulWidget {
   }
 }
 
-class _RegisterScreenState
-    extends State<RegisterScreen> {
-  final TextEditingController _nameController =
-      TextEditingController();
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _nameController = TextEditingController();
 
-  final TextEditingController _lastNameController =
-      TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
 
-  final TextEditingController _emailController =
-      TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
-  final TextEditingController _phoneController =
-      TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
-  final TextEditingController _passwordController =
-      TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   final TextEditingController _confirmPasswordController =
       TextEditingController();
@@ -65,61 +60,47 @@ class _RegisterScreenState
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
     final password = _passwordController.text;
-    final confirmation =
-        _confirmPasswordController.text;
+    final confirmation = _confirmPasswordController.text;
 
     if (name.isEmpty) {
-      errors[_RegisterField.name] =
-          'Escribe tu nombre.';
+      errors[_RegisterField.name] = 'Escribe tu nombre.';
     } else if (name.length < 2) {
-      errors[_RegisterField.name] =
-          'El nombre es demasiado corto.';
+      errors[_RegisterField.name] = 'El nombre es demasiado corto.';
     }
 
     if (lastName.isEmpty) {
-      errors[_RegisterField.lastName] =
-          'Escribe tu apellido.';
+      errors[_RegisterField.lastName] = 'Escribe tu apellido.';
     } else if (lastName.length < 2) {
-      errors[_RegisterField.lastName] =
-          'El apellido es demasiado corto.';
+      errors[_RegisterField.lastName] = 'El apellido es demasiado corto.';
     }
 
     if (email.isEmpty) {
-      errors[_RegisterField.email] =
-          'Escribe tu correo electrónico.';
+      errors[_RegisterField.email] = 'Escribe tu correo electrónico.';
     } else if (!_isValidEmail(email)) {
-      errors[_RegisterField.email] =
-          'Escribe un correo válido.';
+      errors[_RegisterField.email] = 'Escribe un correo válido.';
     }
 
-    final phoneDigits =
-        phone.replaceAll(RegExp(r'\D'), '');
+    final phoneDigits = phone.replaceAll(RegExp(r'\D'), '');
 
     if (phone.isEmpty) {
-      errors[_RegisterField.phone] =
-          'Escribe tu teléfono.';
+      errors[_RegisterField.phone] = 'Escribe tu teléfono.';
     } else if (phoneDigits.length < 10) {
       errors[_RegisterField.phone] =
           'El teléfono debe tener al menos 10 dígitos.';
     }
 
     if (password.isEmpty) {
-      errors[_RegisterField.password] =
-          'Crea una contraseña.';
+      errors[_RegisterField.password] = 'Crea una contraseña.';
     } else if (password.length < 8) {
-      errors[_RegisterField.password] =
-          'Usa al menos 8 caracteres.';
+      errors[_RegisterField.password] = 'Usa al menos 8 caracteres.';
     } else if (!_hasLetterAndNumber(password)) {
-      errors[_RegisterField.password] =
-          'Incluye letras y números.';
+      errors[_RegisterField.password] = 'Incluye letras y números.';
     }
 
     if (confirmation.isEmpty) {
-      errors[_RegisterField.confirmation] =
-          'Confirma tu contraseña.';
+      errors[_RegisterField.confirmation] = 'Confirma tu contraseña.';
     } else if (confirmation != password) {
-      errors[_RegisterField.confirmation] =
-          'Las contraseñas no coinciden.';
+      errors[_RegisterField.confirmation] = 'Las contraseñas no coinciden.';
     }
 
     setState(() {
@@ -131,9 +112,7 @@ class _RegisterScreenState
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(
-      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-    ).hasMatch(email);
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
 
   bool _hasLetterAndNumber(String password) {
@@ -171,13 +150,10 @@ class _RegisterScreenState
 
       if (result['success'] == true) {
         _showMessage(
-          result['message']?.toString() ??
-              'Cuenta creada. Revisa tu correo.',
+          result['message']?.toString() ?? 'Cuenta creada. Revisa tu correo.',
         );
 
-        await Future<void>.delayed(
-          const Duration(milliseconds: 500),
-        );
+        await Future<void>.delayed(const Duration(milliseconds: 500));
 
         if (!mounted) {
           return;
@@ -186,9 +162,7 @@ class _RegisterScreenState
         Navigator.pushReplacement(
           context,
           MaterialPageRoute<void>(
-            builder: (_) => ConfirmarCorreoScreen(
-              email: email,
-            ),
+            builder: (_) => ConfirmarCorreoScreen(email: email),
           ),
         );
 
@@ -197,8 +171,7 @@ class _RegisterScreenState
 
       setState(() {
         _generalError =
-            result['message']?.toString() ??
-                'No se pudo crear la cuenta.';
+            result['message']?.toString() ?? 'No se pudo crear la cuenta.';
       });
     } on ApiException catch (error) {
       if (!mounted) {
@@ -214,9 +187,7 @@ class _RegisterScreenState
       }
 
       setState(() {
-        _generalError = error
-            .toString()
-            .replaceFirst('Exception: ', '');
+        _generalError = error.toString().replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) {
@@ -228,14 +199,11 @@ class _RegisterScreenState
   }
 
   String get _apiRole {
-    return _selectedRole == 'Dueño'
-        ? 'Duenio'
-        : 'Paseador';
+    return _selectedRole == 'Dueño' ? 'Duenio' : 'Paseador';
   }
 
   void _clearError(_RegisterField field) {
-    if (!_errors.containsKey(field) &&
-        _generalError == null) {
+    if (!_errors.containsKey(field) && _generalError == null) {
       return;
     }
 
@@ -246,9 +214,9 @@ class _RegisterScreenState
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   int get _passwordStrength {
@@ -264,8 +232,7 @@ class _RegisterScreenState
       strength++;
     }
 
-    if (RegExp(r'[A-Z]').hasMatch(value) &&
-        RegExp(r'[a-z]').hasMatch(value)) {
+    if (RegExp(r'[A-Z]').hasMatch(value) && RegExp(r'[a-z]').hasMatch(value)) {
       strength++;
     }
 
@@ -287,12 +254,8 @@ class _RegisterScreenState
       appBar: AppBar(
         toolbarHeight: 72,
         leading: IconButton(
-          onPressed: _registering
-              ? null
-              : () => Navigator.maybePop(context),
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-          ),
+          onPressed: _registering ? null : () => Navigator.maybePop(context),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: const DogGoLogo(size: 48),
       ),
@@ -305,8 +268,7 @@ class _RegisterScreenState
               FocusManager.instance.primaryFocus?.unfocus();
             },
             child: SingleChildScrollView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(
                 DogGoSpacing.screenHorizontal,
@@ -316,9 +278,7 @@ class _RegisterScreenState
               ),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: 470,
-                  ),
+                  constraints: const BoxConstraints(maxWidth: 470),
                   child: _buildCard(),
                 ),
               ),
@@ -332,14 +292,10 @@ class _RegisterScreenState
   Widget _buildCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
         border: Border.all(color: DogGoTheme.border),
         boxShadow: DogGoTheme.softShadow(),
       ),
@@ -363,17 +319,11 @@ class _RegisterScreenState
           ),
           const SizedBox(height: DogGoSpacing.md),
           Center(
-            child: Text(
-              'ÚNETE A DOGGO',
-              style: DogGoTheme.label(size: 10.5),
-            ),
+            child: Text('ÚNETE A DOGGO', style: DogGoTheme.label(size: 10.5)),
           ),
           const SizedBox(height: DogGoSpacing.sm),
           Center(
-            child: Text(
-              'Crear cuenta',
-              style: DogGoTheme.display(size: 30),
-            ),
+            child: Text('Crear cuenta', style: DogGoTheme.display(size: 30)),
           ),
           const SizedBox(height: DogGoSpacing.sm),
           Center(
@@ -382,6 +332,12 @@ class _RegisterScreenState
               textAlign: TextAlign.center,
               style: DogGoTheme.subtitle(size: 13.5),
             ),
+          ),
+          const SizedBox(height: DogGoSpacing.md),
+          const DogGoProgressSteps(
+            current: 1,
+            total: 3,
+            label: 'Datos de tu cuenta',
           ),
           const SizedBox(height: DogGoSpacing.lg),
           _RoleSelector(
@@ -396,29 +352,23 @@ class _RegisterScreenState
           const SizedBox(height: DogGoSpacing.lg),
           LayoutBuilder(
             builder: (context, constraints) {
-              final useColumns =
-                  constraints.maxWidth >= 390;
+              final useColumns = constraints.maxWidth >= 390;
 
               if (!useColumns) {
                 return Column(
                   children: [
                     _nameField(),
-                    const SizedBox(
-                      height: DogGoSpacing.fieldGap,
-                    ),
+                    const SizedBox(height: DogGoSpacing.fieldGap),
                     _lastNameField(),
                   ],
                 );
               }
 
               return Row(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: _nameField()),
-                  const SizedBox(
-                    width: DogGoSpacing.fieldGap,
-                  ),
+                  const SizedBox(width: DogGoSpacing.fieldGap),
                   Expanded(child: _lastNameField()),
                 ],
               );
@@ -430,9 +380,7 @@ class _RegisterScreenState
             enabled: !_registering,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
-            autofillHints: const [
-              AutofillHints.email,
-            ],
+            autofillHints: const [AutofillHints.email],
             autocorrect: false,
             enableSuggestions: false,
             onChanged: (_) {
@@ -441,10 +389,8 @@ class _RegisterScreenState
             decoration: InputDecoration(
               labelText: 'Correo electrónico',
               hintText: 'correo@ejemplo.com',
-              prefixIcon:
-                  const Icon(Icons.email_outlined),
-              errorText:
-                  _errors[_RegisterField.email],
+              prefixIcon: const Icon(Icons.email_outlined),
+              errorText: _errors[_RegisterField.email],
             ),
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
@@ -453,19 +399,15 @@ class _RegisterScreenState
             enabled: !_registering,
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.next,
-            autofillHints: const [
-              AutofillHints.telephoneNumber,
-            ],
+            autofillHints: const [AutofillHints.telephoneNumber],
             onChanged: (_) {
               _clearError(_RegisterField.phone);
             },
             decoration: InputDecoration(
               labelText: 'Teléfono',
               hintText: '10 dígitos',
-              prefixIcon:
-                  const Icon(Icons.phone_outlined),
-              errorText:
-                  _errors[_RegisterField.phone],
+              prefixIcon: const Icon(Icons.phone_outlined),
+              errorText: _errors[_RegisterField.phone],
             ),
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
@@ -474,9 +416,7 @@ class _RegisterScreenState
             enabled: !_registering,
             obscureText: _hidePassword,
             textInputAction: TextInputAction.next,
-            autofillHints: const [
-              AutofillHints.newPassword,
-            ],
+            autofillHints: const [AutofillHints.newPassword],
             autocorrect: false,
             enableSuggestions: false,
             onChanged: (_) {
@@ -484,18 +424,14 @@ class _RegisterScreenState
             },
             decoration: InputDecoration(
               labelText: 'Contraseña',
-              prefixIcon: const Icon(
-                Icons.lock_outline_rounded,
-              ),
-              errorText:
-                  _errors[_RegisterField.password],
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
+              errorText: _errors[_RegisterField.password],
               suffixIcon: IconButton(
                 onPressed: _registering
                     ? null
                     : () {
                         setState(() {
-                          _hidePassword =
-                              !_hidePassword;
+                          _hidePassword = !_hidePassword;
                         });
                       },
                 tooltip: _hidePassword
@@ -510,40 +446,30 @@ class _RegisterScreenState
             ),
           ),
           const SizedBox(height: DogGoSpacing.sm),
-          _PasswordStrength(
-            strength: _passwordStrength,
-          ),
+          _PasswordStrength(strength: _passwordStrength),
           const SizedBox(height: DogGoSpacing.fieldGap),
           TextField(
             controller: _confirmPasswordController,
             enabled: !_registering,
             obscureText: _hideConfirmation,
             textInputAction: TextInputAction.done,
-            autofillHints: const [
-              AutofillHints.newPassword,
-            ],
+            autofillHints: const [AutofillHints.newPassword],
             autocorrect: false,
             enableSuggestions: false,
             onChanged: (_) {
-              _clearError(
-                _RegisterField.confirmation,
-              );
+              _clearError(_RegisterField.confirmation);
             },
             onSubmitted: (_) => _register(),
             decoration: InputDecoration(
               labelText: 'Confirmar contraseña',
-              prefixIcon: const Icon(
-                Icons.lock_reset_rounded,
-              ),
-              errorText:
-                  _errors[_RegisterField.confirmation],
+              prefixIcon: const Icon(Icons.lock_reset_rounded),
+              errorText: _errors[_RegisterField.confirmation],
               suffixIcon: IconButton(
                 onPressed: _registering
                     ? null
                     : () {
                         setState(() {
-                          _hideConfirmation =
-                              !_hideConfirmation;
+                          _hideConfirmation = !_hideConfirmation;
                         });
                       },
                 tooltip: _hideConfirmation
@@ -565,8 +491,7 @@ class _RegisterScreenState
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed:
-                  _registering ? null : _register,
+              onPressed: _registering ? null : _register,
               child: _registering
                   ? const SizedBox(
                       width: 21,
@@ -585,9 +510,7 @@ class _RegisterScreenState
               onPressed: _registering
                   ? null
                   : () => Navigator.maybePop(context),
-              child: const Text(
-                'Ya tengo una cuenta',
-              ),
+              child: const Text('Ya tengo una cuenta'),
             ),
           ),
         ],
@@ -601,16 +524,13 @@ class _RegisterScreenState
       enabled: !_registering,
       textCapitalization: TextCapitalization.words,
       textInputAction: TextInputAction.next,
-      autofillHints: const [
-        AutofillHints.givenName,
-      ],
+      autofillHints: const [AutofillHints.givenName],
       onChanged: (_) {
         _clearError(_RegisterField.name);
       },
       decoration: InputDecoration(
         labelText: 'Nombre',
-        prefixIcon:
-            const Icon(Icons.person_outline_rounded),
+        prefixIcon: const Icon(Icons.person_outline_rounded),
         errorText: _errors[_RegisterField.name],
       ),
     );
@@ -622,30 +542,20 @@ class _RegisterScreenState
       enabled: !_registering,
       textCapitalization: TextCapitalization.words,
       textInputAction: TextInputAction.next,
-      autofillHints: const [
-        AutofillHints.familyName,
-      ],
+      autofillHints: const [AutofillHints.familyName],
       onChanged: (_) {
         _clearError(_RegisterField.lastName);
       },
       decoration: InputDecoration(
         labelText: 'Apellido',
         prefixIcon: const Icon(Icons.badge_outlined),
-        errorText:
-            _errors[_RegisterField.lastName],
+        errorText: _errors[_RegisterField.lastName],
       ),
     );
   }
 }
 
-enum _RegisterField {
-  name,
-  lastName,
-  email,
-  phone,
-  password,
-  confirmation,
-}
+enum _RegisterField { name, lastName, email, phone, password, confirmation }
 
 class _RoleSelector extends StatelessWidget {
   final String selectedRole;
@@ -663,10 +573,7 @@ class _RoleSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '¿Cómo usarás DogGo?',
-          style: DogGoTheme.title(size: 17),
-        ),
+        Text('¿Cómo usarás DogGo?', style: DogGoTheme.title(size: 17)),
         const SizedBox(height: DogGoSpacing.sm),
         Row(
           children: [
@@ -684,8 +591,7 @@ class _RoleSelector extends StatelessWidget {
               child: _RoleOption(
                 icon: Icons.directions_walk_rounded,
                 title: 'Paseador',
-                selected:
-                    selectedRole == 'Paseador',
+                selected: selectedRole == 'Paseador',
                 enabled: enabled,
                 onTap: () => onChanged('Paseador'),
               ),
@@ -722,21 +628,12 @@ class _RoleOption extends StatelessWidget {
         onTap: enabled ? onTap : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 15,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
           decoration: BoxDecoration(
-            color: selected
-                ? DogGoTheme.tealLight
-                : DogGoTheme.card,
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.medium,
-            ),
+            color: selected ? DogGoTheme.tealLight : DogGoTheme.card,
+            borderRadius: BorderRadius.circular(DogGoRadius.medium),
             border: Border.all(
-              color: selected
-                  ? DogGoTheme.teal
-                  : DogGoTheme.border,
+              color: selected ? DogGoTheme.teal : DogGoTheme.border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -745,9 +642,7 @@ class _RoleOption extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: selected
-                    ? DogGoTheme.teal
-                    : DogGoTheme.muted,
+                color: selected ? DogGoTheme.teal : DogGoTheme.muted,
                 size: 21,
               ),
               const SizedBox(width: 7),
@@ -756,9 +651,7 @@ class _RoleOption extends StatelessWidget {
                   title,
                   style: DogGoTheme.body(
                     size: 12.5,
-                    color: selected
-                        ? DogGoTheme.teal
-                        : DogGoTheme.ink,
+                    color: selected ? DogGoTheme.teal : DogGoTheme.ink,
                     weight: FontWeight.w800,
                   ),
                 ),
@@ -774,9 +667,7 @@ class _RoleOption extends StatelessWidget {
 class _PasswordStrength extends StatelessWidget {
   final int strength;
 
-  const _PasswordStrength({
-    required this.strength,
-  });
+  const _PasswordStrength({required this.strength});
 
   @override
   Widget build(BuildContext context) {
@@ -803,13 +694,9 @@ class _PasswordStrength extends StatelessWidget {
             return Expanded(
               child: Container(
                 height: 4,
-                margin: EdgeInsets.only(
-                  right: index == 3 ? 0 : 5,
-                ),
+                margin: EdgeInsets.only(right: index == 3 ? 0 : 5),
                 decoration: BoxDecoration(
-                  color: index < strength
-                      ? color
-                      : DogGoTheme.border,
+                  color: index < strength ? color : DogGoTheme.border,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -820,9 +707,7 @@ class _PasswordStrength extends StatelessWidget {
         Text(
           label,
           style: DogGoTheme.caption(
-            color: strength == 0
-                ? DogGoTheme.muted
-                : color,
+            color: strength == 0 ? DogGoTheme.muted : color,
             weight: FontWeight.w700,
           ),
         ),
@@ -834,9 +719,7 @@ class _PasswordStrength extends StatelessWidget {
 class _RegisterError extends StatelessWidget {
   final String message;
 
-  const _RegisterError({
-    required this.message,
-  });
+  const _RegisterError({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -845,12 +728,8 @@ class _RegisterError extends StatelessWidget {
       padding: const EdgeInsets.all(DogGoSpacing.md),
       decoration: BoxDecoration(
         color: DogGoTheme.redLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
-        border: Border.all(
-          color: DogGoTheme.red.withValues(alpha: .20),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
+        border: Border.all(color: DogGoTheme.red.withValues(alpha: .20)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

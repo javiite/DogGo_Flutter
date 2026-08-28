@@ -151,6 +151,21 @@ class AppNotification {
         referenceId! > 0;
   }
 
+  bool get opensProfile => category == AppNotificationCategory.profile;
+
+  bool get hasAction =>
+      opensProgram || opensRouteMap || opensChat || opensWalks || opensProfile;
+
+  String get actionLabel {
+    if (opensProgram) return 'Ver programación';
+    if (opensRouteMap) return 'Ver recorrido';
+    if (opensChat) return 'Abrir chat';
+    if (opensProfile) return 'Revisar perfil';
+    if (opensWalks && referenceId != null) return 'Ver paseo';
+    if (opensWalks) return 'Ver mis paseos';
+    return 'Ver actualización';
+  }
+
   String get formattedDate {
     final date = createdAt;
 

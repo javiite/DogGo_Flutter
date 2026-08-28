@@ -3,20 +3,25 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../theme/doggo_radius.dart';
+import '../../../theme/doggo_icons.dart';
 import '../../../theme/doggo_theme.dart';
 
 class WalkerCoverageMap extends StatefulWidget {
   final double latitude;
   final double longitude;
   final int radiusKm;
-  final ValueChanged<LatLng> onCenterChanged;
+  final ValueChanged<LatLng>? onCenterChanged;
+  final bool interactive;
+  final double height;
 
   const WalkerCoverageMap({
     super.key,
     required this.latitude,
     required this.longitude,
     required this.radiusKm,
-    required this.onCenterChanged,
+    this.onCenterChanged,
+    this.interactive = true,
+    this.height = 235,
   });
 
   @override
@@ -53,7 +58,7 @@ class _WalkerCoverageMapState extends State<WalkerCoverageMap> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(DogGoRadius.large),
       child: SizedBox(
-        height: 235,
+        height: widget.height,
         child: FlutterMap(
           mapController: _controller,
           options: MapOptions(
@@ -61,7 +66,14 @@ class _WalkerCoverageMapState extends State<WalkerCoverageMap> {
             initialZoom: _zoom,
             minZoom: 5,
             maxZoom: 18,
-            onTap: (_, point) => widget.onCenterChanged(point),
+            interactionOptions: InteractionOptions(
+              flags: widget.interactive
+                  ? InteractiveFlag.all
+                  : InteractiveFlag.none,
+            ),
+            onTap: widget.onCenterChanged == null
+                ? null
+                : (_, point) => widget.onCenterChanged!(point),
           ),
           children: [
             TileLayer(
@@ -96,7 +108,7 @@ class _WalkerCoverageMapState extends State<WalkerCoverageMap> {
                       ],
                     ),
                     child: const Icon(
-                      Icons.pets_rounded,
+                      DogGoIcons.petsActive,
                       color: Colors.white,
                       size: 23,
                     ),

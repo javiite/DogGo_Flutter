@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_network_image.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -11,12 +13,20 @@ import 'evidencia_paseo_screen.dart';
 import 'home/models/home_walk_status.dart';
 import 'mapa_paseo_screen.dart';
 import 'tracking_paseo_screen.dart';
+import 'crear_paseo_screen.dart';
+import '../services/paseadores_service.dart';
 import 'walks/models/walk_detail.dart';
+import 'walks/models/pickup_location.dart';
+import 'walks/models/walk_request_draft.dart';
+import 'walks/walk_safety_center_screen.dart';
 import 'walks/walk_detail_controller.dart';
 import 'walks/walk_detail_state.dart';
 import 'walks/widgets/walk_pets_section.dart';
+import 'walks/widgets/walk_action_dialogs.dart';
 import 'package:latlong2/latlong.dart';
 import 'walks/widgets/walk_route_management_card.dart';
+import 'walks/widgets/walk_status_timeline.dart';
+import 'advanced/walk_planning_screen.dart';
 
 class DetallePaseoScreen extends StatefulWidget {
   final int? id;
@@ -180,118 +190,18 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
     required IconData icon,
     bool destructive = false,
   }) {
-    return showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(icon, color: destructive ? DogGoTheme.red : DogGoTheme.teal),
-              const SizedBox(width: 10),
-              Expanded(child: Text(title)),
-            ],
-          ),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Volver'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              style: destructive
-                  ? ElevatedButton.styleFrom(
-                      backgroundColor: DogGoTheme.red,
-                      foregroundColor: Colors.white,
-                    )
-                  : null,
-              child: Text(confirmText),
-            ),
-          ],
-        );
-      },
+    return showWalkActionConfirmation(
+      context,
+      title: title,
+      message: message,
+      confirmText: confirmText,
+      icon: icon,
+      destructive: destructive,
     );
   }
 
   Future<String?> _requestCancellationReason() async {
-    final controller = TextEditingController();
-    String? errorText;
-
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Row(
-                children: [
-                  Icon(Icons.cancel_outlined, color: DogGoTheme.red),
-                  SizedBox(width: 10),
-                  Expanded(child: Text('Cancelar paseo')),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Indica por qué necesitas cancelar el servicio.',
-                    style: DogGoTheme.subtitle(size: 12.5),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: controller,
-                    minLines: 3,
-                    maxLines: 5,
-                    maxLength: 250,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      labelText: 'Motivo de cancelación',
-                      hintText:
-                          'Ejemplo: cambio de horario, emergencia o clima.',
-                      errorText: errorText,
-                      alignLabelWithHint: true,
-                    ),
-                  ),
-                  Text(
-                    'Este motivo quedará visible en el detalle.',
-                    style: DogGoTheme.caption(size: 10),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Volver'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final reason = controller.text.trim();
-
-                    if (reason.length < 3) {
-                      setDialogState(() {
-                        errorText = 'Escribe un motivo más completo.';
-                      });
-                      return;
-                    }
-
-                    Navigator.pop(dialogContext, reason);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DogGoTheme.red,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Confirmar cancelación'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    controller.dispose();
-    return result;
+    return showWalkCancellationReason(context);
   }
 
   Future<void> _openChat() async {
@@ -380,6 +290,22 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
     }
   }
 
+  Future<void> _openPlanning() async {
+    final id = _controller.state.walkId;
+    if (id == null) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => WalkPlanningScreen(
+          walkId: id,
+          role:
+              widget.rol ?? (_controller.state.isWalker ? 'Paseador' : 'Dueño'),
+        ),
+      ),
+    );
+    await _controller.refresh();
+  }
+
   Future<void> _openEvidence(String type) async {
     final state = _controller.state;
     final walk = state.walk;
@@ -439,6 +365,75 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
     }
   }
 
+  Future<void> _repeatWalk() async {
+    final state = _controller.state;
+    final walk = state.walk;
+    if (walk == null || !state.isOwner || !walk.isFinished) return;
+    final rawId = walk.rawData['paseadorId'] ?? walk.rawData['PaseadorId'];
+    final walkerId = int.tryParse('$rawId');
+    if (walkerId == null || walkerId <= 0) {
+      _showMessage('No pudimos identificar al paseador anterior.');
+      return;
+    }
+    try {
+      final walker = await PaseadoresService.obtenerPaseador(walkerId);
+      if (!mounted) return;
+      final petIds =
+          (walk.activePets.isNotEmpty ? walk.activePets : walk.requestedPets)
+              .map((pet) => pet.id)
+              .toList();
+      final location = walk.hasPickupCoordinates
+          ? PickupLocation(
+              latitude: walk.pickupLatitude!,
+              longitude: walk.pickupLongitude!,
+              address: walk.pickupAddress,
+              reference: walk.pickupReferences,
+            )
+          : null;
+      final created = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CrearPaseoScreen(
+            paseador: walker,
+            initialDraft: WalkRequestDraft(
+              walkerId: walkerId,
+              petIds: petIds,
+              durationMinutes: walk.durationMinutes,
+              pickupLocation: location,
+              notes: walk.pickupReferences,
+              updatedAt: DateTime.now(),
+            ),
+          ),
+        ),
+      );
+      if (created == true) widget.onPaseoActualizado?.call();
+    } catch (error) {
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _openSafetyCenter() async {
+    final state = _controller.state;
+    final walk = state.walk;
+    if (walk == null) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WalkSafetyCenterScreen(
+          walk: walk,
+          role: state.role,
+          baseUrl: state.baseUrl,
+          canOpenChat: state.canOpenChat,
+          canOpenMap: state.canOpenMap,
+          canOpenTracking: state.canOpenTracking,
+          onChat: _openChat,
+          onMap: _openMap,
+          onTracking: _openTracking,
+        ),
+      ),
+    );
+  }
+
   Future<void> _refreshAfterChild() async {
     await _controller.refresh();
 
@@ -472,19 +467,23 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
         final state = _controller.state;
         _scheduleAutomaticMap(state);
 
-        return Scaffold(
-          backgroundColor: DogGoTheme.cream,
-          appBar: AppBar(
-            title: const Text('Detalle del paseo'),
-            actions: [
-              IconButton(
-                onPressed: state.loading ? null : _controller.refresh,
-                tooltip: 'Actualizar',
-                icon: const Icon(Icons.refresh_rounded),
-              ),
-              const SizedBox(width: 7),
-            ],
-          ),
+        return DogGoScreenScaffold(
+          title: 'Detalle del paseo',
+          actions: [
+            IconButton(
+              onPressed: state.loading || state.walkId == null
+                  ? null
+                  : _openPlanning,
+              tooltip: 'Preparación y acuerdos',
+              icon: const Icon(Icons.checklist_rounded),
+            ),
+            IconButton(
+              onPressed: state.loading ? null : _controller.refresh,
+              tooltip: 'Actualizar',
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+            const SizedBox(width: 7),
+          ],
           body: _buildBody(state),
         );
       },
@@ -531,6 +530,8 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           _StatusHero(state: state),
           const SizedBox(height: 16),
           _WalkProgress(walk: walk),
+          const SizedBox(height: 14),
+          WalkStatusTimeline(walk: walk),
           const SizedBox(height: 22),
           _RecommendedStep(
             state: state,
@@ -548,6 +549,12 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
             onChat: _openChat,
             onMap: _openMap,
             onTracking: _openTracking,
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _openSafetyCenter,
+            icon: const Icon(Icons.health_and_safety_rounded),
+            label: const Text('Abrir experiencia completa'),
           ),
           const SizedBox(height: 22),
           _ServiceInformation(walk: walk),
@@ -596,6 +603,14 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
             onCancel: _cancelWalk,
             onRate: _openRating,
           ),
+          if (state.isOwner && walk.isFinished) ...[
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _repeatWalk,
+              icon: const Icon(Icons.replay_rounded),
+              label: const Text('Repetir este paseo'),
+            ),
+          ],
         ],
       ),
     );
@@ -739,13 +754,11 @@ class _PetPhoto extends StatelessWidget {
         color: DogGoTheme.tealLight,
         borderRadius: BorderRadius.circular(DogGoRadius.large),
       ),
-      child: _hasPhoto
-          ? Image.network(
-              url!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const _PetPlaceholder(),
-            )
-          : const _PetPlaceholder(),
+      child: DogGoNetworkImage(
+        url: _hasPhoto ? url : null,
+        semanticLabel: 'Fotografía de $name',
+        fallback: const _PetPlaceholder(),
+      ),
     );
   }
 }
@@ -1716,7 +1729,7 @@ class _SectionCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(child: Text(title, style: DogGoTheme.title(size: 16))),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
           const SizedBox(height: 16),

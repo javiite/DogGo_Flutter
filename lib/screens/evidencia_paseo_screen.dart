@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../shared/widgets/doggo_error_view.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -200,9 +201,8 @@ class _EvidenciaPaseoScreenState extends State<EvidenciaPaseoScreen> {
       builder: (context, _) {
         final state = _controller.state;
 
-        return Scaffold(
-          backgroundColor: DogGoTheme.cream,
-          appBar: AppBar(title: Text(state.type.shortTitle)),
+        return DogGoScreenScaffold(
+          title: state.type.shortTitle,
           bottomNavigationBar: _UploadBottomBar(
             state: state,
             onUpload: _upload,

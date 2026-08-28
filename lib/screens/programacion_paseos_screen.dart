@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_theme.dart';
 import '../services/paseos_service.dart';
 import '../services/perros_service.dart';
@@ -90,14 +91,9 @@ class _ProgramacionPaseosScreenState extends State<ProgramacionPaseosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DogGoTheme.cream,
-      appBar: AppBar(
-        title: const Text('Programación de paseos'),
-        actions: [
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
-        ],
-      ),
+    return DogGoScreenScaffold(
+      title: 'Programación de paseos',
+      actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
       body: _loading
           ? const DogGoLoadingView(message: 'Cargando programación...')
           : _error != null
@@ -729,9 +725,7 @@ class _WalkCard extends StatelessWidget {
     required this.onReject,
   });
 
-  String get _reason =>
-      '${walk.rawData['motivoCancelacion'] ?? ''}'
-          .trim();
+  String get _reason => '${walk.rawData['motivoCancelacion'] ?? ''}'.trim();
 
   Color get _statusColor {
     switch (walk.status) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/doggo_screen_scaffold.dart';
+import '../../shared/widgets/doggo_sticky_action_bar.dart';
 import '../../theme/doggo_theme.dart';
 import 'availability_controller.dart';
 import 'widgets/availability_blocks_section.dart';
@@ -42,17 +44,15 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   @override
   Widget build(BuildContext context) {
     final state = _controller.state;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mi disponibilidad'),
-        actions: [
-          IconButton(
-            tooltip: 'Actualizar',
-            onPressed: state.loading ? null : _controller.load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
+    return DogGoScreenScaffold(
+      title: 'Mi disponibilidad',
+      actions: [
+        IconButton(
+          tooltip: 'Actualizar disponibilidad',
+          onPressed: state.loading ? null : _controller.load,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
       body: state.loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -105,26 +105,10 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
             ),
       bottomNavigationBar: state.loading
           ? null
-          : SafeArea(
-              minimum: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-              child: SizedBox(
-                height: 56,
-                child: FilledButton.icon(
-                  onPressed: state.saving ? null : _save,
-                  icon: SizedBox.square(
-                    dimension: 20,
-                    child: state.saving
-                        ? const CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          )
-                        : const Icon(Icons.check_rounded, size: 20),
-                  ),
-                  label: Text(
-                    state.saving ? 'Guardando...' : 'Guardar cambios',
-                  ),
-                ),
-              ),
+          : DogGoStickyActionBar(
+              primaryLabel: state.saving ? 'Guardando...' : 'Guardar cambios',
+              primaryIcon: Icons.check_rounded,
+              onPrimary: state.saving ? null : _save,
             ),
     );
   }

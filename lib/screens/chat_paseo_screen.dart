@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../services/session_service.dart';
+import '../services/storage_service.dart';
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_network_image.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -24,20 +28,16 @@ class ChatPaseoScreen extends StatefulWidget {
   });
 
   @override
-  State<ChatPaseoScreen> createState() =>
-      _ChatPaseoScreenState();
+  State<ChatPaseoScreen> createState() => _ChatPaseoScreenState();
 }
 
-class _ChatPaseoScreenState
-    extends State<ChatPaseoScreen>
+class _ChatPaseoScreenState extends State<ChatPaseoScreen>
     with WidgetsBindingObserver {
   late final ChatController _controller;
 
-  final TextEditingController _messageController =
-      TextEditingController();
+  final TextEditingController _messageController = TextEditingController();
 
-  final ScrollController _scrollController =
-      ScrollController();
+  final ScrollController _scrollController = ScrollController();
 
   final FocusNode _focusNode = FocusNode();
 
@@ -46,6 +46,10 @@ class _ChatPaseoScreenState
   int _pendingNewMessages = 0;
 
   bool _forceScrollToBottom = false;
+  bool _roleReady = false;
+  bool _isWalker = false;
+  ChatMessage? _replyTo;
+  String? _baseUrl;
 
   @override
   void initState() {
@@ -53,15 +57,21 @@ class _ChatPaseoScreenState
 
     WidgetsBinding.instance.addObserver(this);
 
-    _controller = ChatController(
-      walkId: widget.paseoId,
-    );
+    _controller = ChatController(walkId: widget.paseoId);
 
-    _scrollController.addListener(
-      _handleScroll,
-    );
+    _scrollController.addListener(_handleScroll);
 
     _controller.initialize();
+    SessionService.esPaseador().then((value) {
+      if (!mounted) return;
+      setState(() {
+        _isWalker = value;
+        _roleReady = true;
+      });
+    });
+    StorageService.obtenerBaseUrl().then((value) {
+      if (mounted) setState(() => _baseUrl = value);
+    });
   }
 
   @override
@@ -80,17 +90,14 @@ class _ChatPaseoScreenState
   }
 
   @override
-  void didChangeAppLifecycleState(
-    AppLifecycleState state,
-  ) {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _controller.loadMessages(silent: true);
     }
   }
 
   void _handleScroll() {
-    if (_isNearBottom &&
-        _pendingNewMessages > 0) {
+    if (_isNearBottom && _pendingNewMessages > 0) {
       setState(() {
         _pendingNewMessages = 0;
       });
@@ -104,20 +111,15 @@ class _ChatPaseoScreenState
 
     final position = _scrollController.position;
 
-    return position.maxScrollExtent -
-            position.pixels <
-        140;
+    return position.maxScrollExtent - position.pixels < 140;
   }
 
-  void _processMessageUpdate(
-    ChatState state,
-  ) {
+  void _processMessageUpdate(ChatState state) {
     if (_lastRevision == state.revision) {
       return;
     }
 
-    final newMessages =
-        state.messageCount - _lastMessageCount;
+    final newMessages = state.messageCount - _lastMessageCount;
 
     final shouldMoveToBottom =
         _lastRevision < 0 ||
@@ -132,8 +134,7 @@ class _ChatPaseoScreenState
       _forceScrollToBottom = false;
       _pendingNewMessages = 0;
 
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToBottom();
       });
     } else if (newMessages > 0) {
@@ -148,8 +149,7 @@ class _ChatPaseoScreenState
 
     _scrollController.animateTo(
       _scrollController.position.maxScrollExtent,
-      duration:
-          const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
     );
 
@@ -161,8 +161,7 @@ class _ChatPaseoScreenState
   }
 
   Future<void> _sendMessage() async {
-    final text =
-        _messageController.text.trim();
+    final text = _messageController.text.trim();
 
     if (text.isEmpty) {
       return;
@@ -170,8 +169,7 @@ class _ChatPaseoScreenState
 
     _forceScrollToBottom = true;
 
-    final result =
-        await _controller.send(text);
+    final result = await _controller.send(text, replyToId: _replyTo?.id);
 
     if (!mounted) {
       return;
@@ -179,10 +177,10 @@ class _ChatPaseoScreenState
 
     if (result.success) {
       _messageController.clear();
+      setState(() => _replyTo = null);
       _focusNode.requestFocus();
 
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToBottom();
       });
 
@@ -193,47 +191,73 @@ class _ChatPaseoScreenState
     _showMessage(result.message);
   }
 
-  Future<void> _showMessageOptions(
-    ChatMessage message,
-  ) async {
+  Future<void> _sendQuick(String text) async {
+    _forceScrollToBottom = true;
+    final result = await _controller.send(text, type: 'Rapido');
+    if (!mounted) return;
+    if (!result.success) _showMessage(result.message);
+  }
+
+  Future<void> _sendPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Tomar fotografía'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Elegir de la galería'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final image = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 82,
+      maxWidth: 1800,
+    );
+    if (image == null) return;
+    final result = await _controller.sendImage(image.path);
+    if (!mounted) return;
+    _showMessage(result.message, success: result.success);
+  }
+
+  Future<void> _showMessageOptions(ChatMessage message) async {
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              18,
-              4,
-              18,
-              18,
-            ),
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
-                  leading: const Icon(
-                    Icons.copy_rounded,
-                  ),
-                  title: const Text(
-                    'Copiar mensaje',
-                  ),
-                  onTap: () => Navigator.pop(
-                    sheetContext,
-                    'copy',
-                  ),
+                  leading: const Icon(Icons.copy_rounded),
+                  title: const Text('Copiar mensaje'),
+                  onTap: () => Navigator.pop(sheetContext, 'copy'),
                 ),
+                if (message.id != null)
+                  ListTile(
+                    leading: const Icon(Icons.reply_rounded),
+                    title: const Text('Responder'),
+                    onTap: () => Navigator.pop(sheetContext, 'reply'),
+                  ),
                 if (message.fullDateLabel.isNotEmpty)
                   ListTile(
-                    leading: const Icon(
-                      Icons.schedule_rounded,
-                    ),
-                    title: const Text(
-                      'Fecha y hora',
-                    ),
-                    subtitle: Text(
-                      message.fullDateLabel,
-                    ),
+                    leading: const Icon(Icons.schedule_rounded),
+                    title: const Text('Fecha y hora'),
+                    subtitle: Text(message.fullDateLabel),
                   ),
               ],
             ),
@@ -243,33 +267,24 @@ class _ChatPaseoScreenState
     );
 
     if (action == 'copy') {
-      await Clipboard.setData(
-        ClipboardData(
-          text: message.content,
-        ),
-      );
+      await Clipboard.setData(ClipboardData(text: message.content));
 
       if (mounted) {
-        _showMessage(
-          'Mensaje copiado.',
-          success: true,
-        );
+        _showMessage('Mensaje copiado.', success: true);
       }
+    } else if (action == 'reply' && mounted) {
+      setState(() => _replyTo = message);
+      _focusNode.requestFocus();
     }
   }
 
-  void _showMessage(
-    String message, {
-    bool success = false,
-  }) {
+  void _showMessage(String message, {bool success = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: success
-              ? DogGoTheme.teal
-              : DogGoTheme.ink,
+          backgroundColor: success ? DogGoTheme.teal : DogGoTheme.ink,
         ),
       );
   }
@@ -289,53 +304,48 @@ class _ChatPaseoScreenState
             child: Column(
               children: [
                 _ChatTopBar(
-                  messageCount:
-                      state.messageCount,
-                  refreshing:
-                      state.refreshing,
-                  onRefresh:
-                      _controller.refresh,
+                  messageCount: state.messageCount,
+                  refreshing: state.refreshing,
+                  onRefresh: _controller.refresh,
                 ),
                 _ConversationHeader(
                   petName: widget.nombrePerro,
-                  otherUserName:
-                      widget.nombreOtroUsuario,
+                  otherUserName: widget.nombreOtroUsuario,
                 ),
                 if (state.backgroundError != null)
                   _BackgroundErrorBanner(
-                    message:
-                        state.backgroundError!,
-                    onRetry: () =>
-                        _controller.loadMessages(
-                      silent: true,
-                    ),
+                    message: state.backgroundError!,
+                    onRetry: () => _controller.loadMessages(silent: true),
                   ),
                 Expanded(
                   child: Stack(
                     children: [
-                      Positioned.fill(
-                        child: _buildConversation(
-                          state,
-                        ),
-                      ),
+                      Positioned.fill(child: _buildConversation(state)),
                       if (_pendingNewMessages > 0)
                         Positioned(
                           right: 16,
                           bottom: 14,
                           child: _NewMessagesButton(
-                            count:
-                                _pendingNewMessages,
+                            count: _pendingNewMessages,
                             onTap: _scrollToBottom,
                           ),
                         ),
                     ],
                   ),
                 ),
+                if (_roleReady)
+                  _QuickReplies(
+                    isWalker: _isWalker,
+                    onSelected: _sendQuick,
+                    enabled: !state.sending,
+                  ),
                 _MessageComposer(
-                  controller:
-                      _messageController,
+                  controller: _messageController,
                   focusNode: _focusNode,
                   sending: state.sending,
+                  replyTo: _replyTo,
+                  onCancelReply: () => setState(() => _replyTo = null),
+                  onPhoto: _sendPhoto,
                   onSend: _sendMessage,
                 ),
               ],
@@ -346,26 +356,17 @@ class _ChatPaseoScreenState
     );
   }
 
-  Widget _buildConversation(
-    ChatState state,
-  ) {
+  Widget _buildConversation(ChatState state) {
     if (state.loading) {
-      return const DogGoLoadingView(
-        message:
-            'Cargando conversación...',
-      );
+      return const DogGoLoadingView(message: 'Cargando conversación...');
     }
 
     if (state.error != null) {
       return SingleChildScrollView(
-        physics:
-            const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(
-          DogGoSpacing.screenHorizontal,
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
         child: DogGoErrorView(
-          title:
-              'No pudimos cargar el chat',
+          title: 'No pudimos cargar el chat',
           message: state.error!,
           icon: Icons.forum_outlined,
           onRetry: _controller.refresh,
@@ -375,8 +376,7 @@ class _ChatPaseoScreenState
 
     if (state.messages.isEmpty) {
       return _EmptyConversation(
-        otherUserName:
-            widget.nombreOtroUsuario,
+        otherUserName: widget.nombreOtroUsuario,
         onWrite: () {
           _focusNode.requestFocus();
         },
@@ -389,49 +389,44 @@ class _ChatPaseoScreenState
       color: DogGoTheme.teal,
       child: ListView.builder(
         controller: _scrollController,
-        physics:
-            const AlwaysScrollableScrollPhysics(),
-        keyboardDismissBehavior:
-            ScrollViewKeyboardDismissBehavior
-                .onDrag,
-        padding: const EdgeInsets.fromLTRB(
-          16,
-          8,
-          16,
-          20,
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
         itemCount: state.messages.length,
         itemBuilder: (context, index) {
-          final message =
-              state.messages[index];
-          final mine =
-              state.isMine(message);
+          final message = state.messages[index];
+          final mine = state.isMine(message);
 
           return Column(
             children: [
-              if (state
-                  .shouldShowDateSeparator(index))
-                _DateSeparator(
-                  text: message.dayLabel,
-                ),
+              if (state.shouldShowDateSeparator(index))
+                _DateSeparator(text: message.dayLabel),
               if (message.systemMessage)
-                _SystemMessage(
-                  message: message,
-                )
+                _SystemMessage(message: message)
               else
                 _MessageBubble(
                   message: message,
                   mine: mine,
-                  onLongPress: () =>
-                      _showMessageOptions(
-                    message,
-                  ),
+                  mediaUrl: _mediaUrl(message.mediaUrl),
+                  onLongPress: () => _showMessageOptions(message),
                 ),
             ],
           );
         },
       ),
     );
+  }
+
+  String? _mediaUrl(String? path) {
+    final value = path?.trim() ?? '';
+    if (value.isEmpty) return null;
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    final base = _baseUrl?.replaceAll(RegExp(r'/+$'), '') ?? '';
+    return base.isEmpty
+        ? value
+        : '$base/${value.replaceFirst(RegExp(r'^/+'), '')}';
   }
 }
 
@@ -450,48 +445,30 @@ class _ChatTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 62,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: const BoxDecoration(
         color: DogGoTheme.card,
-        border: Border(
-          bottom: BorderSide(
-            color: DogGoTheme.border,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: DogGoTheme.border)),
       ),
       child: Row(
         children: [
           IconButton(
-            onPressed: () =>
-                Navigator.pop(context),
+            onPressed: () => Navigator.pop(context),
             tooltip: 'Regresar',
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-            ),
+            icon: const Icon(Icons.arrow_back_rounded),
           ),
           const SizedBox(width: 5),
           const DogGoLogo(size: 37),
           const SizedBox(width: 9),
           Expanded(
             child: Column(
-              mainAxisAlignment:
-                  MainAxisAlignment.center,
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text('Chat del paseo', style: DogGoTheme.title(size: 17)),
                 Text(
-                  'Chat del paseo',
-                  style:
-                      DogGoTheme.title(size: 17),
-                ),
-                Text(
-                  messageCount == 1
-                      ? '1 mensaje'
-                      : '$messageCount mensajes',
-                  style:
-                      DogGoTheme.caption(size: 10),
+                  messageCount == 1 ? '1 mensaje' : '$messageCount mensajes',
+                  style: DogGoTheme.caption(size: 10),
                 ),
               ],
             ),
@@ -502,19 +479,14 @@ class _ChatTopBar extends StatelessWidget {
               child: SizedBox(
                 width: 18,
                 height: 18,
-                child:
-                    CircularProgressIndicator(
-                  strokeWidth: 2,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             )
           else
             IconButton(
               onPressed: onRefresh,
               tooltip: 'Actualizar',
-              icon: const Icon(
-                Icons.refresh_rounded,
-              ),
+              icon: const Icon(Icons.refresh_rounded),
             ),
         ],
       ),
@@ -535,23 +507,14 @@ class _ConversationHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        14,
-        16,
-        12,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       color: DogGoTheme.cream,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: DogGoTheme.card,
-          borderRadius: BorderRadius.circular(
-            DogGoRadius.large,
-          ),
-          border: Border.all(
-            color: DogGoTheme.border,
-          ),
+          borderRadius: BorderRadius.circular(DogGoRadius.large),
+          border: Border.all(color: DogGoTheme.border),
         ),
         child: Row(
           children: [
@@ -560,10 +523,7 @@ class _ConversationHeader extends StatelessWidget {
               height: 50,
               decoration: BoxDecoration(
                 color: DogGoTheme.teal,
-                borderRadius:
-                    BorderRadius.circular(
-                  DogGoRadius.medium,
-                ),
+                borderRadius: BorderRadius.circular(DogGoRadius.medium),
               ),
               child: const Icon(
                 Icons.chat_bubble_outline_rounded,
@@ -574,50 +534,37 @@ class _ConversationHeader extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     petName,
                     maxLines: 1,
-                    overflow:
-                        TextOverflow.ellipsis,
-                    style:
-                        DogGoTheme.title(size: 17),
+                    overflow: TextOverflow.ellipsis,
+                    style: DogGoTheme.title(size: 17),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     'Conversación con $otherUserName',
                     maxLines: 1,
-                    overflow:
-                        TextOverflow.ellipsis,
-                    style: DogGoTheme.subtitle(
-                      size: 10.5,
-                    ),
+                    overflow: TextOverflow.ellipsis,
+                    style: DogGoTheme.subtitle(size: 10.5),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 9,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
               decoration: BoxDecoration(
                 color: DogGoTheme.greenLight,
-                borderRadius:
-                    BorderRadius.circular(
-                  DogGoRadius.pill,
-                ),
+                borderRadius: BorderRadius.circular(DogGoRadius.pill),
               ),
               child: Row(
                 children: [
                   Container(
                     width: 6,
                     height: 6,
-                    decoration:
-                        const BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: DogGoTheme.green,
                       shape: BoxShape.circle,
                     ),
@@ -641,35 +588,21 @@ class _ConversationHeader extends StatelessWidget {
   }
 }
 
-class _BackgroundErrorBanner
-    extends StatelessWidget {
+class _BackgroundErrorBanner extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _BackgroundErrorBanner({
-    required this.message,
-    required this.onRetry,
-  });
+  const _BackgroundErrorBanner({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        8,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 9,
-      ),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: DogGoTheme.orangeLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
       ),
       child: Row(
         children: [
@@ -690,10 +623,7 @@ class _BackgroundErrorBanner
               ),
             ),
           ),
-          TextButton(
-            onPressed: onRetry,
-            child: const Text('Reintentar'),
-          ),
+          TextButton(onPressed: onRetry, child: const Text('Reintentar')),
         ],
       ),
     );
@@ -717,31 +647,23 @@ class _EmptyConversation extends StatelessWidget {
       onRefresh: onRefresh,
       color: DogGoTheme.teal,
       child: ListView(
-        physics:
-            const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(
-          DogGoSpacing.screenHorizontal,
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
         children: [
           const SizedBox(height: 40),
           Container(
             padding: const EdgeInsets.all(23),
             decoration: BoxDecoration(
               color: DogGoTheme.card,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.extraLarge,
-              ),
-              border: Border.all(
-                color: DogGoTheme.border,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
+              border: Border.all(color: DogGoTheme.border),
             ),
             child: Column(
               children: [
                 Container(
                   width: 68,
                   height: 68,
-                  decoration:
-                      const BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: DogGoTheme.tealLight,
                     shape: BoxShape.circle,
                   ),
@@ -755,25 +677,19 @@ class _EmptyConversation extends StatelessWidget {
                 Text(
                   'Inicia la conversación',
                   textAlign: TextAlign.center,
-                  style:
-                      DogGoTheme.title(size: 20),
+                  style: DogGoTheme.title(size: 20),
                 ),
                 const SizedBox(height: 7),
                 Text(
                   'Escribe a $otherUserName para coordinar el horario, la recogida o cualquier indicación del paseo.',
                   textAlign: TextAlign.center,
-                  style: DogGoTheme.subtitle(
-                    size: 12.5,
-                  ),
+                  style: DogGoTheme.subtitle(size: 12.5),
                 ),
                 const SizedBox(height: 17),
                 ElevatedButton.icon(
                   onPressed: onWrite,
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                  ),
-                  label:
-                      const Text('Escribir mensaje'),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Escribir mensaje'),
                 ),
               ],
             ),
@@ -787,123 +703,140 @@ class _EmptyConversation extends StatelessWidget {
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool mine;
+  final String? mediaUrl;
   final VoidCallback onLongPress;
 
   const _MessageBubble({
     required this.message,
     required this.mine,
+    required this.mediaUrl,
     required this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: mine
-          ? Alignment.centerRight
-          : Alignment.centerLeft,
-      child: GestureDetector(
-        onLongPress: onLongPress,
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth:
-                MediaQuery.sizeOf(context).width *
-                    .78,
-          ),
-          margin:
-              const EdgeInsets.only(bottom: 9),
-          padding: const EdgeInsets.fromLTRB(
-            14,
-            11,
-            14,
-            9,
-          ),
-          decoration: BoxDecoration(
-            color: mine
-                ? DogGoTheme.teal
-                : DogGoTheme.card,
-            borderRadius: BorderRadius.only(
-              topLeft:
-                  const Radius.circular(21),
-              topRight:
-                  const Radius.circular(21),
-              bottomLeft: Radius.circular(
-                mine ? 21 : 6,
+    return Semantics(
+      label: mine
+          ? 'Tu mensaje: ${message.content}. ${message.timeLabel}'
+          : 'Mensaje de ${message.senderName}: ${message.content}. ${message.timeLabel}',
+      hint: 'Mantén presionado para ver opciones',
+      child: Align(
+        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+        child: GestureDetector(
+          onLongPress: onLongPress,
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.sizeOf(context).width * .78,
+            ),
+            margin: const EdgeInsets.only(bottom: 9),
+            padding: const EdgeInsets.fromLTRB(14, 11, 14, 9),
+            decoration: BoxDecoration(
+              color: mine ? DogGoTheme.teal : DogGoTheme.card,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(21),
+                topRight: const Radius.circular(21),
+                bottomLeft: Radius.circular(mine ? 21 : 6),
+                bottomRight: Radius.circular(mine ? 6 : 21),
               ),
-              bottomRight: Radius.circular(
-                mine ? 6 : 21,
+              border: mine ? null : Border.all(color: DogGoTheme.border),
+              boxShadow: DogGoTheme.softShadow(
+                opacity: .025,
+                blur: 12,
+                offset: const Offset(0, 4),
               ),
             ),
-            border: mine
-                ? null
-                : Border.all(
-                    color: DogGoTheme.border,
-                  ),
-            boxShadow: DogGoTheme.softShadow(
-              opacity: .025,
-              blur: 12,
-              offset: const Offset(0, 4),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: mine
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
-            children: [
-              if (!mine) ...[
-                Text(
-                  message.senderName,
-                  maxLines: 1,
-                  overflow:
-                      TextOverflow.ellipsis,
-                  style: DogGoTheme.caption(
-                    size: 9.5,
-                    color: DogGoTheme.teal,
-                    weight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-              ],
-              Text(
-                message.content,
-                style: DogGoTheme.body(
-                  size: 13.5,
-                  color: mine
-                      ? Colors.white
-                      : DogGoTheme.ink,
-                  weight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+            child: Column(
+              crossAxisAlignment: mine
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                if (!mine) ...[
                   Text(
-                    message.timeLabel,
+                    message.senderName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: DogGoTheme.caption(
-                      size: 9,
-                      color: mine
-                          ? Colors.white.withValues(
-                              alpha: .7,
-                            )
-                          : DogGoTheme.muted,
+                      size: 9.5,
+                      color: DogGoTheme.teal,
+                      weight: FontWeight.w800,
                     ),
                   ),
-                  if (mine) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      message.read
-                          ? Icons.done_all_rounded
-                          : Icons.done_rounded,
-                      size: 13,
-                      color:
-                          Colors.white.withValues(
-                        alpha: .72,
+                  const SizedBox(height: 4),
+                ],
+                if (message.replyToId != null)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 7),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: mine
+                          ? Colors.white.withValues(alpha: .13)
+                          : DogGoTheme.tealLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Respuesta a un mensaje anterior',
+                      style: DogGoTheme.caption(
+                        size: 9.5,
+                        color: mine ? Colors.white : DogGoTheme.teal,
+                        weight: FontWeight.w700,
                       ),
                     ),
-                  ],
+                  ),
+                if (message.isImage)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: SizedBox(
+                      width: 230,
+                      height: 180,
+                      child: DogGoNetworkImage(
+                        url: mediaUrl,
+                        semanticLabel: 'Fotografía compartida en el chat',
+                        fallback: Container(
+                          color: DogGoTheme.tealLight,
+                          child: const Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (message.content.isNotEmpty) ...[
+                  if (message.isImage) const SizedBox(height: 7),
+                  Text(
+                    message.content,
+                    style: DogGoTheme.body(
+                      size: 13.5,
+                      color: mine ? Colors.white : DogGoTheme.ink,
+                      weight: FontWeight.w600,
+                    ),
+                  ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      message.timeLabel,
+                      style: DogGoTheme.caption(
+                        size: 9,
+                        color: mine
+                            ? Colors.white.withValues(alpha: .7)
+                            : DogGoTheme.muted,
+                      ),
+                    ),
+                    if (mine) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        message.read
+                            ? Icons.done_all_rounded
+                            : Icons.done_rounded,
+                        size: 13,
+                        color: Colors.white.withValues(alpha: .72),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -914,24 +847,16 @@ class _MessageBubble extends StatelessWidget {
 class _SystemMessage extends StatelessWidget {
   final ChatMessage message;
 
-  const _SystemMessage({
-    required this.message,
-  });
+  const _SystemMessage({required this.message});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin:
-          const EdgeInsets.only(bottom: 11),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 13,
-        vertical: 9,
-      ),
+      margin: const EdgeInsets.only(bottom: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
       decoration: BoxDecoration(
         color: DogGoTheme.purpleLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -962,39 +887,21 @@ class _SystemMessage extends StatelessWidget {
 class _DateSeparator extends StatelessWidget {
   final String text;
 
-  const _DateSeparator({
-    required this.text,
-  });
+  const _DateSeparator({required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        0,
-        4,
-        0,
-        12,
-      ),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
       child: Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 11,
-            vertical: 5,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
           decoration: BoxDecoration(
             color: DogGoTheme.card,
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.pill,
-            ),
-            border: Border.all(
-              color: DogGoTheme.border,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.pill),
+            border: Border.all(color: DogGoTheme.border),
           ),
-          child: Text(
-            text,
-            style:
-                DogGoTheme.caption(size: 9.5),
-          ),
+          child: Text(text, style: DogGoTheme.caption(size: 9.5)),
         ),
       ),
     );
@@ -1005,29 +912,19 @@ class _NewMessagesButton extends StatelessWidget {
   final int count;
   final VoidCallback onTap;
 
-  const _NewMessagesButton({
-    required this.count,
-    required this.onTap,
-  });
+  const _NewMessagesButton({required this.count, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: DogGoTheme.teal,
-      borderRadius: BorderRadius.circular(
-        DogGoRadius.pill,
-      ),
+      borderRadius: BorderRadius.circular(DogGoRadius.pill),
       elevation: 3,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.pill,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.pill),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 13,
-            vertical: 9,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1038,9 +935,7 @@ class _NewMessagesButton extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                count == 1
-                    ? '1 mensaje nuevo'
-                    : '$count mensajes nuevos',
+                count == 1 ? '1 mensaje nuevo' : '$count mensajes nuevos',
                 style: DogGoTheme.caption(
                   size: 10,
                   color: Colors.white,
@@ -1059,12 +954,18 @@ class _MessageComposer extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool sending;
+  final ChatMessage? replyTo;
+  final VoidCallback onCancelReply;
+  final VoidCallback onPhoto;
   final VoidCallback onSend;
 
   const _MessageComposer({
     required this.controller,
     required this.focusNode,
     required this.sending,
+    required this.replyTo,
+    required this.onCancelReply,
+    required this.onPhoto,
     required this.onSend,
   });
 
@@ -1073,106 +974,177 @@ class _MessageComposer extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(
-          12,
-          9,
-          12,
-          11,
-        ),
+        padding: const EdgeInsets.fromLTRB(12, 9, 12, 11),
         decoration: BoxDecoration(
           color: DogGoTheme.card,
-          border: const Border(
-            top: BorderSide(
-              color: DogGoTheme.border,
-            ),
-          ),
+          border: const Border(top: BorderSide(color: DogGoTheme.border)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
-                alpha: .04,
-              ),
+              color: Colors.black.withValues(alpha: .04),
               blurRadius: 15,
               offset: const Offset(0, -5),
             ),
           ],
         ),
-        child: ValueListenableBuilder<
-            TextEditingValue>(
-          valueListenable: controller,
-          builder: (context, value, _) {
-            final text = value.text.trim();
-            final canSend =
-                text.isNotEmpty && !sending;
-
-            return Row(
-              crossAxisAlignment:
-                  CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    enabled: !sending,
-                    minLines: 1,
-                    maxLines: 4,
-                    maxLength:
-                        ChatController
-                            .maximumMessageLength,
-                    textCapitalization:
-                        TextCapitalization.sentences,
-                    keyboardType:
-                        TextInputType.multiline,
-                    textInputAction:
-                        TextInputAction.newline,
-                    decoration:
-                        const InputDecoration(
-                      hintText:
-                          'Escribe un mensaje...',
-                      counterText: '',
-                      prefixIcon: Icon(
-                        Icons.message_outlined,
-                      ),
-                    ),
-                  ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (replyTo != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.fromLTRB(11, 7, 4, 7),
+                decoration: BoxDecoration(
+                  color: DogGoTheme.tealLight,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 9),
-                SizedBox(
-                  width: 51,
-                  height: 51,
-                  child: ElevatedButton(
-                    onPressed:
-                        canSend ? onSend : null,
-                    style:
-                        ElevatedButton.styleFrom(
-                      minimumSize:
-                          const Size(51, 51),
-                      padding: EdgeInsets.zero,
-                      shape:
-                          RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(
-                          DogGoRadius.medium,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.reply_rounded,
+                      size: 18,
+                      color: DogGoTheme.teal,
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        replyTo!.content.isEmpty
+                            ? 'Responder a la fotografía'
+                            : replyTo!.content,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: DogGoTheme.caption(
+                          size: 10.5,
+                          weight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    child: sending
-                        ? const SizedBox(
-                            width: 19,
-                            height: 19,
-                            child:
-                                CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.send_rounded,
-                          ),
-                  ),
+                    IconButton(
+                      onPressed: onCancelReply,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) {
+                final text = value.text.trim();
+                final canSend = text.isNotEmpty && !sending;
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: sending ? null : onPhoto,
+                      tooltip: 'Enviar fotografía',
+                      icon: const Icon(Icons.add_a_photo_outlined),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        enabled: !sending,
+                        minLines: 1,
+                        maxLines: 4,
+                        maxLength: ChatController.maximumMessageLength,
+                        textCapitalization: TextCapitalization.sentences,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        decoration: const InputDecoration(
+                          hintText: 'Escribe un mensaje...',
+                          counterText: '',
+                          prefixIcon: Icon(Icons.message_outlined),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Semantics(
+                      button: true,
+                      label: sending ? 'Enviando mensaje' : 'Enviar mensaje',
+                      child: SizedBox(
+                        width: 51,
+                        height: 51,
+                        child: ElevatedButton(
+                          onPressed: canSend ? onSend : null,
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(51, 51),
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                DogGoRadius.medium,
+                              ),
+                            ),
+                          ),
+                          child: sending
+                              ? const SizedBox(
+                                  width: 19,
+                                  height: 19,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickReplies extends StatelessWidget {
+  final ValueChanged<String> onSelected;
+  final bool enabled;
+  final bool isWalker;
+
+  const _QuickReplies({
+    required this.onSelected,
+    required this.enabled,
+    required this.isWalker,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final options = isWalker
+        ? const [
+            'Ya llegué',
+            'Recogida lista',
+            'Iniciamos',
+            'Todo bien',
+            'Terminamos',
+          ]
+        : const [
+            'Ya voy',
+            'Te espero en la entrada',
+            '¿Cómo va?',
+            'Avísame al llegar',
+            'Gracias',
+          ];
+    return Container(
+      height: 46,
+      color: DogGoTheme.card,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        itemCount: options.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 7),
+        itemBuilder: (context, index) => ActionChip(
+          avatar: const Icon(
+            Icons.bolt_rounded,
+            size: 16,
+            color: DogGoTheme.teal,
+          ),
+          label: Text(options[index]),
+          onPressed: enabled ? () => onSelected(options[index]) : null,
         ),
       ),
     );

@@ -15,6 +15,8 @@ class Walker {
   final String? photoPath;
   final String? stateName;
   final String? municipalityName;
+  final double? latitude;
+  final double? longitude;
   final double? distanceKm;
   final int serviceRadiusKm;
   final bool withinCoverage;
@@ -38,6 +40,8 @@ class Walker {
     required this.photoPath,
     required this.stateName,
     required this.municipalityName,
+    required this.latitude,
+    required this.longitude,
     required this.distanceKm,
     required this.serviceRadiusKm,
     required this.withinCoverage,
@@ -52,11 +56,7 @@ class Walker {
     );
 
     return Walker(
-      id:
-          _integer(
-            _deepValue(map, const ['id']),
-          ) ??
-          0,
+      id: _integer(_deepValue(map, const ['id'])) ?? 0,
       name: _walkerName(map),
       email: _text(
         _deepValue(map, const ['email']),
@@ -68,54 +68,29 @@ class Walker {
       ),
       serviceZone: zone,
       zones: _splitZones(zone),
-      hourlyRate: _decimal(
-        _deepValue(map, const ['tarifaPorHora']),
-      ),
-      rating:
-          _decimal(
-            _deepValue(map, const ['calificacionPromedio']),
-          ) ??
-          0,
+      hourlyRate: _decimal(_deepValue(map, const ['tarifaPorHora'])),
+      rating: _decimal(_deepValue(map, const ['calificacionPromedio'])) ?? 0,
       experienceYears:
-          _integer(
-            _deepValue(map, const ['experienciaAnios']),
-          ) ??
-          0,
-      reviewCount:
-          _integer(
-            _deepValue(map, const ['cantidadResenas']),
-          ) ??
-          0,
+          _integer(_deepValue(map, const ['experienciaAnios'])) ?? 0,
+      reviewCount: _integer(_deepValue(map, const ['cantidadResenas'])) ?? 0,
       completedWalks:
-          _integer(
-            _deepValue(map, const ['paseosCompletados']),
-          ) ??
-          0,
+          _integer(_deepValue(map, const ['paseosCompletados'])) ?? 0,
       available: _boolean(
         _deepValue(map, const ['disponible']),
         fallback: true,
       ),
-      verified: _boolean(
-        _deepValue(map, const ['verificado']),
-      ),
+      verified: _boolean(_deepValue(map, const ['verificado'])),
       photoPath: _nullableText(_deepValue(map, const ['fotoUrl'])),
-      stateName: _nullableText(
-        _deepValue(map, const ['estadoNombre']),
-      ),
+      stateName: _nullableText(_deepValue(map, const ['estadoNombre'])),
       municipalityName: _nullableText(
         _deepValue(map, const ['municipioNombre']),
       ),
-      distanceKm: _decimal(
-        _deepValue(map, const ['distanciaKm']),
-      ),
+      latitude: _decimal(_deepValue(map, const ['latitud'])),
+      longitude: _decimal(_deepValue(map, const ['longitud'])),
+      distanceKm: _decimal(_deepValue(map, const ['distanciaKm'])),
       serviceRadiusKm:
-          _integer(
-            _deepValue(map, const ['radioServicioKm']),
-          ) ??
-          10,
-      withinCoverage: _boolean(
-        _deepValue(map, const ['dentroDeCobertura']),
-      ),
+          _integer(_deepValue(map, const ['radioServicioKm'])) ?? 10,
+      withinCoverage: _boolean(_deepValue(map, const ['dentroDeCobertura'])),
       locationMatch: _text(
         _deepValue(map, const ['coincidenciaUbicacion']),
         fallback: 'SinUbicacion',
@@ -131,6 +106,28 @@ class Walker {
   bool get hasPhoto {
     final value = photoPath?.trim();
     return value != null && value.isNotEmpty;
+  }
+
+  bool get hasCoverageCenter {
+    final lat = latitude;
+    final lng = longitude;
+    return lat != null &&
+        lng != null &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180;
+  }
+
+  String get coverageLabel {
+    final municipality = municipalityName?.trim();
+    final state = stateName?.trim();
+    if (municipality != null && municipality.isNotEmpty) {
+      return state == null || state.isEmpty
+          ? municipality
+          : '$municipality, $state';
+    }
+    return serviceZone;
   }
 
   String get rateLabel {
@@ -248,6 +245,8 @@ class Walker {
       'fotoUrl': photoPath,
       'estadoNombre': stateName,
       'municipioNombre': municipalityName,
+      'latitud': latitude,
+      'longitud': longitude,
       'distanciaKm': distanceKm,
       'radioServicioKm': serviceRadiusKm,
       'dentroDeCobertura': withinCoverage,
@@ -265,19 +264,13 @@ class Walker {
   }
 
   static String _walkerName(Map<String, dynamic> map) {
-    final complete = _text(
-      _deepValue(map, const ['nombreCompleto']),
-    );
+    final complete = _text(_deepValue(map, const ['nombreCompleto']));
 
     if (complete.isNotEmpty) return complete;
 
-    final firstName = _text(
-      _deepValue(map, const ['nombre']),
-    );
+    final firstName = _text(_deepValue(map, const ['nombre']));
 
-    final lastName = _text(
-      _deepValue(map, const ['apellido']),
-    );
+    final lastName = _text(_deepValue(map, const ['apellido']));
 
     final result = '$firstName $lastName'.trim();
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/doggo_network_image.dart';
 import '../../../theme/doggo_radius.dart';
 import '../../../theme/doggo_spacing.dart';
 import '../../../theme/doggo_theme.dart';
@@ -45,16 +46,24 @@ class PetBehaviorProfile extends StatelessWidget {
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: DogGoTheme.tealLight,
-              backgroundImage: photo == null ? null : NetworkImage(photo),
-              child: photo == null
-                  ? Text(
-                      pet.initials,
-                      style: DogGoTheme.title(color: DogGoTheme.teal),
-                    )
-                  : null,
+            ClipOval(
+              child: SizedBox(
+                width: 72,
+                height: 72,
+                child: DogGoNetworkImage(
+                  url: photo,
+                  semanticLabel: 'Fotografía de ${pet.name}',
+                  fallback: ColoredBox(
+                    color: DogGoTheme.tealLight,
+                    child: Center(
+                      child: Text(
+                        pet.initials,
+                        style: DogGoTheme.title(color: DogGoTheme.teal),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -68,6 +77,7 @@ class PetBehaviorProfile extends StatelessWidget {
               ),
             ),
             IconButton(
+              tooltip: 'Cerrar perfil',
               onPressed: () => Navigator.pop(context),
               icon: const Icon(Icons.close_rounded),
             ),

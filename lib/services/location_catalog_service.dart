@@ -53,8 +53,9 @@ class LocationCatalogService {
     );
     if (response.statusCode != 200) return null;
     final decoded = jsonDecode(response.body);
-    if (decoded is! List || decoded.isEmpty || decoded.first is! Map)
+    if (decoded is! List || decoded.isEmpty || decoded.first is! Map) {
       return null;
+    }
     final item = Map<String, dynamic>.from(decoded.first as Map);
     final latitude = double.tryParse(item['lat']?.toString() ?? '');
     final longitude = double.tryParse(item['lon']?.toString() ?? '');

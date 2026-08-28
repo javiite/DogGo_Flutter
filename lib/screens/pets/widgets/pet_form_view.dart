@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../shared/widgets/doggo_error_view.dart';
 import '../../../shared/widgets/doggo_loading_view.dart';
+import '../../../shared/widgets/doggo_section_card.dart';
+import '../../../shared/widgets/doggo_screen_scaffold.dart';
+import '../../../shared/widgets/doggo_sticky_action_bar.dart';
 import '../../../theme/doggo_radius.dart';
 import '../../../theme/doggo_spacing.dart';
 import '../../../theme/doggo_theme.dart';
@@ -153,18 +156,25 @@ class _PetFormViewState extends State<PetFormView> {
 
         return PopScope(
           canPop: !state.saving,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(state.screenTitle),
-              actions: [
-                TextButton(
-                  onPressed: state.saving ? null : _save,
-                  child: const Text('Guardar'),
-                ),
-                const SizedBox(width: DogGoSpacing.sm),
-              ],
-            ),
+          child: DogGoScreenScaffold(
+            title: state.screenTitle,
             body: _buildBody(state),
+            bottomNavigationBar: state.loading
+                ? null
+                : DogGoStickyActionBar(
+                    primaryLabel: state.saving
+                        ? 'Guardando...'
+                        : state.saveButtonText,
+                    primaryIcon: state.isCreating
+                        ? Icons.add_rounded
+                        : Icons.save_outlined,
+                    onPrimary: state.saving ? null : _save,
+                    secondaryLabel: 'Cancelar',
+                    secondaryIcon: Icons.close_rounded,
+                    onSecondary: state.saving
+                        ? null
+                        : () => Navigator.pop(context, false),
+                  ),
           ),
         );
       },
@@ -212,39 +222,6 @@ class _PetFormViewState extends State<PetFormView> {
           const SizedBox(height: DogGoSpacing.md),
           _buildSafetyCard(state),
           const SizedBox(height: DogGoSpacing.lg),
-          SizedBox(
-            height: 54,
-            child: ElevatedButton.icon(
-              onPressed: state.saving ? null : _save,
-              icon: state.saving
-                  ? const SizedBox(
-                      width: 19,
-                      height: 19,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Icon(
-                      state.isCreating
-                          ? Icons.add_rounded
-                          : Icons.save_outlined,
-                    ),
-              label: Text(state.saving ? 'Guardando...' : state.saveButtonText),
-            ),
-          ),
-          const SizedBox(height: DogGoSpacing.md),
-          SizedBox(
-            height: 50,
-            child: TextButton(
-              onPressed: state.saving
-                  ? null
-                  : () {
-                      Navigator.pop(context, false);
-                    },
-              child: const Text('Cancelar'),
-            ),
-          ),
         ],
       ),
     );
@@ -300,7 +277,7 @@ class _PetFormViewState extends State<PetFormView> {
   }
 
   Widget _buildPhotoCard(PetFormState state) {
-    return _FormCard(
+    return DogGoSectionCard(
       title: 'Fotografía',
       subtitle: 'Una imagen reciente ayuda a identificarla.',
       icon: Icons.photo_camera_outlined,
@@ -326,38 +303,13 @@ class _PetFormViewState extends State<PetFormView> {
               label: const Text('Mantener fotografía anterior'),
             ),
           ],
-          const SizedBox(height: DogGoSpacing.sm),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(bottom: DogGoSpacing.sm),
-            leading: const Icon(Icons.link_rounded, color: DogGoTheme.muted),
-            title: Text(
-              'Usar enlace de imagen',
-              style: DogGoTheme.body(size: 13, color: DogGoTheme.muted),
-            ),
-            subtitle: Text('Opción avanzada', style: DogGoTheme.caption()),
-            children: [
-              TextFormField(
-                controller: _controller.photoUrlController,
-                enabled: state.selectedPhoto == null && !state.saving,
-                keyboardType: TextInputType.url,
-                textInputAction: TextInputAction.done,
-                validator: _controller.validatePhotoUrl,
-                decoration: const InputDecoration(
-                  labelText: 'Dirección de imagen',
-                  hintText: 'https://...',
-                  prefixIcon: Icon(Icons.link_rounded),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
 
   Widget _buildInformationCard(PetFormState state) {
-    return _FormCard(
+    return DogGoSectionCard(
       title: 'Información general',
       subtitle: 'Datos que serán visibles en sus paseos.',
       icon: Icons.pets_outlined,
@@ -436,7 +388,7 @@ class _PetFormViewState extends State<PetFormView> {
   }
 
   Widget _buildPersonalityCard(PetFormState state) {
-    return _FormCard(
+    return DogGoSectionCard(
       title: 'Personalidad y paseo',
       subtitle: 'Ayuda al paseador a saber qué esperar.',
       icon: Icons.psychology_alt_outlined,
@@ -503,7 +455,7 @@ class _PetFormViewState extends State<PetFormView> {
   }
 
   Widget _buildSocialCard(PetFormState state) {
-    return _FormCard(
+    return DogGoSectionCard(
       title: 'Convivencia',
       subtitle: 'Indica cómo suele relacionarse.',
       icon: Icons.groups_2_outlined,
@@ -532,7 +484,7 @@ class _PetFormViewState extends State<PetFormView> {
   }
 
   Widget _buildSafetyCard(PetFormState state) {
-    return _FormCard(
+    return DogGoSectionCard(
       title: 'Seguridad',
       subtitle: 'Datos importantes antes de salir.',
       icon: Icons.health_and_safety_outlined,
@@ -670,66 +622,6 @@ class _ChoiceOption extends StatelessWidget {
             child: label,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _FormCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Widget child;
-
-  const _FormCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(DogGoRadius.large),
-        border: Border.all(color: DogGoTheme.border),
-        boxShadow: DogGoTheme.softShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 43,
-                height: 43,
-                decoration: BoxDecoration(
-                  color: DogGoTheme.tealLight,
-                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
-                ),
-                child: Icon(icon, color: DogGoTheme.teal, size: 22),
-              ),
-              const SizedBox(width: DogGoSpacing.compactGap),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: DogGoTheme.title(size: 17)),
-                    const SizedBox(height: 3),
-                    Text(subtitle, style: DogGoTheme.subtitle(size: 12.5)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: DogGoSpacing.largeGap),
-          child,
-        ],
       ),
     );
   }

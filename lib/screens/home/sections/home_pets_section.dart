@@ -13,14 +13,18 @@ class HomePetItem {
   final String breed;
   final String age;
   final String imageUrl;
+  final String activity;
   final VoidCallback onTap;
+  final VoidCallback onRequestWalk;
 
   const HomePetItem({
     required this.name,
     required this.breed,
     required this.age,
     required this.imageUrl,
+    required this.activity,
     required this.onTap,
+    required this.onRequestWalk,
   });
 }
 
@@ -55,10 +59,10 @@ class HomePetsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           HomeSectionTitle(
-            title: 'Tus mascotas',
+            title: 'Mis perros',
             subtitle: pets.isEmpty
-                ? 'Registra a tu compañero'
-                : '${pets.length} ${pets.length == 1 ? 'compañero registrado' : 'compañeros registrados'}',
+                ? 'Tu familia empieza aquí'
+                : '${pets.length} ${pets.length == 1 ? 'perfil disponible' : 'perfiles disponibles'}',
             actionText: pets.isEmpty ? 'Agregar' : 'Ver todas',
             onAction: pets.isEmpty ? onAddPet : onSeeAll,
           ),
@@ -86,19 +90,19 @@ class HomePetsSection extends StatelessWidget {
 
     if (pets.isEmpty) {
       return DogGoEmptyView(
-        title: 'Agrega a tu primera mascota',
-        message: 'Sube su foto y completa sus datos para verla en tu inicio.',
+        title: 'Agrega a tu primer perro',
+        message:
+            'Crea su perfil con fotografía y datos importantes para solicitar paseos con seguridad.',
         icon: Icons.add_a_photo_rounded,
-        actionText: 'Agregar mascota',
+        actionText: 'Agregar mi primer perro',
         onAction: onAddPet,
         color: DogGoTheme.orange,
         background: DogGoTheme.orangeLight,
-        compact: true,
       );
     }
 
     return SizedBox(
-      height: 196,
+      height: 252,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -122,12 +126,12 @@ class _PetsLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SizedBox(
-      height: 196,
+      height: 252,
       child: Row(
         children: [
-          Expanded(child: DogGoSkeletonCard(height: 196)),
+          Expanded(child: DogGoSkeletonCard(height: 252)),
           SizedBox(width: 13),
-          Expanded(child: DogGoSkeletonCard(height: 196)),
+          Expanded(child: DogGoSkeletonCard(height: 252)),
         ],
       ),
     );
@@ -148,134 +152,188 @@ class _PetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 158,
+      width: 214,
       child: Semantics(
-        button: true,
-        label: 'Ver información de ${pet.name}',
+        container: true,
+        label: '${pet.name}. ${pet.breed}. ${pet.age}. ${pet.activity}.',
         child: Material(
           color: DogGoTheme.card,
           borderRadius: BorderRadius.circular(DogGoRadius.large),
-          child: InkWell(
-            onTap: pet.onTap,
-            borderRadius: BorderRadius.circular(DogGoRadius.large),
-            child: Ink(
-              decoration: BoxDecoration(
-                color: DogGoTheme.card,
-                borderRadius: BorderRadius.circular(DogGoRadius.large),
-                border: Border.all(color: DogGoTheme.border),
-                boxShadow: DogGoTheme.softShadow(opacity: .04, blur: 18),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(DogGoRadius.large - 1),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      height: 118,
-                      width: double.infinity,
-                      child: Stack(
-                        fit: StackFit.expand,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: DogGoTheme.card,
+              borderRadius: BorderRadius.circular(DogGoRadius.large),
+              border: Border.all(color: DogGoTheme.border),
+              boxShadow: DogGoTheme.softShadow(opacity: .04, blur: 18),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(DogGoRadius.large - 1),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: pet.onTap,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _hasImage
-                              ? Image.network(
-                                  pet.imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) {
-                                    return const _DogPlaceholder();
-                                  },
-                                )
-                              : const _DogPlaceholder(),
-                          const DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Color(0x8A000000)],
-                                stops: [.48, 1],
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            left: 12,
-                            right: 10,
-                            bottom: 10,
-                            child: Text(
-                              pet.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: DogGoTheme.title(
-                                size: 17,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 10,
-                            right: 10,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: .92),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.arrow_outward_rounded,
-                                size: 17,
-                                color: DogGoTheme.teal,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 9, 12, 11),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              pet.breed.trim().isEmpty
-                                  ? 'Compañero DogGo'
-                                  : pet.breed,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: DogGoTheme.body(
-                                size: 11.5,
-                                color: DogGoTheme.ink,
-                                weight: FontWeight.w700,
-                              ),
-                            ),
-                            const Spacer(),
-                            Row(
+                          SizedBox(
+                            height: 116,
+                            width: double.infinity,
+                            child: Stack(
+                              fit: StackFit.expand,
                               children: [
-                                const Icon(
-                                  Icons.cake_outlined,
-                                  size: 15,
-                                  color: DogGoTheme.teal,
+                                _hasImage
+                                    ? Image.network(
+                                        pet.imageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) {
+                                          return const _DogPlaceholder();
+                                        },
+                                      )
+                                    : const _DogPlaceholder(),
+                                const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Color(0x8A000000),
+                                      ],
+                                      stops: [.48, 1],
+                                    ),
+                                  ),
                                 ),
-                                const SizedBox(width: 5),
-                                Expanded(
+                                Positioned(
+                                  left: 13,
+                                  right: 44,
+                                  bottom: 10,
                                   child: Text(
-                                    pet.age,
+                                    pet.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: DogGoTheme.body(
-                                      size: 10,
-                                      color: DogGoTheme.muted,
-                                      weight: FontWeight.w700,
+                                    style: DogGoTheme.title(
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: .92,
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.arrow_outward_rounded,
+                                      size: 17,
+                                      color: DogGoTheme.teal,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(13, 10, 13, 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  pet.breed.trim().isEmpty
+                                      ? 'Compañero DogGo'
+                                      : pet.breed,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: DogGoTheme.body(
+                                    size: 11.5,
+                                    color: DogGoTheme.ink,
+                                    weight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.cake_outlined,
+                                      size: 15,
+                                      color: DogGoTheme.teal,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Expanded(
+                                      child: Text(
+                                        pet.age,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: DogGoTheme.subtitle(size: 10),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 5),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.event_available_outlined,
+                                      size: 15,
+                                      color: DogGoTheme.orange,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Expanded(
+                                      child: Text(
+                                        pet.activity,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: DogGoTheme.subtitle(size: 10),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  DecoratedBox(
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: DogGoTheme.border)),
+                    ),
+                    child: InkWell(
+                      onTap: pet.onRequestWalk,
+                      child: const SizedBox(
+                        height: 42,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.directions_walk_rounded,
+                              size: 18,
+                              color: DogGoTheme.teal,
+                            ),
+                            SizedBox(width: 7),
+                            Text(
+                              'Solicitar paseo',
+                              style: TextStyle(
+                                color: DogGoTheme.teal,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -293,7 +351,7 @@ class _AddPetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 158,
+      width: 190,
       child: Semantics(
         button: true,
         label: 'Agregar mascota',
@@ -335,7 +393,7 @@ class _AddPetCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 13),
                     Text(
-                      'Agregar\nmascota',
+                      'Agregar\notro perro',
                       textAlign: TextAlign.center,
                       style: DogGoTheme.body(
                         size: 14,
@@ -345,7 +403,7 @@ class _AddPetCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 7),
                     Text(
-                      'Nuevo perfil',
+                      'Crear nuevo perfil',
                       style: DogGoTheme.subtitle(size: 10.5),
                     ),
                   ],

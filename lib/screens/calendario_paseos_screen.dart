@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../services/session_service.dart';
+import '../services/app_preferences_service.dart';
+import '../services/walk_reminder_service.dart';
 import '../theme/doggo_theme.dart';
 import '../widgets/doggo_logo.dart';
 import 'detalle_paseo_screen.dart';
@@ -25,6 +27,9 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   late DateTime _diaSeleccionado;
 
   String _filtro = 'Todos';
+  String _petFilter = 'Todas';
+  bool _listMode = false;
+  DogGoPreferences _preferences = const DogGoPreferences();
 
   final List<String> _filtros = const [
     'Todos',
@@ -42,6 +47,10 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
     final ahora = DateTime.now();
     _mesVisible = DateTime(ahora.year, ahora.month, 1);
     _diaSeleccionado = DateTime(ahora.year, ahora.month, ahora.day);
+    AppPreferencesService.load().then((value) {
+      if (mounted) setState(() => _preferences = value);
+    });
+    WalkReminderService.sync(widget.paseos);
   }
 
   bool get _esPaseador {
@@ -76,9 +85,7 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
 
   DateTime? _fechaPaseo(Map<String, dynamic> paseo) {
     final valor =
-        paseo['fechaProgramada'] ??
-        paseo['fechaInicio'] ??
-        paseo['fechaFin'];
+        paseo['fechaProgramada'] ?? paseo['fechaInicio'] ?? paseo['fechaFin'];
 
     if (valor == null) return null;
 
@@ -99,10 +106,7 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   String _nombrePaseador(Map<String, dynamic> paseo) {
-    final completo = _texto(
-      paseo['paseadorNombreCompleto'],
-      fallback: '',
-    );
+    final completo = _texto(paseo['paseadorNombreCompleto'], fallback: '');
     if (completo.isNotEmpty) return completo;
     final nombre = paseo['paseadorNombre'];
     final apellido = paseo['paseadorApellido'];
@@ -115,10 +119,7 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
   }
 
   String _nombreDuenio(Map<String, dynamic> paseo) {
-    final completo = _texto(
-      paseo['duenioNombreCompleto'],
-      fallback: '',
-    );
+    final completo = _texto(paseo['duenioNombreCompleto'], fallback: '');
     if (completo.isNotEmpty) return completo;
     final nombre = paseo['duenioNombre'];
     final apellido = paseo['duenioApellido'];
@@ -218,10 +219,28 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
 
   List<Map<String, dynamic>> get _paseosFiltrados {
     return widget.paseos.where((paseo) {
-      if (_filtro == 'Todos') return true;
-
-      return _normalizarEstado(_estado(paseo)) == _normalizarEstado(_filtro);
+      final stateMatches =
+          _filtro == 'Todos' ||
+          _normalizarEstado(_estado(paseo)) == _normalizarEstado(_filtro);
+      final petMatches =
+          _petFilter == 'Todas' ||
+          _nombrePerro(
+            paseo,
+          ).split(',').map((name) => name.trim()).contains(_petFilter);
+      return stateMatches && petMatches;
     }).toList();
+  }
+
+  List<String> get _petNames {
+    final names =
+        widget.paseos
+            .expand((paseo) => _nombrePerro(paseo).split(','))
+            .map((name) => name.trim())
+            .where((name) => name.isNotEmpty && name != 'Mascota')
+            .toSet()
+            .toList()
+          ..sort();
+    return ['Todas', ...names];
   }
 
   List<Map<String, dynamic>> _paseosDelDia(DateTime dia) {
@@ -339,8 +358,13 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
             SliverToBoxAdapter(child: _buildTopBar()),
             SliverToBoxAdapter(child: _buildHeader()),
             SliverToBoxAdapter(child: _buildFiltros()),
-            SliverToBoxAdapter(child: _buildCalendario()),
-            SliverToBoxAdapter(child: _buildListaDia(paseosSeleccionados)),
+            SliverToBoxAdapter(child: _buildAgendaTools()),
+            if (!_listMode) SliverToBoxAdapter(child: _buildCalendario()),
+            SliverToBoxAdapter(
+              child: _listMode
+                  ? _buildAgendaList()
+                  : _buildListaDia(paseosSeleccionados),
+            ),
             const SliverToBoxAdapter(child: SizedBox(height: 34)),
           ],
         ),
@@ -366,6 +390,16 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
           const SizedBox(width: 4),
           const DogGoLogo(size: 38),
           const Spacer(),
+          IconButton(
+            tooltip: _listMode ? 'Vista calendario' : 'Vista lista',
+            onPressed: () => setState(() => _listMode = !_listMode),
+            icon: Icon(
+              _listMode
+                  ? Icons.calendar_month_rounded
+                  : Icons.view_agenda_rounded,
+              color: DogGoTheme.ink,
+            ),
+          ),
           IconButton(
             onPressed: () {
               setState(() {
@@ -474,6 +508,118 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildAgendaTools() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 10, 24, 2),
+      child: Column(
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: _petNames.contains(_petFilter) ? _petFilter : 'Todas',
+            decoration: const InputDecoration(
+              labelText: 'Mascota',
+              prefixIcon: Icon(Icons.pets_rounded),
+            ),
+            items: _petNames
+                .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+                .toList(),
+            onChanged: (value) => setState(() => _petFilter = value ?? 'Todas'),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: _preferences.walkRemindersEnabled
+                  ? DogGoTheme.tealLight
+                  : DogGoTheme.cream2,
+              borderRadius: BorderRadius.circular(17),
+              border: Border.all(color: DogGoTheme.border),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _preferences.walkRemindersEnabled
+                      ? Icons.notifications_active_rounded
+                      : Icons.notifications_off_outlined,
+                  color: DogGoTheme.teal,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _preferences.walkRemindersEnabled
+                        ? 'Recordatorios activados ${_preferences.reminderMinutes} min antes.'
+                        : 'Los recordatorios de paseo están desactivados.',
+                    style: DogGoTheme.body(size: 11.5, weight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAgendaList() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final weekEnd = today.add(const Duration(days: 7));
+    final future = _paseosFiltrados.where((walk) {
+      final date = _fechaPaseo(walk);
+      return date != null && !date.isBefore(today);
+    }).toList()..sort((a, b) => _fechaPaseo(a)!.compareTo(_fechaPaseo(b)!));
+
+    List<Map<String, dynamic>> group(DateTime start, DateTime end) =>
+        future.where((walk) {
+          final date = _fechaPaseo(walk)!;
+          return !date.isBefore(start) && date.isBefore(end);
+        }).toList();
+
+    final todayWalks = group(today, tomorrow);
+    final tomorrowWalks = group(
+      tomorrow,
+      tomorrow.add(const Duration(days: 1)),
+    );
+    final weekWalks = group(tomorrow.add(const Duration(days: 1)), weekEnd);
+    final later = future
+        .where((walk) => !_fechaPaseo(walk)!.isBefore(weekEnd))
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _AgendaGroup(
+            title: 'Hoy',
+            walks: todayWalks,
+            builder: _buildPaseoDiaCard,
+          ),
+          _AgendaGroup(
+            title: 'Mañana',
+            walks: tomorrowWalks,
+            builder: _buildPaseoDiaCard,
+          ),
+          _AgendaGroup(
+            title: 'Esta semana',
+            walks: weekWalks,
+            builder: _buildPaseoDiaCard,
+          ),
+          _AgendaGroup(
+            title: 'Más adelante',
+            walks: later,
+            builder: _buildPaseoDiaCard,
+          ),
+          if (future.isEmpty)
+            Text(
+              'No hay paseos próximos con estos filtros.',
+              style: DogGoTheme.subtitle(size: 13),
+            ),
+        ],
       ),
     );
   }
@@ -762,6 +908,32 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AgendaGroup extends StatelessWidget {
+  final String title;
+  final List<Map<String, dynamic>> walks;
+  final Widget Function(Map<String, dynamic>) builder;
+  const _AgendaGroup({
+    required this.title,
+    required this.walks,
+    required this.builder,
+  });
+  @override
+  Widget build(BuildContext context) {
+    if (walks.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: DogGoTheme.title(size: 20)),
+          const SizedBox(height: 10),
+          ...walks.map(builder),
+        ],
       ),
     );
   }

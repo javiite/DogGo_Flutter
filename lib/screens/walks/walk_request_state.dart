@@ -24,8 +24,17 @@ class WalkScheduleDraft {
 
 class WalkRequestState {
   static const List<int> allowedDurations = [30, 45, 60, 90];
+  static const int minDurationMinutes = 30;
+  static const int maxDurationMinutes = 90;
+  static const int durationStepMinutes = 5;
 
   static const int maxSelectedPets = 5;
+
+  static bool isValidDuration(int minutes) {
+    return minutes >= minDurationMinutes &&
+        minutes <= maxDurationMinutes &&
+        minutes % durationStepMinutes == 0;
+  }
 
   final Walker walker;
   final bool loading;

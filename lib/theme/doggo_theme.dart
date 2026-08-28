@@ -47,10 +47,7 @@ abstract final class DogGoTheme {
 
     final baseTextTheme = GoogleFonts.manropeTextTheme(
       ThemeData.light().textTheme,
-    ).apply(
-      bodyColor: ink,
-      displayColor: ink,
-    );
+    ).apply(bodyColor: ink, displayColor: ink);
 
     return ThemeData(
       useMaterial3: true,
@@ -70,14 +67,8 @@ abstract final class DogGoTheme {
         backgroundColor: card,
         foregroundColor: ink,
         surfaceTintColor: Colors.transparent,
-        iconTheme: const IconThemeData(
-          color: ink,
-          size: 23,
-        ),
-        titleTextStyle: title(
-          size: 19,
-          color: ink,
-        ),
+        iconTheme: const IconThemeData(color: ink, size: 23),
+        titleTextStyle: title(size: 19, color: ink),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -85,8 +76,7 @@ abstract final class DogGoTheme {
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(DogGoRadius.large),
+          borderRadius: BorderRadius.circular(DogGoRadius.large),
           side: const BorderSide(color: border),
         ),
       ),
@@ -95,8 +85,7 @@ abstract final class DogGoTheme {
         thickness: 1,
         space: 1,
       ),
-      progressIndicatorTheme:
-          const ProgressIndicatorThemeData(
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: teal,
         linearTrackColor: tealLight,
         circularTrackColor: tealLight,
@@ -112,8 +101,7 @@ abstract final class DogGoTheme {
         actionTextColor: tealLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(DogGoRadius.medium),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
         ),
       ),
       dialogTheme: DialogThemeData(
@@ -121,8 +109,7 @@ abstract final class DogGoTheme {
         backgroundColor: card,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(DogGoRadius.large),
+          borderRadius: BorderRadius.circular(DogGoRadius.large),
         ),
         titleTextStyle: title(size: 22),
         contentTextStyle: subtitle(size: 14),
@@ -137,11 +124,7 @@ abstract final class DogGoTheme {
         filled: true,
         fillColor: card,
         hintStyle: subtitle(size: 13.5),
-        labelStyle: body(
-          size: 13,
-          color: muted,
-          weight: FontWeight.w600,
-        ),
+        labelStyle: body(size: 13, color: muted, weight: FontWeight.w600),
         floatingLabelStyle: body(
           size: 13,
           color: teal,
@@ -152,51 +135,30 @@ abstract final class DogGoTheme {
           vertical: 16,
         ),
         border: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(DogGoRadius.medium),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
           borderSide: const BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(DogGoRadius.medium),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
           borderSide: const BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(DogGoRadius.medium),
-          borderSide: const BorderSide(
-            color: teal,
-            width: 1.6,
-          ),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
+          borderSide: const BorderSide(color: teal, width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(DogGoRadius.medium),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
           borderSide: const BorderSide(color: red),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(DogGoRadius.medium),
-          borderSide: const BorderSide(
-            color: red,
-            width: 1.6,
-          ),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
+          borderSide: const BorderSide(color: red, width: 1.6),
         ),
-        errorStyle: body(
-          size: 11.5,
-          color: red,
-          weight: FontWeight.w600,
-        ),
+        errorStyle: body(size: 11.5, color: red, weight: FontWeight.w600),
       ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: primaryButton(),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: primaryButton(),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: secondaryButton(),
-      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: primaryButton()),
+      filledButtonTheme: FilledButtonThemeData(style: primaryButton()),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: secondaryButton()),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: teal,
@@ -205,42 +167,34 @@ abstract final class DogGoTheme {
             fontWeight: FontWeight.w800,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.circular(DogGoRadius.button),
+            borderRadius: BorderRadius.circular(DogGoRadius.button),
           ),
         ),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith(
-          (states) {
-            if (states.contains(WidgetState.disabled)) {
-              return disabled;
-            }
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return disabled;
+          }
 
-            if (states.contains(WidgetState.selected)) {
-              return Colors.white;
-            }
+          if (states.contains(WidgetState.selected)) {
+            return Colors.white;
+          }
 
-            return muted;
-          },
-        ),
-        trackColor: WidgetStateProperty.resolveWith(
-          (states) {
-            if (states.contains(WidgetState.disabled)) {
-              return border;
-            }
+          return muted;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return border;
+          }
 
-            if (states.contains(WidgetState.selected)) {
-              return green;
-            }
+          if (states.contains(WidgetState.selected)) {
+            return green;
+          }
 
-            return purpleLight;
-          },
-        ),
-        trackOutlineColor:
-            const WidgetStatePropertyAll(
-          Colors.transparent,
-        ),
+          return purpleLight;
+        }),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
@@ -248,30 +202,48 @@ abstract final class DogGoTheme {
         backgroundColor: card,
         indicatorColor: tealLight,
         surfaceTintColor: Colors.transparent,
-        labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) {
-            return body(
-              size: 10.5,
-              color: states.contains(WidgetState.selected)
-                  ? teal
-                  : muted,
-              weight:
-                  states.contains(WidgetState.selected)
-                      ? FontWeight.w900
-                      : FontWeight.w600,
-            );
-          },
-        ),
-        iconTheme: WidgetStateProperty.resolveWith(
-          (states) {
-            return IconThemeData(
-              size: 23,
-              color: states.contains(WidgetState.selected)
-                  ? teal
-                  : muted,
-            );
-          },
-        ),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          return body(
+            size: 10.5,
+            color: states.contains(WidgetState.selected) ? teal : muted,
+            weight: states.contains(WidgetState.selected)
+                ? FontWeight.w900
+                : FontWeight.w600,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          return IconThemeData(
+            size: 23,
+            color: states.contains(WidgetState.selected) ? teal : muted,
+          );
+        }),
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: teal,
+      brightness: Brightness.dark,
+      primary: const Color(0xFF75D5C0),
+      secondary: const Color(0xFFFFC864),
+      surface: const Color(0xFF1B2321),
+    );
+    return lightTheme.copyWith(
+      brightness: Brightness.dark,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: const Color(0xFF101715),
+      canvasColor: const Color(0xFF101715),
+      appBarTheme: lightTheme.appBarTheme.copyWith(
+        backgroundColor: const Color(0xFF1B2321),
+        foregroundColor: Colors.white,
+      ),
+      cardTheme: lightTheme.cardTheme.copyWith(color: const Color(0xFF1B2321)),
+      dialogTheme: lightTheme.dialogTheme.copyWith(
+        backgroundColor: const Color(0xFF1B2321),
+      ),
+      bottomSheetTheme: lightTheme.bottomSheetTheme.copyWith(
+        backgroundColor: const Color(0xFF1B2321),
       ),
     );
   }
@@ -300,10 +272,7 @@ abstract final class DogGoTheme {
     ];
   }
 
-  static TextStyle display({
-    double size = 34,
-    Color color = ink,
-  }) {
+  static TextStyle display({double size = 34, Color color = ink}) {
     return GoogleFonts.manrope(
       fontSize: size,
       fontWeight: FontWeight.w800,
@@ -313,10 +282,7 @@ abstract final class DogGoTheme {
     );
   }
 
-  static TextStyle title({
-    double size = 26,
-    Color color = ink,
-  }) {
+  static TextStyle title({double size = 26, Color color = ink}) {
     return GoogleFonts.manrope(
       fontSize: size,
       fontWeight: FontWeight.w800,
@@ -326,10 +292,7 @@ abstract final class DogGoTheme {
     );
   }
 
-  static TextStyle subtitle({
-    double size = 14,
-    Color color = muted,
-  }) {
+  static TextStyle subtitle({double size = 14, Color color = muted}) {
     return GoogleFonts.manrope(
       fontSize: size,
       fontWeight: FontWeight.w500,
@@ -338,10 +301,7 @@ abstract final class DogGoTheme {
     );
   }
 
-  static TextStyle label({
-    double size = 12,
-    Color color = teal,
-  }) {
+  static TextStyle label({double size = 12, Color color = teal}) {
     return GoogleFonts.manrope(
       fontSize: size,
       fontWeight: FontWeight.w800,
@@ -382,22 +342,14 @@ abstract final class DogGoTheme {
       backgroundColor: teal,
       foregroundColor: Colors.white,
       disabledBackgroundColor: disabled,
-      disabledForegroundColor:
-          Colors.white.withValues(alpha: .75),
+      disabledForegroundColor: Colors.white.withValues(alpha: .75),
       elevation: 0,
       minimumSize: const Size(double.infinity, 50),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       shape: RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.circular(DogGoRadius.button),
+        borderRadius: BorderRadius.circular(DogGoRadius.button),
       ),
-      textStyle: GoogleFonts.manrope(
-        fontWeight: FontWeight.w800,
-        fontSize: 14,
-      ),
+      textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w800, fontSize: 14),
     );
   }
 
@@ -407,18 +359,11 @@ abstract final class DogGoTheme {
       disabledForegroundColor: disabled,
       side: const BorderSide(color: border),
       minimumSize: const Size(double.infinity, 50),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       shape: RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.circular(DogGoRadius.button),
+        borderRadius: BorderRadius.circular(DogGoRadius.button),
       ),
-      textStyle: GoogleFonts.manrope(
-        fontWeight: FontWeight.w800,
-        fontSize: 14,
-      ),
+      textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w800, fontSize: 14),
     );
   }
 

@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,37 +26,45 @@ class BackgroundTrackingService {
   static Future<void> inicializarServicio() async {
     final localNotifications = FlutterLocalNotificationsPlugin();
 
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const initSettings = InitializationSettings(android: androidInit);
+    const initSettings = InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      ),
+    );
 
     await localNotifications.initialize(initSettings);
 
-    const channel = AndroidNotificationChannel(
-      notificationChannelId,
-      notificationChannelName,
-      description: 'Notificación para compartir ubicación durante un paseo.',
-      importance: Importance.low,
-    );
+    if (Platform.isAndroid) {
+      const channel = AndroidNotificationChannel(
+        notificationChannelId,
+        notificationChannelName,
+        description: 'Notificación para compartir ubicación durante un paseo.',
+        importance: Importance.low,
+      );
 
-    await localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
+      await localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(channel);
 
-    const routeChannel = AndroidNotificationChannel(
-      routeAlertChannelId,
-      routeAlertChannelName,
-      description: 'Desvíos, reingresos y puntos alcanzados durante el paseo.',
-      importance: Importance.high,
-    );
+      const routeChannel = AndroidNotificationChannel(
+        routeAlertChannelId,
+        routeAlertChannelName,
+        description:
+            'Desvíos, reingresos y puntos alcanzados durante el paseo.',
+        importance: Importance.high,
+      );
 
-    await localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(routeChannel);
+      await localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(routeChannel);
+    }
 
     final service = FlutterBackgroundService();
 
@@ -149,8 +159,18 @@ class BackgroundTrackingService {
 
 @pragma('vm:entry-point')
 Future<bool> _onIosBackground(ServiceInstance service) async {
+  WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  return true;
+
+  try {
+    final repository = OfflineTrackingRepository();
+    final syncService = OfflineTrackingSyncService(repository: repository);
+    await syncService.initialize();
+    final result = await syncService.syncPending(maxBatches: 3);
+    return !result.hasIrrecoverable;
+  } catch (_) {
+    return false;
+  }
 }
 
 @pragma('vm:entry-point')
@@ -171,6 +191,11 @@ void _onStart(ServiceInstance service) async {
   await routeNotifications.initialize(
     const InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      ),
     ),
   );
 
@@ -243,6 +268,11 @@ void _onStart(ServiceInstance service) async {
             importance: Importance.high,
             priority: Priority.high,
             category: AndroidNotificationCategory.status,
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: false,
+            presentSound: true,
           ),
         ),
       );

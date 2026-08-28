@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/navigation/app_routes.dart';
 import '../services/session_service.dart';
+import '../services/walk_reminder_service.dart';
 import '../shared/widgets/offline_sync_banner.dart';
 import '../theme/doggo_theme.dart';
 import 'chat_paseo_screen.dart';
 import 'availability/availability_screen.dart';
 import 'configuracion_screen.dart';
+import 'detalle_perro_screen.dart';
 import 'detalle_paseo_screen.dart';
 import 'home/home_controller.dart';
 import 'home/home_state.dart';
@@ -28,14 +31,16 @@ import 'home/sections/home_walker_panel_section.dart';
 import 'home/sections/home_walkers_tab.dart';
 import 'home/widgets/home_bottom_navigation.dart';
 import 'home/widgets/home_top_bar.dart';
-import 'login_screen.dart';
 import 'mapa_paseo_screen.dart';
 import 'mis_perros_screen.dart';
 import 'mis_paseos_screen.dart';
+import 'paseadores_screen.dart';
 import 'programacion_paseos_screen.dart';
+import 'registrar_perro_screen.dart';
 import 'notificaciones_screen.dart';
 import 'perfil_screen.dart';
 import 'routes/saved_routes_screen.dart';
+import 'onboarding/contextual_onboarding.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,6 +57,8 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _homeNow = DateTime.now();
 
   int _navigationIndex = 0;
+  bool _onboardingScheduled = false;
+  bool _remindersScheduled = false;
 
   HomeState get _state {
     return _controller.state;
@@ -86,6 +93,71 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onControllerChanged() {
     if (mounted) {
       setState(() {});
+      if (!_controller.state.initialLoading && !_onboardingScheduled) {
+        _onboardingScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final owner = _controller.state.isOwner || _controller.state.isAdmin;
+          showContextualOnboarding(
+            context,
+            contextKey: 'home',
+            title: 'Bienvenido a DogGo',
+            steps: owner
+                ? const [
+                    OnboardingStep(
+                      Icons.pets_rounded,
+                      'Tus perros son el centro',
+                      'Desde Inicio puedes abrir sus perfiles y solicitar un paseo.',
+                      actionLabel: 'Abrir Mis perros',
+                    ),
+                    OnboardingStep(
+                      Icons.route_rounded,
+                      'Paseos bajo control',
+                      'La agenda, el chat, la ruta y la seguridad permanecen juntos.',
+                      actionLabel: 'Ver mis paseos',
+                    ),
+                    OnboardingStep(
+                      Icons.explore_rounded,
+                      'Explora con confianza',
+                      'Guarda paseadores favoritos y vuelve a los perfiles recientes.',
+                      actionLabel: 'Ir a Explorar',
+                    ),
+                  ]
+                : const [
+                    OnboardingStep(
+                      Icons.assignment_rounded,
+                      'Revisa solicitudes',
+                      'Tu panel prioriza las acciones operativas del día.',
+                      actionLabel: 'Ver mis paseos',
+                    ),
+                    OnboardingStep(
+                      Icons.gps_fixed_rounded,
+                      'Seguimiento seguro',
+                      'Usa evidencia, ruta, chat y tracking desde cada paseo.',
+                      actionLabel: 'Revisar paseos activos',
+                    ),
+                  ],
+            onStepAction: (stepIndex) {
+              if (!mounted) return;
+              if (owner && stepIndex == 0) {
+                _open(const MisPerrosScreen());
+                return;
+              }
+              if (owner && stepIndex == 2) {
+                setState(() => _navigationIndex = 3);
+                return;
+              }
+              _open(const MisPaseosScreen());
+            },
+          );
+        });
+      }
+      if (!_controller.state.initialLoading && !_remindersScheduled) {
+        _remindersScheduled = true;
+        WalkReminderService.sync(
+          _controller.state.walks.map((walk) => walk.rawData).toList(),
+        );
+      }
     }
   }
 
@@ -260,11 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
   }
 
   void _showMenu() {
@@ -458,7 +526,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: DogGoTheme.cream,
-      extendBody: true,
+      extendBody: false,
       bottomNavigationBar: HomeBottomNavigation(
         currentIndex: _navigationIndex,
         thirdLabel: _state.isWalker ? 'Panel' : 'Paseadores',
@@ -519,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 76 + MediaQuery.paddingOf(context).bottom + 24,
+                  height: 24 + MediaQuery.paddingOf(context).bottom,
                 ),
               ),
             ],
@@ -592,9 +660,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomeOverview() {
     final priorityWalk = _state.priorityWalk;
+    final operationalWalk = _state.operationalWalk;
+    final nextScheduledWalk = _state.nextScheduledWalk;
+    final showOwnerHome = _state.isOwner || _state.isAdmin;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 120),
+      padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -607,14 +678,32 @@ class _HomeScreenState extends State<HomeScreen> {
             activeWalkCount: _state.activeWalkCount,
             pendingWalkCount: _state.pendingWalkCount,
           ),
-          _buildWalkSection(priorityWalk),
+          if (_state.isWalker) _buildWalkSection(priorityWalk),
+          if (showOwnerHome && operationalWalk != null)
+            _buildWalkSection(operationalWalk),
+          if (showOwnerHome)
+            HomePetsSection(
+              loading: _state.petsLoading,
+              errorMessage: _state.petsError,
+              pets: _state.pets.take(6).map(_petItem).toList(growable: false),
+              onSeeAll: () {
+                _open(const MisPerrosScreen());
+              },
+              onAddPet: () {
+                _open(const RegistrarPerroScreen());
+              },
+              onRetry: _controller.loadPets,
+            ),
+          if (showOwnerHome &&
+              (operationalWalk == null || nextScheduledWalk != null))
+            _buildWalkSection(nextScheduledWalk),
           HomeShortcutsSection(
             isWalker: _state.isWalker,
-            onPetsOrProfile: () {
+            onPrimaryAction: () {
               if (_state.isWalker) {
                 _open(const PerfilScreen());
               } else {
-                _open(const MisPerrosScreen());
+                _open(const RegistrarPerroScreen());
               }
             },
             onAgenda: () {
@@ -631,19 +720,6 @@ class _HomeScreenState extends State<HomeScreen> {
             loading: _state.walksLoading,
             summary: _state.weeklySummary,
           ),
-          if (_state.isOwner || _state.isAdmin)
-            HomePetsSection(
-              loading: _state.petsLoading,
-              errorMessage: _state.petsError,
-              pets: _state.pets.take(6).map(_petItem).toList(growable: false),
-              onSeeAll: () {
-                _open(const MisPerrosScreen());
-              },
-              onAddPet: () {
-                _open(const MisPerrosScreen());
-              },
-              onRetry: _controller.loadPets,
-            ),
           HomeActivitySection(
             loading: _state.notificationsLoading,
             activities: _state.recentActivities,
@@ -776,15 +852,37 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   HomePetItem _petItem(HomePet pet) {
+    final upcomingWalk = _state.upcomingWalkForPet(pet);
+
     return HomePetItem(
       name: pet.name,
       breed: pet.breed,
       age: pet.ageLabel,
       imageUrl: pet.imageUrl,
+      activity: _petActivityLabel(upcomingWalk),
       onTap: () {
-        _open(const MisPerrosScreen());
+        _open(DetallePerroScreen(perro: pet.rawData));
+      },
+      onRequestWalk: () {
+        _open(PaseadoresScreen(initialPetId: pet.id));
       },
     );
+  }
+
+  String _petActivityLabel(HomeWalk? walk) {
+    if (walk == null) {
+      return 'Sin paseos próximos';
+    }
+
+    if (walk.isInProgress) {
+      return 'Paseo en curso';
+    }
+
+    if (walk.isPending) {
+      return 'Solicitud pendiente';
+    }
+
+    return 'Próximo · ${walk.formattedSchedule}';
   }
 
   Color _walkStatusColor(HomeWalkStatus status) {

@@ -327,7 +327,7 @@ class _EditWalkPetsSheetState
         12,
       ),
       itemCount: _pets.length,
-      separatorBuilder: (_, __) =>
+      separatorBuilder: (_, _) =>
           const SizedBox(height: 10),
       itemBuilder: (_, index) {
         final pet = _pets[index];
@@ -447,7 +447,7 @@ class _PetPhoto extends StatelessWidget {
           : Image.network(
               imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
+              errorBuilder: (_, _, _) {
                 return placeholder;
               },
             ),

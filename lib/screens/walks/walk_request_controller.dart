@@ -11,6 +11,7 @@ import '../pets/models/pet.dart';
 import '../walkers/models/walker.dart';
 import 'models/pickup_location.dart';
 import 'models/walk_request_availability.dart';
+import 'models/walk_request_draft.dart';
 import 'models/walk_route_selection.dart';
 import 'walk_request_state.dart';
 
@@ -41,14 +42,17 @@ class WalkRequestResult {
 
 class WalkRequestController extends ChangeNotifier {
   WalkRequestState _state;
+  final int? initialPetId;
 
   bool _disposed = false;
   bool _initialRequestInProgress = false;
   bool _submitInProgress = false;
   String? _batchRequestId;
 
-  WalkRequestController({required Map<String, dynamic> walkerData})
-    : _state = WalkRequestState(walker: Walker.fromMap(walkerData));
+  WalkRequestController({
+    required Map<String, dynamic> walkerData,
+    this.initialPetId,
+  }) : _state = WalkRequestState(walker: Walker.fromMap(walkerData));
 
   WalkRequestState get state => _state;
 
@@ -98,12 +102,16 @@ class WalkRequestController extends ChangeNotifier {
         return;
       }
 
+      final preferredPetId = pets.any((pet) => pet.id == initialPetId)
+          ? initialPetId
+          : pets.firstOrNull?.id;
+
       _setState(
         _state.copyWith(
           loading: false,
           baseUrl: baseUrl,
           pets: pets,
-          selectedPetIds: pets.isEmpty ? const [] : [pets.first.id],
+          selectedPetIds: preferredPetId == null ? const [] : [preferredPetId],
           clearSelectedPets: pets.isEmpty,
           defaultLocation: defaultLocation,
           clearDefaultLocation: defaultLocation == null,
@@ -126,6 +134,45 @@ class WalkRequestController extends ChangeNotifier {
 
   Future<void> refresh() {
     return initialize();
+  }
+
+  void applyDraft(WalkRequestDraft draft) {
+    if (draft.walkerId != _state.walker.id || _state.loading) return;
+    final petIds = draft.petIds
+        .where((id) => _state.pets.any((pet) => pet.id == id))
+        .take(WalkRequestState.maxSelectedPets)
+        .toList();
+    final duration = WalkRequestState.isValidDuration(draft.durationMinutes)
+        ? draft.durationMinutes
+        : _state.durationMinutes;
+    final schedule = draft.scheduledAt?.isAfter(DateTime.now()) == true
+        ? draft.scheduledAt
+        : null;
+    _setState(
+      _state.copyWith(
+        selectedPetIds: petIds.isEmpty ? _state.selectedPetIds : petIds,
+        durationMinutes: duration,
+        selectedDay: schedule == null
+            ? _state.selectedDay
+            : DateTime(schedule.year, schedule.month, schedule.day),
+        scheduledAt: schedule,
+        clearScheduledAt: schedule == null,
+        pickupLocation: draft.pickupLocation,
+      ),
+    );
+  }
+
+  void discardDraftState() {
+    _setState(
+      _state.copyWith(
+        clearSelectedPets: true,
+        durationMinutes: WalkRequestState.minDurationMinutes,
+        clearSelectedDay: true,
+        clearScheduledAt: true,
+        clearScheduledWalks: true,
+        clearPickupLocation: true,
+      ),
+    );
   }
 
   void selectPet(int petId) {
@@ -158,7 +205,7 @@ class WalkRequestController extends ChangeNotifier {
   }
 
   void selectDuration(int minutes) {
-    if (!WalkRequestState.allowedDurations.contains(minutes)) {
+    if (!WalkRequestState.isValidDuration(minutes)) {
       return;
     }
 
@@ -200,6 +247,43 @@ class WalkRequestController extends ChangeNotifier {
         petIds: List.unmodifiable(_state.selectedPetIds),
       ),
     ]..sort((left, right) => left.startsAt.compareTo(right.startsAt));
+    _setState(_state.copyWith(scheduledWalks: walks, clearScheduledAt: true));
+    return null;
+  }
+
+  String? addWeeklySchedules(int weeks) {
+    final firstDate = _state.scheduledAt;
+    if (firstDate == null) return 'Selecciona la primera fecha y hora.';
+    if (!_state.hasSelectedPets) return 'Selecciona al menos una mascota.';
+    if (weeks < 2 || weeks > 14) {
+      return 'La recurrencia seleccionada no es válida.';
+    }
+    final source = _state.availability;
+    if (source == null) return 'Espera a que cargue la disponibilidad.';
+
+    final walks = List<WalkScheduleDraft>.from(_state.scheduledWalks);
+    var added = 0;
+    for (var index = 0; index < weeks && walks.length < 14; index++) {
+      final candidate = firstDate.add(Duration(days: index * 7));
+      if (!source.accepts(candidate, _state.durationMinutes)) continue;
+      if (walks.any(
+        (walk) => walk.overlaps(candidate, _state.durationMinutes),
+      )) {
+        continue;
+      }
+      walks.add(
+        WalkScheduleDraft(
+          startsAt: candidate,
+          durationMinutes: _state.durationMinutes,
+          petIds: List.unmodifiable(_state.selectedPetIds),
+        ),
+      );
+      added++;
+    }
+    if (added == 0) {
+      return 'No encontramos semanas disponibles a partir de ese horario.';
+    }
+    walks.sort((left, right) => left.startsAt.compareTo(right.startsAt));
     _setState(_state.copyWith(scheduledWalks: walks, clearScheduledAt: true));
     return null;
   }
@@ -335,7 +419,9 @@ class WalkRequestController extends ChangeNotifier {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       if (_disposed) {

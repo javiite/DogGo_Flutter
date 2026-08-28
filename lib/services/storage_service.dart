@@ -1,4 +1,7 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../config/app_environment.dart';
 
 class StorageService {
   static const String _keyBaseUrl = 'doggo_base_url';
@@ -7,6 +10,13 @@ class StorageService {
   static const String _keyRol = 'doggo_rol';
   static const String _keyNombre = 'doggo_nombre';
   static const String _keyEmail = 'doggo_email';
+
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+    aOptions: AndroidOptions(),
+  );
 
   static const String _keyTrackingActivo = 'doggo_tracking_activo';
   static const String _keyTrackingPaseoId = 'doggo_tracking_paseo_id';
@@ -25,18 +35,10 @@ class StorageService {
     await prefs.setString(_keyBaseUrl, limpia);
   }
 
-  static const String _baseUrlPorDefecto =
-      "http://127.0.0.1:5230";
-
   static Future<String?> obtenerBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final valor = prefs.getString(_keyBaseUrl);
-
-    if (valor == null || valor.trim().isEmpty) {
-      return _limpiarUrl(_baseUrlPorDefecto);
-    }
-
-    return _limpiarUrl(valor);
+    return AppEnvironment.resolveApiBaseUrl(valor);
   }
 
   static Future<String?> getBaseUrl() async {
@@ -53,19 +55,37 @@ class StorageService {
   }
 
   static Future<void> guardarToken(String token) async {
+    final limpio = token.trim();
+    if (limpio.isEmpty) {
+      await limpiarToken();
+      return;
+    }
+
+    await _secureStorage.write(key: _keyToken, value: limpio);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyToken, token);
+    await prefs.remove(_keyToken);
   }
 
   static Future<String?> obtenerToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_keyToken);
+    final seguro = (await _secureStorage.read(key: _keyToken))?.trim();
+    if (seguro != null && seguro.isNotEmpty) return seguro;
 
-    if (token == null || token.trim().isEmpty) {
+    final prefs = await SharedPreferences.getInstance();
+    final tokenAnterior = prefs.getString(_keyToken)?.trim();
+
+    if (tokenAnterior == null || tokenAnterior.isEmpty) {
       return null;
     }
 
-    return token;
+    try {
+      await _secureStorage.write(key: _keyToken, value: tokenAnterior);
+      await prefs.remove(_keyToken);
+    } catch (_) {
+      // Conserva temporalmente la sesión existente y vuelve a intentar la
+      // migración en la siguiente lectura si el Keychain/Keystore no responde.
+    }
+
+    return tokenAnterior;
   }
 
   static Future<String?> getToken() async {
@@ -73,6 +93,7 @@ class StorageService {
   }
 
   static Future<void> limpiarToken() async {
+    await _secureStorage.delete(key: _keyToken);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyToken);
   }
@@ -233,6 +254,7 @@ class StorageService {
   }
 
   static Future<void> limpiarTodo() async {
+    await _secureStorage.delete(key: _keyToken);
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
   }

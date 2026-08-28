@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -9,8 +10,7 @@ import 'ratings/models/rating_option.dart';
 import 'ratings/rating_controller.dart';
 import 'ratings/rating_state.dart';
 
-class CalificarPaseoScreen
-    extends StatefulWidget {
+class CalificarPaseoScreen extends StatefulWidget {
   final int paseoId;
   final String nombrePerro;
   final String nombrePaseador;
@@ -23,16 +23,13 @@ class CalificarPaseoScreen
   });
 
   @override
-  State<CalificarPaseoScreen> createState() =>
-      _CalificarPaseoScreenState();
+  State<CalificarPaseoScreen> createState() => _CalificarPaseoScreenState();
 }
 
-class _CalificarPaseoScreenState
-    extends State<CalificarPaseoScreen> {
+class _CalificarPaseoScreenState extends State<CalificarPaseoScreen> {
   late final RatingController _controller;
 
-  final TextEditingController _commentController =
-      TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
 
   final FocusNode _commentFocus = FocusNode();
 
@@ -61,35 +58,23 @@ class _CalificarPaseoScreenState
     FocusScope.of(context).unfocus();
 
     final state = _controller.state;
-    final comment =
-        _commentController.text.trim();
+    final comment = _commentController.text.trim();
 
-    if (comment.length <
-        RatingController.minimumCommentLength) {
-      _showMessage(
-        'Escribe un comentario más completo.',
-      );
+    if (comment.length < RatingController.minimumCommentLength) {
+      _showMessage('Escribe un comentario más completo.');
       _commentFocus.requestFocus();
       return;
     }
 
-    final confirmed =
-        await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Row(
             children: [
-              Icon(
-                Icons.star_rounded,
-                color: DogGoTheme.orange,
-              ),
+              Icon(Icons.star_rounded, color: DogGoTheme.orange),
               SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Enviar calificación',
-                ),
-              ),
+              Expanded(child: Text('Enviar calificación')),
             ],
           ),
           content: Text(
@@ -98,19 +83,11 @@ class _CalificarPaseoScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                false,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Revisar'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                true,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Enviar'),
             ),
           ],
@@ -122,9 +99,7 @@ class _CalificarPaseoScreenState
       return;
     }
 
-    final result = await _controller.submit(
-      comment,
-    );
+    final result = await _controller.submit(comment);
 
     if (!mounted) {
       return;
@@ -174,15 +149,13 @@ class _CalificarPaseoScreenState
               Text(
                 'La calificación fue guardada correctamente.',
                 textAlign: TextAlign.center,
-                style:
-                    DogGoTheme.subtitle(size: 12.5),
+                style: DogGoTheme.subtitle(size: 12.5),
               ),
             ],
           ),
           actions: [
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Continuar'),
             ),
           ],
@@ -194,11 +167,7 @@ class _CalificarPaseoScreenState
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-        ),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -208,23 +177,15 @@ class _CalificarPaseoScreenState
       builder: (context, _) {
         final state = _controller.state;
 
-        return Scaffold(
-          backgroundColor: DogGoTheme.cream,
-          appBar: AppBar(
-            title: const Text(
-              'Calificar paseo',
-            ),
-          ),
-          bottomNavigationBar:
-              state.checking ||
-                      state.alreadyRated
-                  ? null
-                  : _RatingBottomBar(
-                      state: state,
-                      commentController:
-                          _commentController,
-                      onSubmit: _submit,
-                    ),
+        return DogGoScreenScaffold(
+          title: 'Calificar paseo',
+          bottomNavigationBar: state.checking || state.alreadyRated
+              ? null
+              : _RatingBottomBar(
+                  state: state,
+                  commentController: _commentController,
+                  onSubmit: _submit,
+                ),
           body: _buildBody(state),
         );
       },
@@ -233,23 +194,18 @@ class _CalificarPaseoScreenState
 
   Widget _buildBody(RatingState state) {
     if (state.checking) {
-      return const DogGoLoadingView(
-        message:
-            'Comprobando la calificación...',
-      );
+      return const DogGoLoadingView(message: 'Comprobando la calificación...');
     }
 
     if (state.alreadyRated) {
       return _AlreadyRatedView(
         petName: state.petName,
-        onClose: () =>
-            Navigator.pop(context),
+        onClose: () => Navigator.pop(context),
       );
     }
 
     return ListView(
-      keyboardDismissBehavior:
-          ScrollViewKeyboardDismissBehavior.onDrag,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(
         DogGoSpacing.screenHorizontal,
         18,
@@ -261,19 +217,14 @@ class _CalificarPaseoScreenState
         if (state.error != null) ...[
           const SizedBox(height: 14),
           DogGoErrorView(
-            title:
-                'No pudimos enviar la calificación',
+            title: 'No pudimos enviar la calificación',
             message: state.error!,
             icon: Icons.star_outline_rounded,
             compact: true,
           ),
         ],
         const SizedBox(height: 18),
-        _StarSelector(
-          state: state,
-          onSelected:
-              _controller.selectScore,
-        ),
+        _StarSelector(state: state, onSelected: _controller.selectScore),
         const SizedBox(height: 14),
         _RatingSummary(state: state),
         const SizedBox(height: 22),
@@ -294,9 +245,7 @@ class _CalificarPaseoScreenState
 class _RatingHero extends StatelessWidget {
   final RatingState state;
 
-  const _RatingHero({
-    required this.state,
-  });
+  const _RatingHero({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -304,9 +253,7 @@ class _RatingHero extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: DogGoTheme.teal,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
         boxShadow: DogGoTheme.elevatedShadow(),
       ),
       clipBehavior: Clip.antiAlias,
@@ -319,9 +266,7 @@ class _RatingHero extends StatelessWidget {
               width: 150,
               height: 150,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(
-                  alpha: .07,
-                ),
+                color: Colors.white.withValues(alpha: .07),
                 shape: BoxShape.circle,
               ),
             ),
@@ -332,13 +277,8 @@ class _RatingHero extends StatelessWidget {
                 width: 65,
                 height: 65,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(
-                    alpha: .14,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.large,
-                  ),
+                  color: Colors.white.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(DogGoRadius.large),
                 ),
                 child: const Icon(
                   Icons.reviews_outlined,
@@ -349,39 +289,31 @@ class _RatingHero extends StatelessWidget {
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '¿Cómo estuvo el paseo?',
-                      style: DogGoTheme.title(
-                        size: 21,
-                        color: Colors.white,
-                      ),
+                      style: DogGoTheme.title(size: 21, color: Colors.white),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       state.petName,
                       maxLines: 1,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: DogGoTheme.body(
                         size: 12,
                         color: Colors.white,
-                        weight:
-                            FontWeight.w800,
+                        weight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Con ${state.walkerName}',
                       maxLines: 1,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: DogGoTheme.caption(
                         size: 10,
-                        color: Colors.white
-                            .withValues(alpha: .75),
+                        color: Colors.white.withValues(alpha: .75),
                       ),
                     ),
                   ],
@@ -399,81 +331,54 @@ class _StarSelector extends StatelessWidget {
   final RatingState state;
   final ValueChanged<int> onSelected;
 
-  const _StarSelector({
-    required this.state,
-    required this.onSelected,
-  });
+  const _StarSelector({required this.state, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        _ratingColor(state.score);
+    final color = _ratingColor(state.score);
 
     return Container(
       padding: const EdgeInsets.all(19),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
         children: [
           AnimatedSwitcher(
-            duration:
-                const Duration(milliseconds: 180),
+            duration: const Duration(milliseconds: 180),
             child: Text(
               state.selectedRating.label,
               key: ValueKey(state.score),
-              style: DogGoTheme.title(
-                size: 20,
-                color: color,
-              ),
+              style: DogGoTheme.title(size: 20, color: color),
             ),
           ),
           const SizedBox(height: 7),
-          Text(
-            state.scoreLabel,
-            style:
-                DogGoTheme.subtitle(size: 11.5),
-          ),
+          Text(state.scoreLabel, style: DogGoTheme.subtitle(size: 11.5)),
           const SizedBox(height: 18),
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(5, (index) {
               final value = index + 1;
-              final selected =
-                  value <= state.score;
+              final selected = value <= state.score;
 
               return Expanded(
                 child: Semantics(
                   button: true,
                   selected: value == state.score,
-                  label:
-                      '$value de 5 estrellas',
+                  label: '$value de 5 estrellas',
                   child: IconButton(
                     onPressed: state.submitting
                         ? null
-                        : () =>
-                            onSelected(value),
+                        : () => onSelected(value),
                     icon: Icon(
-                      selected
-                          ? Icons.star_rounded
-                          : Icons
-                              .star_border_rounded,
+                      selected ? Icons.star_rounded : Icons.star_border_rounded,
                     ),
-                    color: selected
-                        ? color
-                        : DogGoTheme.border,
+                    color: selected ? color : DogGoTheme.border,
                     iconSize: 42,
-                    padding:
-                        EdgeInsets.zero,
-                    visualDensity:
-                        VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
                   ),
                 ),
               );
@@ -488,27 +393,19 @@ class _StarSelector extends StatelessWidget {
 class _RatingSummary extends StatelessWidget {
   final RatingState state;
 
-  const _RatingSummary({
-    required this.state,
-  });
+  const _RatingSummary({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        _ratingColor(state.score);
+    final color = _ratingColor(state.score);
 
     return AnimatedContainer(
-      duration:
-          const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .09),
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: color.withValues(alpha: .17),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: color.withValues(alpha: .17)),
       ),
       child: Row(
         children: [
@@ -518,15 +415,9 @@ class _RatingSummary extends StatelessWidget {
             decoration: BoxDecoration(
               color: DogGoTheme.card,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: color.withValues(alpha: .2),
-              ),
+              border: Border.all(color: color.withValues(alpha: .2)),
             ),
-            child: Icon(
-              _ratingIcon(state.score),
-              color: color,
-              size: 22,
-            ),
+            child: Icon(_ratingIcon(state.score), color: color, size: 22),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -562,26 +453,17 @@ class _CommentSection extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Cuéntanos tu experiencia',
-            style: DogGoTheme.title(size: 17),
-          ),
+          Text('Cuéntanos tu experiencia', style: DogGoTheme.title(size: 17)),
           const SizedBox(height: 4),
           Text(
             state.selectedRating.question,
-            style:
-                DogGoTheme.subtitle(size: 11.5),
+            style: DogGoTheme.subtitle(size: 11.5),
           ),
           const SizedBox(height: 13),
           TextField(
@@ -590,22 +472,16 @@ class _CommentSection extends StatelessWidget {
             enabled: !state.submitting,
             minLines: 4,
             maxLines: 7,
-            maxLength:
-                RatingController
-                    .maximumCommentLength,
-            textCapitalization:
-                TextCapitalization.sentences,
+            maxLength: RatingController.maximumCommentLength,
+            textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               labelText: 'Comentario',
               hintText:
                   'Describe la puntualidad, comunicación y cuidado de tu mascota.',
               alignLabelWithHint: true,
               prefixIcon: Padding(
-                padding:
-                    EdgeInsets.only(bottom: 82),
-                child: Icon(
-                  Icons.edit_note_rounded,
-                ),
+                padding: EdgeInsets.only(bottom: 82),
+                child: Icon(Icons.edit_note_rounded),
               ),
             ),
           ),
@@ -625,20 +501,11 @@ class _ReviewGuidelines extends StatelessWidget {
       title: 'Una reseña útil',
       child: const Column(
         children: [
-          _Guideline(
-            text:
-                'Describe aspectos reales del servicio.',
-          ),
+          _Guideline(text: 'Describe aspectos reales del servicio.'),
           SizedBox(height: 11),
-          _Guideline(
-            text:
-                'Evita compartir teléfonos o domicilios.',
-          ),
+          _Guideline(text: 'Evita compartir teléfonos o domicilios.'),
           SizedBox(height: 11),
-          _Guideline(
-            text:
-                'Mantén un lenguaje respetuoso.',
-          ),
+          _Guideline(text: 'Mantén un lenguaje respetuoso.'),
         ],
       ),
     );
@@ -648,9 +515,7 @@ class _ReviewGuidelines extends StatelessWidget {
 class _Guideline extends StatelessWidget {
   final String text;
 
-  const _Guideline({
-    required this.text,
-  });
+  const _Guideline({required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -673,10 +538,7 @@ class _Guideline extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: DogGoTheme.body(
-              size: 10.5,
-              weight: FontWeight.w600,
-            ),
+            style: DogGoTheme.body(size: 10.5, weight: FontWeight.w600),
           ),
         ),
       ],
@@ -693,19 +555,12 @@ class _ReviewImpactCard extends StatelessWidget {
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: DogGoTheme.purpleLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.groups_outlined,
-            color: DogGoTheme.purple,
-            size: 23,
-          ),
+          const Icon(Icons.groups_outlined, color: DogGoTheme.purple, size: 23),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -727,28 +582,19 @@ class _AlreadyRatedView extends StatelessWidget {
   final String petName;
   final VoidCallback onClose;
 
-  const _AlreadyRatedView({
-    required this.petName,
-    required this.onClose,
-  });
+  const _AlreadyRatedView({required this.petName, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(
-          DogGoSpacing.screenHorizontal,
-        ),
+        padding: const EdgeInsets.all(DogGoSpacing.screenHorizontal),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: DogGoTheme.card,
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.extraLarge,
-            ),
-            border: Border.all(
-              color: DogGoTheme.border,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
+            border: Border.all(color: DogGoTheme.border),
           ),
           child: Column(
             children: [
@@ -775,14 +621,12 @@ class _AlreadyRatedView extends StatelessWidget {
               Text(
                 'Ya compartiste tu opinión sobre el paseo de $petName.',
                 textAlign: TextAlign.center,
-                style:
-                    DogGoTheme.subtitle(size: 12.5),
+                style: DogGoTheme.subtitle(size: 12.5),
               ),
               const SizedBox(height: 18),
               ElevatedButton(
                 onPressed: onClose,
-                child:
-                    const Text('Volver al paseo'),
+                child: const Text('Volver al paseo'),
               ),
             ],
           ),
@@ -794,8 +638,7 @@ class _AlreadyRatedView extends StatelessWidget {
 
 class _RatingBottomBar extends StatelessWidget {
   final RatingState state;
-  final TextEditingController
-      commentController;
+  final TextEditingController commentController;
   final VoidCallback onSubmit;
 
   const _RatingBottomBar({
@@ -816,53 +659,37 @@ class _RatingBottomBar extends StatelessWidget {
           12,
         ),
         decoration: BoxDecoration(
-          color: DogGoTheme.card.withValues(
-            alpha: .98,
-          ),
-          border: const Border(
-            top: BorderSide(
-              color: DogGoTheme.border,
-            ),
-          ),
+          color: DogGoTheme.card.withValues(alpha: .98),
+          border: const Border(top: BorderSide(color: DogGoTheme.border)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
-                alpha: .04,
-              ),
+              color: Colors.black.withValues(alpha: .04),
               blurRadius: 17,
               offset: const Offset(0, -5),
             ),
           ],
         ),
-        child: ValueListenableBuilder<
-            TextEditingValue>(
+        child: ValueListenableBuilder<TextEditingValue>(
           valueListenable: commentController,
           builder: (context, value, _) {
             final validComment =
                 value.text.trim().length >=
-                    RatingController
-                        .minimumCommentLength;
+                RatingController.minimumCommentLength;
 
             return SizedBox(
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: state.submitting ||
-                        !validComment
-                    ? null
-                    : onSubmit,
+                onPressed: state.submitting || !validComment ? null : onSubmit,
                 icon: state.submitting
                     ? const SizedBox(
                         width: 19,
                         height: 19,
-                        child:
-                            CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(
-                        Icons.send_rounded,
-                      ),
+                    : const Icon(Icons.send_rounded),
                 label: Text(
                   state.submitting
                       ? 'Enviando calificación...'
@@ -894,16 +721,11 @@ class _InformationCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -912,23 +734,12 @@ class _InformationCard extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: DogGoTheme.tealLight,
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  icon,
-                  color: DogGoTheme.teal,
-                  size: 21,
-                ),
+                child: Icon(icon, color: DogGoTheme.teal, size: 21),
               ),
               const SizedBox(width: 11),
-              Text(
-                title,
-                style:
-                    DogGoTheme.title(size: 16),
-              ),
+              Text(title, style: DogGoTheme.title(size: 16)),
             ],
           ),
           const SizedBox(height: 15),

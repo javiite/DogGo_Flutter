@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../../theme/doggo_radius.dart';
+import '../../../shared/widgets/doggo_section_card.dart';
 import '../../../theme/doggo_theme.dart';
 import '../models/pet_photo.dart';
 import '../pet_detail_controller.dart';
 import '../pet_detail_state.dart';
 
-enum _PhotoAction {
-  makePrimary,
-  delete,
-}
+enum _PhotoAction { makePrimary, delete }
 
-class PetGallerySection
-    extends StatelessWidget {
+class PetGallerySection extends StatelessWidget {
   final PetDetailState state;
   final PetDetailController controller;
 
@@ -32,83 +28,26 @@ class PetGallerySection
 
     final photos = state.photos;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
-        boxShadow: DogGoTheme.softShadow(),
-      ),
+    return DogGoSectionCard(
+      title: 'Galería de ${pet.name}',
+      subtitle: photos.isEmpty
+          ? 'Agrega fotografías claras para reconocerlo fácilmente.'
+          : '${photos.length} de 8 fotografías',
+      icon: Icons.photo_library_rounded,
+      trailing: state.galleryBusy
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.2),
+            )
+          : IconButton(
+              tooltip: 'Agregar fotografías',
+              onPressed: state.canAddPhoto ? () => _addPhoto(context) : null,
+              icon: const Icon(Icons.add_photo_alternate_rounded),
+            ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 43,
-                height: 43,
-                decoration: BoxDecoration(
-                  color: DogGoTheme.tealLight,
-                  borderRadius:
-                      BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.photo_library_rounded,
-                  color: DogGoTheme.teal,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Galería de ${pet.name}',
-                      style: DogGoTheme.title(
-                        size: 17,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      photos.isEmpty
-                          ? 'Agrega sus mejores fotografías'
-                          : '${photos.length} de 8 fotografías',
-                      style: DogGoTheme.subtitle(
-                        size: 10.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (state.galleryBusy)
-                const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.2,
-                  ),
-                )
-              else
-                IconButton(
-                  tooltip: 'Agregar fotografías',
-                  onPressed: state.canAddPhoto
-                      ? () => _addPhoto(context)
-                      : null,
-                  icon: const Icon(
-                    Icons.add_photo_alternate_rounded,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 15),
           if (photos.isEmpty)
             _EmptyGallery(
               enabled: state.canAddPhoto,
@@ -118,41 +57,23 @@ class PetGallerySection
             SizedBox(
               height: 136,
               child: ListView.separated(
-                scrollDirection:
-                    Axis.horizontal,
-                itemCount: photos.length +
-                    (state.canAddPhoto ? 1 : 0),
-                separatorBuilder: (_, __) =>
-                    const SizedBox(width: 10),
+                scrollDirection: Axis.horizontal,
+                itemCount: photos.length + (state.canAddPhoto ? 1 : 0),
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (_, index) {
                   if (index == photos.length) {
-                    return _AddPhotoTile(
-                      onTap: () =>
-                          _addPhoto(context),
-                    );
+                    return _AddPhotoTile(onTap: () => _addPhoto(context));
                   }
 
                   final photo = photos[index];
 
                   return _PhotoTile(
                     photo: photo,
-                    imageUrl: photo.publicUrl(
-                      state.baseUrl,
-                    ),
+                    imageUrl: photo.publicUrl(state.baseUrl),
                     loading:
-                        state.galleryBusy &&
-                            state.actingPhotoId ==
-                                photo.id,
-                    onTap: () => _openViewer(
-                      context,
-                      photos,
-                      index,
-                    ),
-                    onOptions: () =>
-                        _openPhotoOptions(
-                      context,
-                      photo,
-                    ),
+                        state.galleryBusy && state.actingPhotoId == photo.id,
+                    onTap: () => _openViewer(context, photos, index),
+                    onOptions: () => _openPhotoOptions(context, photo),
                   );
                 },
               ),
@@ -170,9 +91,7 @@ class PetGallerySection
                 Expanded(
                   child: Text(
                     'La foto marcada como portada aparecerá en Home, Agenda y paseos.',
-                    style: DogGoTheme.subtitle(
-                      size: 9.5,
-                    ),
+                    style: DogGoTheme.subtitle(size: 9.5),
                   ),
                 ),
               ],
@@ -183,42 +102,28 @@ class PetGallerySection
     );
   }
 
-  Future<void> _addPhoto(
-    BuildContext context,
-  ) async {
-    final result =
-        await controller.addPhoto();
+  Future<void> _addPhoto(BuildContext context) async {
+    final result = await controller.addPhoto();
 
-    if (result == null ||
-        !context.mounted) {
+    if (result == null || !context.mounted) {
       return;
     }
 
     _showResult(context, result);
   }
 
-  Future<void> _openPhotoOptions(
-    BuildContext context,
-    PetPhoto photo,
-  ) async {
-    if (state.galleryBusy ||
-        !photo.hasValidId) {
+  Future<void> _openPhotoOptions(BuildContext context, PetPhoto photo) async {
+    if (state.galleryBusy || !photo.hasValidId) {
       return;
     }
 
-    final action =
-        await showModalBottomSheet<_PhotoAction>(
+    final action = await showModalBottomSheet<_PhotoAction>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              0,
-              16,
-              18,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -228,34 +133,23 @@ class PetGallerySection
                       Icons.star_rounded,
                       color: DogGoTheme.orange,
                     ),
-                    title: const Text(
-                      'Usar como portada',
-                    ),
-                    subtitle: const Text(
-                      'Aparecerá como foto principal.',
-                    ),
-                    onTap: () => Navigator.pop(
-                      sheetContext,
-                      _PhotoAction.makePrimary,
-                    ),
+                    title: const Text('Usar como portada'),
+                    subtitle: const Text('Aparecerá como foto principal.'),
+                    onTap: () =>
+                        Navigator.pop(sheetContext, _PhotoAction.makePrimary),
                   ),
                 ListTile(
                   leading: const Icon(
                     Icons.delete_outline_rounded,
                     color: DogGoTheme.red,
                   ),
-                  title: const Text(
-                    'Eliminar fotografía',
-                  ),
+                  title: const Text('Eliminar fotografía'),
                   subtitle: Text(
                     photo.isPrimary
                         ? 'Otra foto se convertirá en portada.'
                         : 'Se eliminará de la galería.',
                   ),
-                  onTap: () => Navigator.pop(
-                    sheetContext,
-                    _PhotoAction.delete,
-                  ),
+                  onTap: () => Navigator.pop(sheetContext, _PhotoAction.delete),
                 ),
               ],
             ),
@@ -264,23 +158,18 @@ class PetGallerySection
       },
     );
 
-    if (action == null ||
-        !context.mounted) {
+    if (action == null || !context.mounted) {
       return;
     }
 
-    await Future<void>.delayed(
-      const Duration(milliseconds: 250),
-    );
+    await Future<void>.delayed(const Duration(milliseconds: 250));
 
     if (!context.mounted) {
       return;
     }
 
-    if (action ==
-        _PhotoAction.makePrimary) {
-      final result =
-          await controller.makePrimary(photo);
+    if (action == _PhotoAction.makePrimary) {
+      final result = await controller.makePrimary(photo);
 
       if (context.mounted) {
         _showResult(context, result);
@@ -289,35 +178,23 @@ class PetGallerySection
       return;
     }
 
-    final confirmed =
-        await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(
-            'Eliminar fotografía',
-          ),
+          title: const Text('Eliminar fotografía'),
           content: const Text(
             'Esta acción quitará la fotografía definitivamente.',
           ),
           actions: [
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                false,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(
-                dialogContext,
-                true,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    DogGoTheme.red,
+                backgroundColor: DogGoTheme.red,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Eliminar'),
@@ -327,13 +204,11 @@ class PetGallerySection
       },
     );
 
-    if (confirmed != true ||
-        !context.mounted) {
+    if (confirmed != true || !context.mounted) {
       return;
     }
 
-    final result =
-        await controller.deletePhoto(photo);
+    final result = await controller.deletePhoto(photo);
 
     if (context.mounted) {
       _showResult(context, result);
@@ -352,24 +227,17 @@ class PetGallerySection
           photos: photos,
           baseUrl: state.baseUrl,
           initialIndex: initialIndex,
-          petName:
-              state.pet?.name ?? 'Mascota',
+          petName: state.pet?.name ?? 'Mascota',
         ),
       ),
     );
   }
 
-  void _showResult(
-    BuildContext context,
-    PetGalleryResult result,
-  ) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
+  void _showResult(BuildContext context, PetGalleryResult result) {
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(result.message),
-        backgroundColor: result.success
-            ? DogGoTheme.teal
-            : DogGoTheme.ink,
+        backgroundColor: result.success ? DogGoTheme.teal : DogGoTheme.ink,
       ),
     );
   }
@@ -379,10 +247,7 @@ class _EmptyGallery extends StatelessWidget {
   final bool enabled;
   final VoidCallback onAdd;
 
-  const _EmptyGallery({
-    required this.enabled,
-    required this.onAdd,
-  });
+  const _EmptyGallery({required this.enabled, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -394,16 +259,10 @@ class _EmptyGallery extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 25,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
           decoration: BoxDecoration(
-            borderRadius:
-                BorderRadius.circular(20),
-            border: Border.all(
-              color: DogGoTheme.border,
-            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DogGoTheme.border),
           ),
           child: Column(
             children: [
@@ -413,18 +272,11 @@ class _EmptyGallery extends StatelessWidget {
                 color: DogGoTheme.teal,
               ),
               const SizedBox(height: 10),
-              Text(
-                'Agregar fotografías',
-                style: DogGoTheme.title(
-                  size: 14,
-                ),
-              ),
+              Text('Agregar fotografías', style: DogGoTheme.title(size: 14)),
               const SizedBox(height: 4),
               Text(
                 'Selecciona una o varias. Puedes guardar hasta 8.',
-                style: DogGoTheme.subtitle(
-                  size: 10,
-                ),
+                style: DogGoTheme.subtitle(size: 10),
               ),
             ],
           ),
@@ -437,9 +289,7 @@ class _EmptyGallery extends StatelessWidget {
 class _AddPhotoTile extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _AddPhotoTile({
-    required this.onTap,
-  });
+  const _AddPhotoTile({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -452,14 +302,9 @@ class _AddPhotoTile extends StatelessWidget {
         child: SizedBox(
           width: 103,
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.add_rounded,
-                color: DogGoTheme.teal,
-                size: 31,
-              ),
+              const Icon(Icons.add_rounded, color: DogGoTheme.teal, size: 31),
               const SizedBox(height: 7),
               Text(
                 'Agregar',
@@ -501,25 +346,19 @@ class _PhotoTile extends StatelessWidget {
           Positioned.fill(
             child: Material(
               color: DogGoTheme.tealLight,
-              borderRadius:
-                  BorderRadius.circular(19),
+              borderRadius: BorderRadius.circular(19),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: onTap,
                 child: imageUrl == null
-                    ? const Icon(
-                        Icons.pets_rounded,
-                        color: DogGoTheme.teal,
-                      )
+                    ? const Icon(Icons.pets_rounded, color: DogGoTheme.teal)
                     : Image.network(
                         imageUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder:
-                            (_, __, ___) {
+                        errorBuilder: (_, _, _) {
                           return const Icon(
                             Icons.pets_rounded,
-                            color:
-                                DogGoTheme.teal,
+                            color: DogGoTheme.teal,
                           );
                         },
                       ),
@@ -531,32 +370,22 @@ class _PhotoTile extends StatelessWidget {
               left: 7,
               top: 7,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 7,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                 decoration: BoxDecoration(
                   color: DogGoTheme.orange,
-                  borderRadius:
-                      BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.star_rounded,
-                      size: 12,
-                      color: Colors.white,
-                    ),
+                    Icon(Icons.star_rounded, size: 12, color: Colors.white),
                     SizedBox(width: 3),
                     Text(
                       'Portada',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 8,
-                        fontWeight:
-                            FontWeight.w800,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ],
@@ -573,31 +402,21 @@ class _PhotoTile extends StatelessWidget {
                 minimumSize: const Size(32, 32),
                 maximumSize: const Size(32, 32),
                 padding: EdgeInsets.zero,
-                backgroundColor:
-                    Colors.black.withValues(
-                  alpha: .50,
-                ),
+                backgroundColor: Colors.black.withValues(alpha: .50),
                 foregroundColor: Colors.white,
               ),
-              icon: const Icon(
-                Icons.more_horiz_rounded,
-                size: 19,
-              ),
+              icon: const Icon(Icons.more_horiz_rounded, size: 19),
             ),
           ),
           if (loading)
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(
-                    alpha: .42,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(19),
+                  color: Colors.black.withValues(alpha: .42),
+                  borderRadius: BorderRadius.circular(19),
                 ),
                 alignment: Alignment.center,
-                child:
-                    const CircularProgressIndicator(
+                child: const CircularProgressIndicator(
                   color: Colors.white,
                   strokeWidth: 2.4,
                 ),
@@ -623,12 +442,10 @@ class _GalleryViewer extends StatefulWidget {
   });
 
   @override
-  State<_GalleryViewer> createState() =>
-      _GalleryViewerState();
+  State<_GalleryViewer> createState() => _GalleryViewerState();
 }
 
-class _GalleryViewerState
-    extends State<_GalleryViewer> {
+class _GalleryViewerState extends State<_GalleryViewer> {
   late final PageController _pageController;
   late int _currentIndex;
 
@@ -637,9 +454,7 @@ class _GalleryViewerState
     super.initState();
 
     _currentIndex = widget.initialIndex;
-    _pageController = PageController(
-      initialPage: widget.initialIndex,
-    );
+    _pageController = PageController(initialPage: widget.initialIndex);
   }
 
   @override
@@ -659,9 +474,7 @@ class _GalleryViewerState
         actions: [
           Center(
             child: Padding(
-              padding: const EdgeInsets.only(
-                right: 18,
-              ),
+              padding: const EdgeInsets.only(right: 18),
               child: Text(
                 '${_currentIndex + 1}/'
                 '${widget.photos.length}',
@@ -684,16 +497,11 @@ class _GalleryViewerState
         },
         itemBuilder: (_, index) {
           final photo = widget.photos[index];
-          final url =
-              photo.publicUrl(widget.baseUrl);
+          final url = photo.publicUrl(widget.baseUrl);
 
           if (url == null) {
             return const Center(
-              child: Icon(
-                Icons.pets_rounded,
-                color: Colors.white54,
-                size: 80,
-              ),
+              child: Icon(Icons.pets_rounded, color: Colors.white54, size: 80),
             );
           }
 
@@ -704,7 +512,7 @@ class _GalleryViewerState
               child: Image.network(
                 url,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) {
+                errorBuilder: (_, _, _) {
                   return const Icon(
                     Icons.broken_image_outlined,
                     color: Colors.white54,

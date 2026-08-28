@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/doggo_screen_scaffold.dart';
+import '../../shared/widgets/doggo_search_field.dart';
 import '../../theme/doggo_theme.dart';
 import 'guide_detail_screen.dart';
 import 'models/guide_article.dart';
@@ -12,8 +14,7 @@ class GuidesScreen extends StatefulWidget {
 }
 
 class _GuidesScreenState extends State<GuidesScreen> {
-  final TextEditingController _searchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   String _selectedCategory = 'Todas';
   String _search = '';
@@ -30,17 +31,21 @@ class _GuidesScreenState extends State<GuidesScreen> {
   List<GuideArticle> get _filteredGuides {
     final query = _search.trim().toLowerCase();
 
-    return dogGoGuideArticles.where((guide) {
-      final matchesCategory = _selectedCategory == 'Todas' ||
-          guide.category == _selectedCategory;
+    return dogGoGuideArticles
+        .where((guide) {
+          final matchesCategory =
+              _selectedCategory == 'Todas' ||
+              guide.category == _selectedCategory;
 
-      final matchesSearch = query.isEmpty ||
-          guide.title.toLowerCase().contains(query) ||
-          guide.summary.toLowerCase().contains(query) ||
-          guide.category.toLowerCase().contains(query);
+          final matchesSearch =
+              query.isEmpty ||
+              guide.title.toLowerCase().contains(query) ||
+              guide.summary.toLowerCase().contains(query) ||
+              guide.category.toLowerCase().contains(query);
 
-      return matchesCategory && matchesSearch;
-    }).toList(growable: false);
+          return matchesCategory && matchesSearch;
+        })
+        .toList(growable: false);
   }
 
   GuideArticle get _featuredGuide {
@@ -57,29 +62,17 @@ class _GuidesScreenState extends State<GuidesScreen> {
   }
 
   void _openGuide(GuideArticle guide) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => GuideDetailScreen(guide: guide),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => GuideDetailScreen(guide: guide)));
   }
 
   @override
   Widget build(BuildContext context) {
     final guides = _filteredGuides;
 
-    return Scaffold(
-      backgroundColor: DogGoTheme.cream,
-      appBar: AppBar(
-        backgroundColor: DogGoTheme.card,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: false,
-        title: Text(
-          'Guías DogGo',
-          style: DogGoTheme.title(size: 20),
-        ),
-      ),
+    return DogGoScreenScaffold(
+      title: 'Guías DogGo',
       body: SafeArea(
         top: false,
         child: ListView(
@@ -93,8 +86,10 @@ class _GuidesScreenState extends State<GuidesScreen> {
               },
             ),
             const SizedBox(height: 24),
-            _SearchField(
+            DogGoSearchField(
               controller: _searchController,
+              hintText: 'Buscar una guía',
+              hasValue: _search.isNotEmpty,
               onChanged: (value) {
                 setState(() {
                   _search = value;
@@ -115,7 +110,7 @@ class _GuidesScreenState extends State<GuidesScreen> {
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 itemCount: _categories.length,
-                separatorBuilder: (_, __) {
+                separatorBuilder: (_, _) {
                   return const SizedBox(width: 8);
                 },
                 itemBuilder: (context, index) {
@@ -163,17 +158,14 @@ class _GuidesScreenState extends State<GuidesScreen> {
             if (guides.isEmpty)
               const _EmptyGuides()
             else
-              for (var index = 0;
-                  index < guides.length;
-                  index++) ...[
+              for (var index = 0; index < guides.length; index++) ...[
                 _GuideCard(
                   guide: guides[index],
                   onTap: () {
                     _openGuide(guides[index]);
                   },
                 ),
-                if (index < guides.length - 1)
-                  const SizedBox(height: 12),
+                if (index < guides.length - 1) const SizedBox(height: 12),
               ],
           ],
         ),
@@ -186,10 +178,7 @@ class _GuidesHero extends StatelessWidget {
   final GuideArticle guide;
   final VoidCallback onTap;
 
-  const _GuidesHero({
-    required this.guide,
-    required this.onTap,
-  });
+  const _GuidesHero({required this.guide, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -203,10 +192,7 @@ class _GuidesHero extends StatelessWidget {
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [
-                Color(0xFF555D78),
-                Color(0xFF747C99),
-              ],
+              colors: [Color(0xFF555D78), Color(0xFF747C99)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -267,10 +253,7 @@ class _GuidesHero extends StatelessWidget {
                     guide.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: DogGoTheme.title(
-                      size: 24,
-                      color: Colors.white,
-                    ),
+                    style: DogGoTheme.title(size: 24, color: Colors.white),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -312,65 +295,6 @@ class _GuidesHero extends StatelessWidget {
   }
 }
 
-class _SearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  const _SearchField({
-    required this.controller,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Buscar una guía',
-        prefixIcon: const Icon(
-          Icons.search_rounded,
-          color: DogGoTheme.muted,
-        ),
-        suffixIcon: controller.text.isEmpty
-            ? null
-            : IconButton(
-                onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
-              ),
-        filled: true,
-        fillColor: DogGoTheme.card,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: DogGoTheme.border,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: DogGoTheme.border,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: DogGoTheme.teal,
-            width: 1.4,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _CategoryChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -391,25 +315,18 @@ class _CategoryChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(30),
         child: Ink(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 9,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: selected
-                  ? DogGoTheme.teal
-                  : DogGoTheme.border,
+              color: selected ? DogGoTheme.teal : DogGoTheme.border,
             ),
           ),
           child: Text(
             label,
             style: DogGoTheme.body(
               size: 11,
-              color: selected
-                  ? Colors.white
-                  : DogGoTheme.muted,
+              color: selected ? Colors.white : DogGoTheme.muted,
               weight: FontWeight.w800,
             ),
           ),
@@ -423,10 +340,7 @@ class _GuideCard extends StatelessWidget {
   final GuideArticle guide;
   final VoidCallback onTap;
 
-  const _GuideCard({
-    required this.guide,
-    required this.onTap,
-  });
+  const _GuideCard({required this.guide, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -453,11 +367,7 @@ class _GuideCard extends StatelessWidget {
                   color: guide.background,
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(
-                  guide.icon,
-                  color: guide.color,
-                  size: 27,
-                ),
+                child: Icon(guide.icon, color: guide.color, size: 27),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -550,10 +460,7 @@ class _EmptyGuides extends StatelessWidget {
             color: DogGoTheme.muted,
           ),
           const SizedBox(height: 12),
-          Text(
-            'No encontramos guías',
-            style: DogGoTheme.title(size: 18),
-          ),
+          Text('No encontramos guías', style: DogGoTheme.title(size: 18)),
           const SizedBox(height: 6),
           Text(
             'Prueba con otra búsqueda o categoría.',

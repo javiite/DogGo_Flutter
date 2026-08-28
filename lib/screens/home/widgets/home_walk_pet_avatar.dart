@@ -183,7 +183,7 @@ class _PetTile extends StatelessWidget {
             height: double.infinity,
             fit: BoxFit.cover,
             gaplessPlayback: true,
-            errorBuilder: (_, __, ___) {
+            errorBuilder: (_, _, _) {
               return placeholder;
             },
           );

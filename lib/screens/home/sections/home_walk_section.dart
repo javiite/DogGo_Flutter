@@ -320,59 +320,60 @@ class _WalkCard extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: onPrimary,
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(0, 49),
-                            backgroundColor: Colors.white,
-                            foregroundColor: palette.primary,
-                          ),
-                          icon: Icon(
-                            routeAlert
-                                ? Icons.map_rounded
-                                : palette.primaryActionIcon,
-                          ),
-                          label: Text(
-                            routeAlert ? 'Ver recorrido' : primaryLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 9),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onSecondary,
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(0, 49),
-                            foregroundColor: Colors.white,
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.58),
-                            ),
-                          ),
-                          icon: Icon(
-                            routeAlert
-                                ? Icons.chat_rounded
-                                : Icons.arrow_forward_rounded,
-                          ),
-                          label: Text(
-                            routeAlert ? 'Abrir chat' : secondaryLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildActions(palette),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildActions(_WalkPalette palette) {
+    final primaryButton = FilledButton.icon(
+      onPressed: onPrimary,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 49),
+        backgroundColor: Colors.white,
+        foregroundColor: palette.primary,
+      ),
+      icon: Icon(routeAlert ? Icons.map_rounded : palette.primaryActionIcon),
+      label: Text(routeAlert ? 'Ver recorrido' : primaryLabel, maxLines: 1),
+    );
+
+    final secondaryButton = OutlinedButton.icon(
+      onPressed: onSecondary,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 49),
+        foregroundColor: Colors.white,
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.58)),
+      ),
+      icon: Icon(routeAlert ? Icons.chat_rounded : Icons.arrow_forward_rounded),
+      label: Text(routeAlert ? 'Abrir chat' : secondaryLabel, maxLines: 1),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 360) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              primaryButton,
+              const SizedBox(height: 9),
+              secondaryButton,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: primaryButton),
+            const SizedBox(width: 9),
+            Expanded(child: secondaryButton),
+          ],
+        );
+      },
     );
   }
 }

@@ -4,20 +4,16 @@ import '../../services/notificaciones_service.dart';
 import 'models/app_notification.dart';
 import 'notifications_state.dart';
 
-class NotificationsController
-    extends ChangeNotifier {
+class NotificationsController extends ChangeNotifier {
   final NotificacionesService _service;
 
-  NotificationsState _state =
-      const NotificationsState();
+  NotificationsState _state = const NotificationsState();
 
   bool _disposed = false;
   bool _loadInProgress = false;
 
-  NotificationsController({
-    NotificacionesService? service,
-  }) : _service =
-            service ?? NotificacionesService();
+  NotificationsController({NotificacionesService? service})
+    : _service = service ?? NotificacionesService();
 
   NotificationsState get state => _state;
 
@@ -29,9 +25,7 @@ class NotificationsController
     await _load(initialLoad: false);
   }
 
-  Future<void> _load({
-    required bool initialLoad,
-  }) async {
+  Future<void> _load({required bool initialLoad}) async {
     if (_loadInProgress) {
       return;
     }
@@ -40,31 +34,22 @@ class NotificationsController
 
     _setState(
       _state.copyWith(
-        loading:
-            initialLoad &&
-                _state.notifications.isEmpty,
+        loading: initialLoad && _state.notifications.isEmpty,
         refreshing: !initialLoad,
         clearError: true,
       ),
     );
 
     try {
-      final response =
-          await _service.obtenerNotificaciones();
+      final response = await _service.obtenerNotificaciones();
 
-      final notifications = response
-          .map(AppNotification.fromJson)
-          .toList();
+      final notifications = response.map(AppNotification.fromJson).toList();
 
       notifications.sort((first, second) {
-        final firstDate = first.createdAt ??
-            DateTime.fromMillisecondsSinceEpoch(
-              0,
-            );
-        final secondDate = second.createdAt ??
-            DateTime.fromMillisecondsSinceEpoch(
-              0,
-            );
+        final firstDate =
+            first.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final secondDate =
+            second.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
         return secondDate.compareTo(firstDate);
       });
@@ -103,31 +88,17 @@ class NotificationsController
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        showUnreadOnly:
-            !_state.showUnreadOnly,
-      ),
-    );
+    _setState(_state.copyWith(showUnreadOnly: !_state.showUnreadOnly));
   }
 
-  Future<void> markAsRead(
-    AppNotification notification,
-  ) async {
+  Future<void> markAsRead(AppNotification notification) async {
     final id = notification.id;
 
-    if (id == null ||
-        notification.isRead ||
-        _state.busy) {
+    if (id == null || notification.isRead || _state.busy) {
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        actingNotificationId: id,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(actingNotificationId: id, clearError: true));
 
     try {
       await _service.marcarComoLeida(id);
@@ -136,76 +107,43 @@ class NotificationsController
         return;
       }
 
-      _replaceNotification(
-        notification.copyWith(
-          isRead: true,
-        ),
-      );
+      _replaceNotification(notification.copyWith(isRead: true));
     } catch (error) {
       if (!_disposed) {
-        _setState(
-          _state.copyWith(
-            error: _cleanError(error),
-          ),
-        );
+        _setState(_state.copyWith(error: _cleanError(error)));
       }
     } finally {
       if (!_disposed) {
-        _setState(
-          _state.copyWith(
-            clearActingNotification: true,
-          ),
-        );
+        _setState(_state.copyWith(clearActingNotification: true));
       }
     }
   }
 
   Future<void> markAllAsRead() async {
-    if (!_state.hasUnread ||
-        _state.busy) {
+    if (!_state.hasUnread || _state.busy) {
       return;
     }
 
-    final unread = _state.notifications
-        .where((notification) {
-          return !notification.isRead &&
-              notification.id != null;
-        })
-        .toList();
+    final unread = _state.notifications.where((notification) {
+      return !notification.isRead && notification.id != null;
+    }).toList();
 
     if (unread.isEmpty) {
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        markingAll: true,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(markingAll: true, clearError: true));
 
     try {
-      for (final notification in unread) {
-        if (_disposed) {
-          return;
-        }
-
-        await _service.marcarComoLeida(
-          notification.id!,
-        );
-      }
+      await _service.marcarTodasComoLeidas();
 
       if (_disposed) {
         return;
       }
 
-      final updated = _state.notifications
-          .map((notification) {
-        if (!notification.isRead &&
-            notification.id != null) {
-          return notification.copyWith(
-            isRead: true,
-          );
+      final updated = _state.notifications.map((notification) {
+        if (!notification.isRead && notification.id != null) {
+          return notification.copyWith(isRead: true);
         }
 
         return notification;
@@ -221,19 +159,12 @@ class NotificationsController
     } catch (error) {
       if (!_disposed) {
         _setState(
-          _state.copyWith(
-            markingAll: false,
-            error: _cleanError(error),
-          ),
+          _state.copyWith(markingAll: false, error: _cleanError(error)),
         );
       }
     } finally {
       if (!_disposed && _state.markingAll) {
-        _setState(
-          _state.copyWith(
-            markingAll: false,
-          ),
-        );
+        _setState(_state.copyWith(markingAll: false));
       }
     }
   }
@@ -243,32 +174,19 @@ class NotificationsController
       return;
     }
 
-    _setState(
-      _state.copyWith(
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(clearError: true));
   }
 
-  void _replaceNotification(
-    AppNotification updated,
-  ) {
-    final notifications =
-        _state.notifications.map((current) {
-      if (current.id != null &&
-          current.id == updated.id) {
+  void _replaceNotification(AppNotification updated) {
+    final notifications = _state.notifications.map((current) {
+      if (current.id != null && current.id == updated.id) {
         return updated;
       }
 
       return current;
     }).toList();
 
-    _setState(
-      _state.copyWith(
-        notifications: notifications,
-        clearError: true,
-      ),
-    );
+    _setState(_state.copyWith(notifications: notifications, clearError: true));
   }
 
   String _cleanError(Object error) {
@@ -283,9 +201,7 @@ class NotificationsController
         : message;
   }
 
-  void _setState(
-    NotificationsState newState,
-  ) {
+  void _setState(NotificationsState newState) {
     if (_disposed) {
       return;
     }

@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import '../shared/widgets/doggo_empty_view.dart';
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_network_image.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
+import '../shared/widgets/doggo_search_field.dart';
+import '../shared/widgets/doggo_status_chip.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
+import '../services/app_preferences_service.dart';
 import 'crear_paseo_screen.dart';
 import 'detalle_paseador_screen.dart';
 import 'walkers/models/walker.dart';
@@ -13,7 +18,9 @@ import 'walkers/walkers_controller.dart';
 import 'walkers/walkers_state.dart';
 
 class PaseadoresScreen extends StatefulWidget {
-  const PaseadoresScreen({super.key});
+  final int? initialPetId;
+
+  const PaseadoresScreen({super.key, this.initialPetId});
 
   @override
   State<PaseadoresScreen> createState() => _PaseadoresScreenState();
@@ -23,12 +30,36 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
   late final WalkersController _controller;
 
   final TextEditingController _searchController = TextEditingController();
+  Set<int> _favoriteIds = {};
+  List<int> _recentIds = const [];
+  bool _onlyFavorites = false;
 
   @override
   void initState() {
     super.initState();
 
     _controller = WalkersController()..initialize();
+    _loadLocalWalkerPreferences();
+  }
+
+  Future<void> _loadLocalWalkerPreferences() async {
+    final favorites = await AppPreferencesService.favoriteWalkerIds();
+    final recent = await AppPreferencesService.recentWalkerIds();
+    if (!mounted) return;
+    setState(() {
+      _favoriteIds = favorites;
+      _recentIds = recent;
+    });
+  }
+
+  Future<void> _toggleFavorite(Walker walker) async {
+    final favorite = await AppPreferencesService.toggleFavoriteWalker(
+      walker.id,
+    );
+    if (!mounted) return;
+    setState(() {
+      favorite ? _favoriteIds.add(walker.id) : _favoriteIds.remove(walker.id);
+    });
   }
 
   @override
@@ -75,15 +106,20 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
   }
 
   Future<void> _openDetail(Walker walker) async {
+    await AppPreferencesService.rememberWalker(walker.id);
+    if (!mounted) return;
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
-        builder: (_) =>
-            DetallePaseadorScreen(paseador: walker.toNavigationMap()),
+        builder: (_) => DetallePaseadorScreen(
+          paseador: walker.toNavigationMap(),
+          initialPetId: widget.initialPetId,
+        ),
       ),
     );
 
     if (mounted) {
+      await _loadLocalWalkerPreferences();
       await _controller.refresh();
     }
   }
@@ -96,11 +132,16 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       );
       return;
     }
+    await AppPreferencesService.rememberWalker(walker.id);
+    if (!mounted) return;
 
     final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute<bool>(
-        builder: (_) => CrearPaseoScreen(paseador: walker.toNavigationMap()),
+        builder: (_) => CrearPaseoScreen(
+          paseador: walker.toNavigationMap(),
+          initialPetId: widget.initialPetId,
+        ),
       ),
     );
 
@@ -120,18 +161,16 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       builder: (context, _) {
         final state = _controller.state;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Paseadores'),
-            actions: [
-              IconButton(
-                tooltip: 'Actualizar paseadores',
-                onPressed: state.loading ? null : _controller.refresh,
-                icon: const Icon(Icons.refresh_rounded),
-              ),
-              const SizedBox(width: DogGoSpacing.sm),
-            ],
-          ),
+        return DogGoScreenScaffold(
+          title: 'Paseadores',
+          actions: [
+            IconButton(
+              tooltip: 'Actualizar paseadores',
+              onPressed: state.loading ? null : _controller.refresh,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+            const SizedBox(width: DogGoSpacing.sm),
+          ],
           body: _buildBody(state),
         );
       },
@@ -156,7 +195,24 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
       );
     }
 
-    final walkers = state.filteredWalkers;
+    final walkers =
+        state.filteredWalkers
+            .where(
+              (walker) => !_onlyFavorites || _favoriteIds.contains(walker.id),
+            )
+            .toList()
+          ..sort((left, right) {
+            final favorite =
+                (_favoriteIds.contains(right.id) ? 1 : 0) -
+                (_favoriteIds.contains(left.id) ? 1 : 0);
+            if (favorite != 0) return favorite;
+            final leftRecent = _recentIds.indexOf(left.id);
+            final rightRecent = _recentIds.indexOf(right.id);
+            if (leftRecent < 0 && rightRecent < 0) return 0;
+            if (leftRecent < 0) return 1;
+            if (rightRecent < 0) return -1;
+            return leftRecent.compareTo(rightRecent);
+          });
 
     return RefreshIndicator(
       onRefresh: _controller.refresh,
@@ -178,26 +234,44 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               DogGoSpacing.screenHorizontal,
+              DogGoSpacing.sm,
+              DogGoSpacing.screenHorizontal,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: Row(
+                children: [
+                  FilterChip(
+                    selected: _onlyFavorites,
+                    avatar: const Icon(Icons.favorite_rounded, size: 17),
+                    label: Text('Favoritos (${_favoriteIds.length})'),
+                    onSelected: (value) =>
+                        setState(() => _onlyFavorites = value),
+                  ),
+                  const SizedBox(width: 8),
+                  if (_recentIds.isNotEmpty)
+                    Text(
+                      '${_recentIds.length} vistos recientemente',
+                      style: DogGoTheme.caption(size: 10.5),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              DogGoSpacing.screenHorizontal,
               DogGoSpacing.md,
               DogGoSpacing.screenHorizontal,
               0,
             ),
             sliver: SliverToBoxAdapter(
-              child: TextField(
+              child: DogGoSearchField(
                 controller: _searchController,
-                textInputAction: TextInputAction.search,
                 onChanged: _controller.search,
-                decoration: InputDecoration(
-                  hintText: 'Buscar por nombre, zona o experiencia',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: state.searchQuery.isNotEmpty
-                      ? IconButton(
-                          tooltip: 'Limpiar búsqueda',
-                          onPressed: _clearSearch,
-                          icon: const Icon(Icons.close_rounded),
-                        )
-                      : null,
-                ),
+                hintText: 'Buscar por nombre, zona o experiencia',
+                hasValue: state.searchQuery.isNotEmpty,
+                onClear: _clearSearch,
               ),
             ),
           ),
@@ -293,6 +367,9 @@ class _PaseadoresScreenState extends State<PaseadoresScreen> {
                     onRequest: () {
                       _requestWalk(walker);
                     },
+                    favorite: _favoriteIds.contains(walker.id),
+                    recent: _recentIds.contains(walker.id),
+                    onFavorite: () => _toggleFavorite(walker),
                   );
                 },
               ),
@@ -538,12 +615,18 @@ class _WalkerCard extends StatelessWidget {
   final String? photoUrl;
   final VoidCallback onViewProfile;
   final VoidCallback onRequest;
+  final bool favorite;
+  final bool recent;
+  final VoidCallback onFavorite;
 
   const _WalkerCard({
     required this.walker,
     required this.photoUrl,
     required this.onViewProfile,
     required this.onRequest,
+    required this.favorite,
+    required this.recent,
+    required this.onFavorite,
   });
 
   @override
@@ -591,6 +674,21 @@ class _WalkerCard extends StatelessWidget {
                                   size: 19,
                                 ),
                               ),
+                            IconButton(
+                              tooltip: favorite
+                                  ? 'Quitar de favoritos'
+                                  : 'Agregar a favoritos',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: onFavorite,
+                              icon: Icon(
+                                favorite
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                color: favorite
+                                    ? DogGoTheme.red
+                                    : DogGoTheme.muted,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: DogGoSpacing.xs),
@@ -638,6 +736,11 @@ class _WalkerCard extends StatelessWidget {
                 spacing: DogGoSpacing.sm,
                 runSpacing: DogGoSpacing.sm,
                 children: [
+                  if (recent)
+                    const _WalkerAttribute(
+                      icon: Icons.history_rounded,
+                      text: 'Visto recientemente',
+                    ),
                   _WalkerAttribute(
                     icon: Icons.location_on_outlined,
                     text: walker.proximityLabel,
@@ -720,15 +823,11 @@ class _WalkerPhoto extends StatelessWidget {
         color: DogGoTheme.tealLight,
         borderRadius: BorderRadius.circular(DogGoRadius.medium),
       ),
-      child: photoUrl == null
-          ? _WalkerPlaceholder(initials: walker.initials)
-          : Image.network(
-              photoUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) {
-                return _WalkerPlaceholder(initials: walker.initials);
-              },
-            ),
+      child: DogGoNetworkImage(
+        url: photoUrl,
+        semanticLabel: 'Fotografía de ${walker.name}',
+        fallback: _WalkerPlaceholder(initials: walker.initials),
+      ),
     );
   }
 }
@@ -756,20 +855,12 @@ class _AvailabilityLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: available ? DogGoTheme.greenLight : DogGoTheme.redLight,
-        borderRadius: BorderRadius.circular(DogGoRadius.pill),
-      ),
-      child: Text(
-        available ? 'Disponible' : 'No disponible',
-        style: DogGoTheme.caption(
-          size: 10,
-          color: available ? DogGoTheme.green : DogGoTheme.red,
-          weight: FontWeight.w800,
-        ),
-      ),
+    return DogGoStatusChip(
+      label: available ? 'Disponible' : 'No disponible',
+      icon: available
+          ? Icons.check_circle_outline_rounded
+          : Icons.schedule_rounded,
+      tone: available ? DogGoStatusTone.positive : DogGoStatusTone.attention,
     );
   }
 }

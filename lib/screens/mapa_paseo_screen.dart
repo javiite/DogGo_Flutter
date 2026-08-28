@@ -2,33 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
 import 'home/models/home_walk_status.dart';
 import 'tracking/walk_map_controller.dart';
 import 'tracking/walk_map_state.dart';
+import 'tracking/walk_map_viewport.dart';
 import 'tracking_paseo_screen.dart';
 
 class MapaPaseoScreen extends StatefulWidget {
   final Map<String, dynamic> paseo;
 
-  const MapaPaseoScreen({
-    super.key,
-    required this.paseo,
-  });
+  const MapaPaseoScreen({super.key, required this.paseo});
 
   @override
-  State<MapaPaseoScreen> createState() =>
-      _MapaPaseoScreenState();
+  State<MapaPaseoScreen> createState() => _MapaPaseoScreenState();
 }
 
-class _MapaPaseoScreenState
-    extends State<MapaPaseoScreen> {
+class _MapaPaseoScreenState extends State<MapaPaseoScreen> {
   late final WalkMapController _controller;
 
-  final MapController _mapController =
-      MapController();
+  final MapController _mapController = MapController();
 
   bool _initialFitCompleted = false;
 
@@ -36,9 +32,7 @@ class _MapaPaseoScreenState
   void initState() {
     super.initState();
 
-    _controller = WalkMapController(
-      walkData: widget.paseo,
-    );
+    _controller = WalkMapController(walkData: widget.paseo);
 
     _controller.initialize();
   }
@@ -49,14 +43,12 @@ class _MapaPaseoScreenState
     super.dispose();
   }
 
-  void _scheduleInitialFit(
-    WalkMapState state,
-  ) {
+  void _scheduleInitialFit(WalkMapState state) {
     if (_initialFitCompleted) {
       return;
     }
 
-    final points = _allVisiblePoints(state);
+    final points = _visiblePoints(state);
 
     if (points.isEmpty) {
       return;
@@ -64,101 +56,56 @@ class _MapaPaseoScreenState
 
     _initialFitCompleted = true;
 
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _fitAllPoints(state);
       }
     });
   }
 
-List<LatLng> _allVisiblePoints(
-  WalkMapState state,
-) {
-  final points = <LatLng>[
-    ...state.plannedPathLatLng,
-    ...state.plannedCheckpoints.map(
-      (checkpoint) =>
-          checkpoint.position,
-    ),
-    ...state.routeLatLng,
-  ];
-
-  final pickup = state.pickupPoint;
-  final current = state.currentLatLng;
-
-  if (pickup != null &&
-      !_containsPoint(points, pickup)) {
-    points.add(pickup);
+  List<LatLng> _visiblePoints(WalkMapState state) {
+    return WalkMapViewport.visiblePoints(
+      plannedPath: state.plannedPathLatLng,
+      checkpoints: state.plannedCheckpoints.map(
+        (checkpoint) => checkpoint.position,
+      ),
+      trackedRoute: state.routeLatLng,
+      pickup: state.pickupPoint,
+      current: state.currentLatLng,
+    );
   }
 
-  if (current != null &&
-      !_containsPoint(points, current)) {
-    points.add(current);
-  }
-
-  return points;
-}
-
-  bool _containsPoint(
-    List<LatLng> points,
-    LatLng target,
-  ) {
-    return points.any((point) {
-      return point.latitude ==
-              target.latitude &&
-          point.longitude ==
-              target.longitude;
-    });
-  }
-
-  void _fitAllPoints(
-    WalkMapState state,
-  ) {
-    final points = _allVisiblePoints(state);
+  void _fitAllPoints(WalkMapState state) {
+    final points = _visiblePoints(state);
 
     if (points.isEmpty) {
-      _showMessage(
-        'Todavía no hay coordenadas para mostrar.',
-      );
+      _showMessage('Todavía no hay coordenadas para mostrar.');
       return;
     }
 
     if (points.length == 1) {
-      _mapController.move(
-        points.first,
-        16,
-      );
+      _mapController.move(points.first, 16);
       return;
     }
 
     _mapController.fitCamera(
       CameraFit.bounds(
-        bounds:
-            LatLngBounds.fromPoints(points),
+        bounds: LatLngBounds.fromPoints(points),
         padding: const EdgeInsets.all(48),
         maxZoom: 17,
       ),
     );
   }
 
-  void _centerCurrentPosition(
-    WalkMapState state,
-  ) {
-    final current = state.currentLatLng ??
-        state.pickupPoint;
+  void _centerCurrentPosition(WalkMapState state) {
+    final current = state.currentLatLng ?? state.pickupPoint;
 
     if (current == null) {
-      _showMessage(
-        'No hay una posición disponible.',
-      );
+      _showMessage('No hay una posición disponible.');
       return;
     }
 
-    _mapController.move(
-      current,
-      17,
-    );
+    _mapController.move(current, 17);
   }
 
   Future<void> _openTracking() async {
@@ -166,9 +113,7 @@ List<LatLng> _allVisiblePoints(
     final walk = state.walk;
 
     if (!state.canOpenTracking) {
-      _showMessage(
-        'El envío de ubicación no está disponible.',
-      );
+      _showMessage('El envío de ubicación no está disponible.');
       return;
     }
 
@@ -178,8 +123,7 @@ List<LatLng> _allVisiblePoints(
         builder: (_) => TrackingPaseoScreen(
           paseoId: walk.id,
           nombrePerro: walk.petName,
-          nombrePaseador:
-              walk.walkerName,
+          nombrePaseador: walk.walkerName,
         ),
       ),
     );
@@ -202,11 +146,7 @@ List<LatLng> _allVisiblePoints(
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-        ),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -218,47 +158,33 @@ List<LatLng> _allVisiblePoints(
 
         _scheduleInitialFit(state);
 
-        return Scaffold(
-          backgroundColor: DogGoTheme.cream,
-          appBar: AppBar(
-            title: const Text(
-              'Mapa del paseo',
-            ),
-            actions: [
-              if (state.refreshing)
-                const Padding(
-                  padding: EdgeInsets.only(
-                    right: 16,
-                  ),
-                  child: Center(
-                    child: SizedBox(
-                      width: 19,
-                      height: 19,
-                      child:
-                          CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    ),
-                  ),
-                )
-              else
-                IconButton(
-                  onPressed:
-                      _controller.refresh,
-                  tooltip: 'Actualizar ruta',
-                  icon: const Icon(
-                    Icons.refresh_rounded,
+        return DogGoScreenScaffold(
+          title: 'Mapa del paseo',
+          actions: [
+            if (state.refreshing)
+              const Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: Center(
+                  child: SizedBox(
+                    width: 19,
+                    height: 19,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 ),
-              const SizedBox(width: 6),
-            ],
-          ),
+              )
+            else
+              IconButton(
+                onPressed: _controller.refresh,
+                tooltip: 'Actualizar ruta',
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            const SizedBox(width: 6),
+          ],
           body: RefreshIndicator(
             onRefresh: _controller.refresh,
             color: DogGoTheme.teal,
             child: ListView(
-              physics:
-                  const AlwaysScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(
                 DogGoSpacing.screenHorizontal,
                 18,
@@ -271,40 +197,26 @@ List<LatLng> _allVisiblePoints(
                 if (state.error != null)
                   _TrackingErrorBanner(
                     message: state.error!,
-                    hasPreviousRoute:
-                        state.hasRoute,
-                    onRetry:
-                        _controller.refresh,
+                    hasPreviousRoute: state.hasRoute,
+                    onRetry: _controller.refresh,
                   ),
-                if (state.error != null)
-                  const SizedBox(height: 14),
+                if (state.error != null) const SizedBox(height: 14),
                 _MapCard(
                   state: state,
-                  mapController:
-                      _mapController,
-                  onFitAll: () =>
-                      _fitAllPoints(state),
-                  onCenter: () =>
-                      _centerCurrentPosition(
-                    state,
-                  ),
-                  onRefresh:
-                      _controller.refresh,
+                  mapController: _mapController,
+                  onFitAll: () => _fitAllPoints(state),
+                  onCenter: () => _centerCurrentPosition(state),
+                  onRefresh: _controller.refresh,
                 ),
                 const SizedBox(height: 14),
-                _RouteStatistics(
-                  state: state,
-                ),
+                _RouteStatistics(state: state),
                 const SizedBox(height: 14),
                 _TrackingStatusCard(
                   state: state,
-                  onOpenTracking:
-                      _openTracking,
+                  onOpenTracking: _openTracking,
                 ),
                 const SizedBox(height: 14),
-                _RouteDetailsCard(
-                  state: state,
-                ),
+                _RouteDetailsCard(state: state),
               ],
             ),
           ),
@@ -317,23 +229,18 @@ List<LatLng> _allVisiblePoints(
 class _MapHero extends StatelessWidget {
   final WalkMapState state;
 
-  const _MapHero({
-    required this.state,
-  });
+  const _MapHero({required this.state});
 
   @override
   Widget build(BuildContext context) {
     final walk = state.walk;
-    final statusColor =
-        _statusColor(walk.status);
+    final statusColor = _statusColor(walk.status);
 
     return Container(
       padding: const EdgeInsets.all(19),
       decoration: BoxDecoration(
         color: DogGoTheme.teal,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
         boxShadow: DogGoTheme.elevatedShadow(),
       ),
       clipBehavior: Clip.antiAlias,
@@ -346,31 +253,24 @@ class _MapHero extends StatelessWidget {
               width: 150,
               height: 150,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(
-                  alpha: .06,
-                ),
+                color: Colors.white.withValues(alpha: .06),
                 shape: BoxShape.circle,
               ),
             ),
           ),
           Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius:
-                          BorderRadius.circular(
-                        DogGoRadius.pill,
-                      ),
+                      borderRadius: BorderRadius.circular(DogGoRadius.pill),
                     ),
                     child: Row(
                       children: [
@@ -385,8 +285,7 @@ class _MapHero extends StatelessWidget {
                           style: DogGoTheme.caption(
                             size: 9.5,
                             color: statusColor,
-                            weight:
-                                FontWeight.w900,
+                            weight: FontWeight.w900,
                           ),
                         ),
                       ],
@@ -395,31 +294,22 @@ class _MapHero extends StatelessWidget {
                   const Spacer(),
                   if (walk.isInProgress)
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 9,
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white
-                            .withValues(alpha: .12),
-                        borderRadius:
-                            BorderRadius.circular(
-                          DogGoRadius.pill,
-                        ),
+                        color: Colors.white.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(DogGoRadius.pill),
                       ),
                       child: Row(
                         children: [
                           Container(
                             width: 7,
                             height: 7,
-                            decoration:
-                                BoxDecoration(
-                              color: state
-                                      .locationIsRecent
-                                  ? const Color(
-                                      0xFF9BE4D2,
-                                    )
+                            decoration: BoxDecoration(
+                              color: state.locationIsRecent
+                                  ? const Color(0xFF9BE4D2)
                                   : DogGoTheme.orange,
                               shape: BoxShape.circle,
                             ),
@@ -429,12 +319,10 @@ class _MapHero extends StatelessWidget {
                             state.locationIsRecent
                                 ? 'En vivo'
                                 : 'Sin señal reciente',
-                            style:
-                                DogGoTheme.caption(
+                            style: DogGoTheme.caption(
                               size: 8.5,
                               color: Colors.white,
-                              weight:
-                                  FontWeight.w800,
+                              weight: FontWeight.w800,
                             ),
                           ),
                         ],
@@ -447,10 +335,7 @@ class _MapHero extends StatelessWidget {
                 walk.petName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: DogGoTheme.title(
-                  size: 26,
-                  color: Colors.white,
-                ),
+                style: DogGoTheme.title(size: 26, color: Colors.white),
               ),
               const SizedBox(height: 5),
               Text(
@@ -459,9 +344,7 @@ class _MapHero extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: DogGoTheme.body(
                   size: 11.5,
-                  color: Colors.white.withValues(
-                    alpha: .78,
-                  ),
+                  color: Colors.white.withValues(alpha: .78),
                 ),
               ),
               const SizedBox(height: 13),
@@ -469,9 +352,7 @@ class _MapHero extends StatelessWidget {
                 state.statusMessage,
                 style: DogGoTheme.body(
                   size: 12,
-                  color: Colors.white.withValues(
-                    alpha: .92,
-                  ),
+                  color: Colors.white.withValues(alpha: .92),
                   weight: FontWeight.w700,
                 ),
               ),
@@ -500,20 +381,15 @@ class _MapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actualRoute =
-        state.routeLatLng;
+    final actualRoute = state.routeLatLng;
 
-    final plannedRoute =
-        state.plannedPathLatLng;
+    final plannedRoute = state.plannedPathLatLng;
 
-    final pickup =
-        state.pickupPoint;
+    final pickup = state.pickupPoint;
 
-    final current =
-        state.currentLatLng;
+    final current = state.currentLatLng;
 
-    final checkpoints =
-        state.plannedCheckpoints;
+    final checkpoints = state.plannedCheckpoints;
 
     final markers = <Marker>[];
 
@@ -538,10 +414,8 @@ class _MapCard extends StatelessWidget {
           point: plannedRoute.first,
           width: 38,
           height: 38,
-          child:
-              const _PlannedPointMarker(
-            icon:
-                Icons.play_arrow_rounded,
+          child: const _PlannedPointMarker(
+            icon: Icons.play_arrow_rounded,
             color: DogGoTheme.purple,
           ),
         ),
@@ -553,8 +427,7 @@ class _MapCard extends StatelessWidget {
             point: plannedRoute.last,
             width: 38,
             height: 38,
-            child:
-                const _PlannedPointMarker(
+            child: const _PlannedPointMarker(
               icon: Icons.flag_rounded,
               color: DogGoTheme.purple,
             ),
@@ -566,11 +439,10 @@ class _MapCard extends StatelessWidget {
     if (actualRoute.length >= 2) {
       final start = actualRoute.first;
 
-      final sameAsPickup = pickup != null &&
-          start.latitude ==
-              pickup.latitude &&
-          start.longitude ==
-              pickup.longitude;
+      final sameAsPickup =
+          pickup != null &&
+          start.latitude == pickup.latitude &&
+          start.longitude == pickup.longitude;
 
       if (!sameAsPickup) {
         markers.add(
@@ -579,8 +451,7 @@ class _MapCard extends StatelessWidget {
             width: 76,
             height: 70,
             child: const _MapMarker(
-              icon:
-                  Icons.trip_origin_rounded,
+              icon: Icons.trip_origin_rounded,
               color: DogGoTheme.orange,
               label: 'Inicio GPS',
               compact: true,
@@ -590,8 +461,7 @@ class _MapCard extends StatelessWidget {
       }
     }
 
-    for (final checkpoint
-        in checkpoints) {
+    for (final checkpoint in checkpoints) {
       markers.add(
         Marker(
           point: checkpoint.position,
@@ -599,21 +469,13 @@ class _MapCard extends StatelessWidget {
           height: 44,
           child: Container(
             decoration: BoxDecoration(
-              color: checkpoint.reached
-                  ? DogGoTheme.green
-                  : DogGoTheme.orange,
+              color: checkpoint.reached ? DogGoTheme.green : DogGoTheme.orange,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white,
-                width: 3,
-              ),
-              boxShadow:
-                  DogGoTheme.softShadow(),
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: DogGoTheme.softShadow(),
             ),
             child: Icon(
-              checkpoint.reached
-                  ? Icons.check_rounded
-                  : Icons.flag_rounded,
+              checkpoint.reached ? Icons.check_rounded : Icons.flag_rounded,
               color: Colors.white,
               size: 20,
             ),
@@ -635,13 +497,13 @@ class _MapCard extends StatelessWidget {
             color: state.outsidePlannedRoute
                 ? DogGoTheme.red
                 : state.walk.isCompleted
-                    ? DogGoTheme.teal
-                    : DogGoTheme.green,
+                ? DogGoTheme.teal
+                : DogGoTheme.green,
             label: state.outsidePlannedRoute
                 ? 'Fuera de ruta'
                 : state.walk.isCompleted
-                    ? 'Último punto'
-                    : 'Paseador',
+                ? 'Último punto'
+                : 'Paseador',
           ),
         ),
       );
@@ -651,20 +513,12 @@ class _MapCard extends StatelessWidget {
       height: 460,
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius:
-            BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
         border: Border.all(
-          color: state.outsidePlannedRoute
-              ? DogGoTheme.red
-              : DogGoTheme.border,
-          width: state.outsidePlannedRoute
-              ? 2
-              : 1,
+          color: state.outsidePlannedRoute ? DogGoTheme.red : DogGoTheme.border,
+          width: state.outsidePlannedRoute ? 2 : 1,
         ),
-        boxShadow:
-            DogGoTheme.softShadow(
+        boxShadow: DogGoTheme.softShadow(
           opacity: .035,
           blur: 22,
           offset: const Offset(0, 8),
@@ -676,8 +530,7 @@ class _MapCard extends StatelessWidget {
           FlutterMap(
             mapController: mapController,
             options: MapOptions(
-              initialCenter:
-                  state.initialCenter,
+              initialCenter: state.initialCenter,
               initialZoom: 15,
               minZoom: 3,
               maxZoom: 19,
@@ -687,71 +540,43 @@ class _MapCard extends StatelessWidget {
                 urlTemplate:
                     'https://tile.openstreetmap.org/'
                     '{z}/{x}/{y}.png',
-                userAgentPackageName:
-                    'com.example.doggo_flutter',
+                userAgentPackageName: 'com.example.doggo_flutter',
               ),
 
               // Área permitida elegida por
               // el dueño.
-              if (state.plannedRouteIsArea &&
-                  plannedRoute.length >= 3)
+              if (state.plannedRouteIsArea && plannedRoute.length >= 3)
                 PolygonLayer(
                   polygons: [
                     Polygon(
                       points: plannedRoute,
-                      color: state
-                              .outsidePlannedRoute
-                          ? DogGoTheme.red
-                              .withValues(
-                              alpha: .12,
-                            )
-                          : DogGoTheme.purple
-                              .withValues(
-                              alpha: .16,
-                            ),
-                      borderColor: state
-                              .outsidePlannedRoute
+                      color: state.outsidePlannedRoute
+                          ? DogGoTheme.red.withValues(alpha: .12)
+                          : DogGoTheme.purple.withValues(alpha: .16),
+                      borderColor: state.outsidePlannedRoute
                           ? DogGoTheme.red
                           : DogGoTheme.purple,
                       borderStrokeWidth: 4,
-                      pattern: 
-                          StrokePattern.dashed(
-                        segments: const [
-                          12,
-                          8,
-                        ],
-                      ),
+                      pattern: StrokePattern.dashed(segments: const [12, 8]),
                     ),
                   ],
                 ),
 
               // Ruta planeada. Se muestra
               // en morado discontinuo.
-              if (!state
-                      .plannedRouteIsArea &&
-                  plannedRoute.length >= 2)
+              if (!state.plannedRouteIsArea && plannedRoute.length >= 2)
                 PolylineLayer(
                   polylines: [
                     Polyline(
                       points: plannedRoute,
                       strokeWidth: 8,
-                      color: Colors.white
-                          .withValues(
-                        alpha: .92,
-                      ),
+                      color: Colors.white.withValues(alpha: .92),
                     ),
                     Polyline(
                       points: plannedRoute,
                       strokeWidth: 5,
-                      color:
-                          DogGoTheme.purple,
-                      pattern: 
-                          StrokePattern.dashed(
-                        segments: const[
-                          12,
-                          8,
-                        ],
-                      ),
+                      color: DogGoTheme.purple,
+                      pattern: StrokePattern.dashed(segments: const [12, 8]),
                     ),
                   ],
                 ),
@@ -762,34 +587,18 @@ class _MapCard extends StatelessWidget {
                 CircleLayer(
                   circles: checkpoints
                       .map(
-                        (checkpoint) =>
-                            CircleMarker(
-                          point: checkpoint
-                              .position,
-                          radius: (
-                            checkpoint
-                                    .alertRadiusMeters ??
-                                50
-                          ).toDouble(),
+                        (checkpoint) => CircleMarker(
+                          point: checkpoint.position,
+                          radius: (checkpoint.alertRadiusMeters ?? 50)
+                              .toDouble(),
                           useRadiusInMeter: true,
-                          color: checkpoint
-                                  .reached
+                          color: checkpoint.reached
+                              ? DogGoTheme.green.withValues(alpha: .12)
+                              : DogGoTheme.orange.withValues(alpha: .14),
+                          borderColor: checkpoint.reached
                               ? DogGoTheme.green
-                                  .withValues(
-                                  alpha: .12,
-                                )
-                              : DogGoTheme.orange
-                                  .withValues(
-                                  alpha: .14,
-                                ),
-                          borderColor:
-                              checkpoint.reached
-                                  ? DogGoTheme
-                                      .green
-                                  : DogGoTheme
-                                      .orange,
-                          borderStrokeWidth:
-                              1.5,
+                              : DogGoTheme.orange,
+                          borderStrokeWidth: 1.5,
                         ),
                       )
                       .toList(),
@@ -803,23 +612,17 @@ class _MapCard extends StatelessWidget {
                     Polyline(
                       points: actualRoute,
                       strokeWidth: 9,
-                      color: Colors.white
-                          .withValues(
-                        alpha: .92,
-                      ),
+                      color: Colors.white.withValues(alpha: .92),
                     ),
                     Polyline(
                       points: actualRoute,
                       strokeWidth: 5,
-                      color:
-                          DogGoTheme.green,
+                      color: DogGoTheme.green,
                     ),
                   ],
                 ),
 
-              MarkerLayer(
-                markers: markers,
-              ),
+              MarkerLayer(markers: markers),
             ],
           ),
 
@@ -827,48 +630,35 @@ class _MapCard extends StatelessWidget {
             left: 12,
             top: 12,
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (state.hasPlannedRoute)
                   _MapStatusPill(
-                    icon:
-                        Icons.route_rounded,
-                    text:
-                        state.plannedRouteName,
-                    color:
-                        DogGoTheme.purple,
+                    icon: Icons.route_rounded,
+                    text: state.plannedRouteName,
+                    color: DogGoTheme.purple,
                   ),
-                if (state.hasPlannedRoute &&
-                    state.hasRoute)
+                if (state.hasPlannedRoute && state.hasRoute)
                   const SizedBox(height: 7),
                 if (state.hasRoute)
                   _MapStatusPill(
-                    icon:
-                        Icons.gps_fixed_rounded,
-                    text:
-                        state.routePointsLabel,
-                    color:
-                        DogGoTheme.green,
+                    icon: Icons.gps_fixed_rounded,
+                    text: state.routePointsLabel,
+                    color: DogGoTheme.green,
                   ),
-                if (state
-                    .outsidePlannedRoute) ...[
+                if (state.outsidePlannedRoute) ...[
                   const SizedBox(height: 7),
                   const _MapStatusPill(
-                    icon:
-                        Icons.warning_rounded,
+                    icon: Icons.warning_rounded,
                     text: 'Fuera de ruta',
                     color: DogGoTheme.red,
                   ),
                 ],
                 if (!state.hasAnyRoute)
                   const _MapStatusPill(
-                    icon: Icons
-                        .info_outline_rounded,
-                    text:
-                        'Sin recorrido disponible',
-                    color:
-                        DogGoTheme.orange,
+                    icon: Icons.info_outline_rounded,
+                    text: 'Sin recorrido disponible',
+                    color: DogGoTheme.orange,
                   ),
               ],
             ),
@@ -880,24 +670,19 @@ class _MapCard extends StatelessWidget {
             child: Column(
               children: [
                 _MapControlButton(
-                  icon:
-                      Icons.fit_screen_rounded,
-                  tooltip:
-                      'Mostrar recorrido completo',
+                  icon: Icons.fit_screen_rounded,
+                  tooltip: 'Mostrar recorrido completo',
                   onTap: onFitAll,
                 ),
                 const SizedBox(height: 8),
                 _MapControlButton(
-                  icon:
-                      Icons.my_location_rounded,
-                  tooltip:
-                      'Centrar posición',
+                  icon: Icons.my_location_rounded,
+                  tooltip: 'Centrar posición',
                   onTap: onCenter,
                 ),
                 const SizedBox(height: 8),
                 _MapControlButton(
-                  icon:
-                      Icons.refresh_rounded,
+                  icon: Icons.refresh_rounded,
                   tooltip: 'Actualizar',
                   loading: state.refreshing,
                   onTap: onRefresh,
@@ -907,85 +692,49 @@ class _MapCard extends StatelessWidget {
           ),
 
           if (state.hasAnyRoute)
-            const Positioned(
-              left: 12,
-              bottom: 12,
-              child: _MapLegend(),
-            ),
+            const Positioned(left: 12, bottom: 12, child: _MapLegend()),
 
           if (state.loading)
             const Positioned.fill(
               child: ColoredBox(
                 color: Color(0x99FFFFFF),
-                child: Center(
-                  child:
-                      CircularProgressIndicator(),
-                ),
+                child: Center(child: CircularProgressIndicator()),
               ),
             ),
 
-          if (!state.loading &&
-              markers.isEmpty &&
-              !state.hasAnyRoute)
+          if (!state.loading && markers.isEmpty && !state.hasAnyRoute)
             Positioned.fill(
               child: ColoredBox(
-                color:
-                    const Color(0xDFFFFFFF),
+                color: const Color(0xDFFFFFFF),
                 child: Center(
                   child: Padding(
-                    padding:
-                        const EdgeInsets.all(
-                      28,
-                    ),
+                    padding: const EdgeInsets.all(28),
                     child: Container(
-                      padding:
-                          const EdgeInsets.all(
-                        20,
-                      ),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: DogGoTheme.card,
-                        borderRadius:
-                            BorderRadius.circular(
-                          DogGoRadius.large,
-                        ),
-                        border: Border.all(
-                          color:
-                              DogGoTheme.border,
-                        ),
+                        borderRadius: BorderRadius.circular(DogGoRadius.large),
+                        border: Border.all(color: DogGoTheme.border),
                       ),
                       child: Column(
-                        mainAxisSize:
-                            MainAxisSize.min,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
                             Icons.map_outlined,
-                            color:
-                                DogGoTheme.muted,
+                            color: DogGoTheme.muted,
                             size: 42,
                           ),
-                          const SizedBox(
-                            height: 12,
-                          ),
+                          const SizedBox(height: 12),
                           Text(
                             'Sin recorrido disponible',
-                            textAlign:
-                                TextAlign.center,
-                            style:
-                                DogGoTheme.title(
-                              size: 17,
-                            ),
+                            textAlign: TextAlign.center,
+                            style: DogGoTheme.title(size: 17),
                           ),
-                          const SizedBox(
-                            height: 6,
-                          ),
+                          const SizedBox(height: 6),
                           Text(
                             state.statusMessage,
-                            textAlign:
-                                TextAlign.center,
-                            style: DogGoTheme
-                                .subtitle(
-                              size: 11.5,
-                            ),
+                            textAlign: TextAlign.center,
+                            style: DogGoTheme.subtitle(size: 11.5),
                           ),
                         ],
                       ),
@@ -1006,26 +755,18 @@ class _MapLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 9,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(
-          alpha: .94,
-        ),
-        borderRadius:
-            BorderRadius.circular(14),
-        boxShadow:
-            DogGoTheme.softShadow(
+        color: Colors.white.withValues(alpha: .94),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: DogGoTheme.softShadow(
           opacity: .08,
           blur: 10,
           offset: const Offset(0, 3),
         ),
       ),
       child: const Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _LegendItem(
             color: DogGoTheme.purple,
@@ -1033,15 +774,9 @@ class _MapLegend extends StatelessWidget {
             dashed: true,
           ),
           SizedBox(height: 5),
-          _LegendItem(
-            color: DogGoTheme.green,
-            label: 'GPS real',
-          ),
+          _LegendItem(color: DogGoTheme.green, label: 'GPS real'),
           SizedBox(height: 5),
-          _LegendItem(
-            color: DogGoTheme.orange,
-            label: 'Punto de aviso',
-          ),
+          _LegendItem(color: DogGoTheme.orange, label: 'Punto de aviso'),
         ],
       ),
     );
@@ -1069,25 +804,11 @@ class _LegendItem extends StatelessWidget {
           child: Row(
             children: dashed
                 ? [
-                    Container(
-                      width: 8,
-                      height: 3,
-                      color: color,
-                    ),
+                    Container(width: 8, height: 3, color: color),
                     const SizedBox(width: 3),
-                    Container(
-                      width: 8,
-                      height: 3,
-                      color: color,
-                    ),
+                    Container(width: 8, height: 3, color: color),
                   ]
-                : [
-                    Container(
-                      width: 19,
-                      height: 3,
-                      color: color,
-                    ),
-                  ],
+                : [Container(width: 19, height: 3, color: color)],
           ),
         ),
         const SizedBox(width: 5),
@@ -1104,15 +825,11 @@ class _LegendItem extends StatelessWidget {
   }
 }
 
-class _PlannedPointMarker
-    extends StatelessWidget {
+class _PlannedPointMarker extends StatelessWidget {
   final IconData icon;
   final Color color;
 
-  const _PlannedPointMarker({
-    required this.icon,
-    required this.color,
-  });
+  const _PlannedPointMarker({required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1120,18 +837,10 @@ class _PlannedPointMarker
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white,
-          width: 3,
-        ),
-        boxShadow:
-            DogGoTheme.softShadow(),
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: DogGoTheme.softShadow(),
       ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: 18,
-      ),
+      child: Icon(icon, color: Colors.white, size: 18),
     );
   }
 }
@@ -1162,41 +871,25 @@ class _MapMarker extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white,
-              width: 3,
-            ),
+            border: Border.all(color: Colors.white, width: 3),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: .2,
-                ),
+                color: Colors.black.withValues(alpha: .2),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: compact ? 19 : 22,
-          ),
+          child: Icon(icon, color: Colors.white, size: compact ? 19 : 22),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 7,
-            vertical: 3,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.small,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.small),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: .08,
-                ),
+                color: Colors.black.withValues(alpha: .08),
                 blurRadius: 5,
                 offset: const Offset(0, 2),
               ),
@@ -1234,32 +927,21 @@ class _MapControlButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(
-          alpha: .96,
-        ),
+        color: Colors.white.withValues(alpha: .96),
         shape: const CircleBorder(),
         elevation: 2,
         child: InkWell(
           onTap: loading ? null : onTap,
-          customBorder:
-              const CircleBorder(),
+          customBorder: const CircleBorder(),
           child: SizedBox(
             width: 42,
             height: 42,
             child: loading
                 ? const Padding(
-                    padding:
-                        EdgeInsets.all(12),
-                    child:
-                        CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Icon(
-                    icon,
-                    color: DogGoTheme.ink,
-                    size: 20,
-                  ),
+                : Icon(icon, color: DogGoTheme.ink, size: 20),
           ),
         ),
       ),
@@ -1281,22 +963,13 @@ class _MapStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(
-          alpha: .96,
-        ),
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.pill,
-        ),
+        color: Colors.white.withValues(alpha: .96),
+        borderRadius: BorderRadius.circular(DogGoRadius.pill),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: .08,
-            ),
+            color: Colors.black.withValues(alpha: .08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -1304,11 +977,7 @@ class _MapStatusPill extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: color,
-            size: 15,
-          ),
+          Icon(icon, color: color, size: 15),
           const SizedBox(width: 5),
           Text(
             text,
@@ -1327,25 +996,16 @@ class _MapStatusPill extends StatelessWidget {
 class _RouteStatistics extends StatelessWidget {
   final WalkMapState state;
 
-  const _RouteStatistics({
-    required this.state,
-  });
+  const _RouteStatistics({required this.state});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 7,
-        vertical: 17,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Row(
         children: [
@@ -1360,10 +1020,8 @@ class _RouteStatistics extends StatelessWidget {
           const _StatisticDivider(),
           Expanded(
             child: _StatisticItem(
-              icon:
-                  Icons.location_on_outlined,
-              value:
-                  '${state.route.length}',
+              icon: Icons.location_on_outlined,
+              value: '${state.route.length}',
               label: 'Puntos GPS',
               color: DogGoTheme.purple,
             ),
@@ -1371,10 +1029,8 @@ class _RouteStatistics extends StatelessWidget {
           const _StatisticDivider(),
           Expanded(
             child: _StatisticItem(
-              icon:
-                  Icons.update_rounded,
-              value:
-                  state.lastUpdateLabel,
+              icon: Icons.update_rounded,
+              value: state.lastUpdateLabel,
               label: 'Actualización',
               color: state.locationIsRecent
                   ? DogGoTheme.green
@@ -1404,27 +1060,19 @@ class _StatisticItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 21,
-        ),
+        Icon(icon, color: color, size: 21),
         const SizedBox(height: 7),
         Text(
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: DogGoTheme.body(
-            size: 11.5,
-            weight: FontWeight.w900,
-          ),
+          style: DogGoTheme.body(size: 11.5, weight: FontWeight.w900),
         ),
         const SizedBox(height: 3),
         Text(
           label,
           textAlign: TextAlign.center,
-          style:
-              DogGoTheme.caption(size: 9),
+          style: DogGoTheme.caption(size: 9),
         ),
       ],
     );
@@ -1436,11 +1084,7 @@ class _StatisticDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 53,
-      color: DogGoTheme.divider,
-    );
+    return Container(width: 1, height: 53, color: DogGoTheme.divider);
   }
 }
 
@@ -1456,9 +1100,7 @@ class _TrackingStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = state.walk.isInProgress;
-    final color = active
-        ? DogGoTheme.green
-        : _statusColor(state.walk.status);
+    final color = active ? DogGoTheme.green : _statusColor(state.walk.status);
 
     final surface = active
         ? DogGoTheme.greenLight
@@ -1468,16 +1110,11 @@ class _TrackingStatusCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -1486,18 +1123,12 @@ class _TrackingStatusCard extends StatelessWidget {
                 height: 43,
                 decoration: BoxDecoration(
                   color: surface,
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
                 child: Icon(
                   active
-                      ? Icons
-                          .location_searching_rounded
-                      : _statusIcon(
-                          state.walk.status,
-                        ),
+                      ? Icons.location_searching_rounded
+                      : _statusIcon(state.walk.status),
                   color: color,
                   size: 21,
                 ),
@@ -1505,27 +1136,21 @@ class _TrackingStatusCard extends StatelessWidget {
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Estado del seguimiento',
-                      style: DogGoTheme.title(
-                        size: 16,
-                      ),
+                      style: DogGoTheme.title(size: 16),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      active &&
-                              state
-                                  .locationIsRecent
+                      active && state.locationIsRecent
                           ? 'Recibiendo ubicación'
                           : state.walk.status.label,
                       style: DogGoTheme.caption(
                         size: 9.5,
                         color: color,
-                        weight:
-                            FontWeight.w700,
+                        weight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -1534,21 +1159,13 @@ class _TrackingStatusCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 13),
-          Text(
-            state.statusMessage,
-            style:
-                DogGoTheme.subtitle(size: 11.5),
-          ),
+          Text(state.statusMessage, style: DogGoTheme.subtitle(size: 11.5)),
           if (state.canOpenTracking) ...[
             const SizedBox(height: 14),
             ElevatedButton.icon(
               onPressed: onOpenTracking,
-              icon: const Icon(
-                Icons.my_location_rounded,
-              ),
-              label: const Text(
-                'Administrar ubicación en vivo',
-              ),
+              icon: const Icon(Icons.my_location_rounded),
+              label: const Text('Administrar ubicación en vivo'),
             ),
           ],
         ],
@@ -1560,9 +1177,7 @@ class _TrackingStatusCard extends StatelessWidget {
 class _RouteDetailsCard extends StatelessWidget {
   final WalkMapState state;
 
-  const _RouteDetailsCard({
-    required this.state,
-  });
+  const _RouteDetailsCard({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -1573,16 +1188,11 @@ class _RouteDetailsCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -1591,22 +1201,12 @@ class _RouteDetailsCard extends StatelessWidget {
                 height: 43,
                 decoration: BoxDecoration(
                   color: DogGoTheme.tealLight,
-                  borderRadius:
-                      BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: const Icon(
-                  Icons.route_outlined,
-                  color: DogGoTheme.teal,
-                ),
+                child: const Icon(Icons.route_outlined, color: DogGoTheme.teal),
               ),
               const SizedBox(width: 11),
-              Text(
-                'Datos del recorrido',
-                style:
-                    DogGoTheme.title(size: 16),
-              ),
+              Text('Datos del recorrido', style: DogGoTheme.title(size: 16)),
             ],
           ),
           const SizedBox(height: 16),
@@ -1619,30 +1219,26 @@ class _RouteDetailsCard extends StatelessWidget {
           _RouteDetailRow(
             icon: Icons.pin_drop_outlined,
             label: 'Coordenadas de recogida',
-            value:
-                walk.pickupCoordinatesLabel,
+            value: walk.pickupCoordinatesLabel,
           ),
           const Divider(height: 22),
           _RouteDetailRow(
             icon: Icons.my_location_rounded,
             label: 'Última posición',
-            value: current?.coordinatesLabel ??
-                'No disponible',
+            value: current?.coordinatesLabel ?? 'No disponible',
           ),
           const Divider(height: 22),
           _RouteDetailRow(
             icon: Icons.access_time_rounded,
             label: 'Fecha de posición',
-            value: current?.fullDateLabel ??
-                'No disponible',
+            value: current?.fullDateLabel ?? 'No disponible',
           ),
           if (current?.accuracy != null) ...[
             const Divider(height: 22),
             _RouteDetailRow(
               icon: Icons.gps_fixed_rounded,
               label: 'Precisión estimada',
-              value:
-                  '${current!.accuracy!.toStringAsFixed(0)} m',
+              value: '${current!.accuracy!.toStringAsFixed(0)} m',
             ),
           ],
         ],
@@ -1665,22 +1261,14 @@ class _RouteDetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: DogGoTheme.muted,
-          size: 18,
-        ),
+        Icon(icon, color: DogGoTheme.muted, size: 18),
         const SizedBox(width: 9),
         Expanded(
           child: Text(
             label,
-            style: DogGoTheme.body(
-              size: 10.5,
-              color: DogGoTheme.muted,
-            ),
+            style: DogGoTheme.body(size: 10.5, color: DogGoTheme.muted),
           ),
         ),
         const SizedBox(width: 10),
@@ -1688,10 +1276,7 @@ class _RouteDetailRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: DogGoTheme.body(
-              size: 10.5,
-              weight: FontWeight.w800,
-            ),
+            style: DogGoTheme.body(size: 10.5, weight: FontWeight.w800),
           ),
         ),
       ],
@@ -1699,8 +1284,7 @@ class _RouteDetailRow extends StatelessWidget {
   }
 }
 
-class _TrackingErrorBanner
-    extends StatelessWidget {
+class _TrackingErrorBanner extends StatelessWidget {
   final String message;
   final bool hasPreviousRoute;
   final VoidCallback onRetry;
@@ -1717,16 +1301,11 @@ class _TrackingErrorBanner
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: DogGoTheme.orangeLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.wifi_off_rounded,
-            color: DogGoTheme.orange,
-          ),
+          const Icon(Icons.wifi_off_rounded, color: DogGoTheme.orange),
           const SizedBox(width: 9),
           Expanded(
             child: Text(
@@ -1740,10 +1319,7 @@ class _TrackingErrorBanner
               ),
             ),
           ),
-          TextButton(
-            onPressed: onRetry,
-            child: const Text('Reintentar'),
-          ),
+          TextButton(onPressed: onRetry, child: const Text('Reintentar')),
         ],
       ),
     );

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../core/errors/api_exception.dart';
 import '../services/paseador_verificacion_service.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_theme.dart';
 
 class VerificacionPaseadorScreen extends StatefulWidget {
@@ -259,18 +260,15 @@ class _VerificacionPaseadorScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DogGoTheme.cream,
-      appBar: AppBar(
-        title: const Text('Verificación profesional'),
-        actions: [
-          IconButton(
-            tooltip: 'Actualizar',
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
+    return DogGoScreenScaffold(
+      title: 'Verificación profesional',
+      actions: [
+        IconButton(
+          tooltip: 'Actualizar estado de verificación',
+          onPressed: _loading ? null : _load,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

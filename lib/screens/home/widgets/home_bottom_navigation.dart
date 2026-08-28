@@ -28,57 +28,59 @@ class HomeBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      minimum: EdgeInsets.zero,
-      child: Container(
-        height: 76,
-        decoration: BoxDecoration(
-          color: DogGoTheme.card,
-          border: const Border(top: BorderSide(color: DogGoTheme.border)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .035),
-              blurRadius: 14,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _BottomNavigationItem(
-                icon: Icons.home_rounded,
-                label: 'Inicio',
-                active: currentIndex == 0,
-                onTap: onHome,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        border: const Border(top: BorderSide(color: DogGoTheme.border)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .035),
+            blurRadius: 14,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: EdgeInsets.zero,
+        child: SizedBox(
+          height: 76,
+          child: Row(
+            children: [
+              Expanded(
+                child: _BottomNavigationItem(
+                  icon: Icons.home_rounded,
+                  label: 'Inicio',
+                  active: currentIndex == 0,
+                  onTap: onHome,
+                ),
               ),
-            ),
-            Expanded(
-              child: _BottomNavigationItem(
-                icon: Icons.calendar_month_outlined,
-                label: 'Agenda',
-                active: currentIndex == 1,
-                onTap: onAgenda,
+              Expanded(
+                child: _BottomNavigationItem(
+                  icon: Icons.calendar_month_outlined,
+                  label: 'Agenda',
+                  active: currentIndex == 1,
+                  onTap: onAgenda,
+                ),
               ),
-            ),
-            Expanded(
-              child: _BottomNavigationItem(
-                icon: thirdIcon,
-                label: thirdLabel,
-                active: currentIndex == 2,
-                onTap: onThird,
+              Expanded(
+                child: _BottomNavigationItem(
+                  icon: thirdIcon,
+                  label: thirdLabel,
+                  active: currentIndex == 2,
+                  onTap: onThird,
+                ),
               ),
-            ),
-            Expanded(
-              child: _BottomNavigationItem(
-                icon: fourthIcon,
-                label: fourthLabel,
-                active: currentIndex == 3,
-                onTap: onFourth,
+              Expanded(
+                child: _BottomNavigationItem(
+                  icon: fourthIcon,
+                  label: fourthLabel,
+                  active: currentIndex == 3,
+                  onTap: onFourth,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

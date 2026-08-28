@@ -325,13 +325,13 @@ class PlacesService {
       tags['addr:city'],
     ]);
 
-    final parts = <String>[
-      if (street != null)
-        houseNumber == null
-            ? street
-            : '$street $houseNumber',
-      if (suburb != null) suburb,
-    ];
+    final streetAddress = street == null
+        ? null
+        : houseNumber == null
+        ? street
+        : '$street $houseNumber';
+
+    final parts = <String>[?streetAddress, ?suburb];
 
     if (parts.isEmpty) {
       return 'Ubicación registrada en el mapa';

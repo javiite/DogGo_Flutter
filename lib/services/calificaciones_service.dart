@@ -54,8 +54,8 @@ class CalificacionesService {
       if (datos is! List) return [];
 
       return datos
-          .where((item) => item is Map)
-          .map((item) => Map<String, dynamic>.from(item as Map))
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
           .toList();
     }
 

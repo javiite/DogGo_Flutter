@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../services/walk_experience_service.dart';
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
 import 'tracking/live_tracking_controller.dart';
 import 'tracking/live_tracking_state.dart';
+import 'onboarding/contextual_onboarding.dart';
 
 class TrackingPaseoScreen extends StatefulWidget {
   final int paseoId;
@@ -41,6 +45,26 @@ class _TrackingPaseoScreenState extends State<TrackingPaseoScreen>
     );
 
     _controller.initialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showContextualOnboarding(
+        context,
+        contextKey: 'tracking',
+        title: 'Seguimiento del paseo',
+        steps: const [
+          OnboardingStep(
+            Icons.gps_fixed_rounded,
+            'Activa cuando comience',
+            'La ubicación se comparte únicamente durante el paseo activo.',
+          ),
+          OnboardingStep(
+            Icons.battery_saver_rounded,
+            'Cuida la conexión',
+            'Mantén ubicación y datos activos para conservar el recorrido.',
+          ),
+        ],
+      );
+    });
   }
 
   @override
@@ -128,6 +152,28 @@ class _TrackingPaseoScreenState extends State<TrackingPaseoScreen>
     _showMessage(result.message, success: result.success);
   }
 
+  Future<void> _registerMoment(String type, String label) async {
+    try {
+      await WalkExperienceService.registerEvent(widget.paseoId, type: type);
+      _showMessage('$label registrado en la bitácora.', success: true);
+    } catch (error) {
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _shareTracking() async {
+    try {
+      final data = await WalkExperienceService.createShareLink(widget.paseoId);
+      await Clipboard.setData(ClipboardData(text: '${data['url'] ?? ''}'));
+      _showMessage(
+        'Enlace temporal copiado. Puedes enviarlo a una persona de confianza.',
+        success: true,
+      );
+    } catch (error) {
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   void _showMessage(String message, {bool success = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -146,24 +192,21 @@ class _TrackingPaseoScreenState extends State<TrackingPaseoScreen>
       builder: (context, _) {
         final state = _controller.state;
 
-        return Scaffold(
-          backgroundColor: DogGoTheme.cream,
-          appBar: AppBar(
-            leading: IconButton(
-              onPressed: _close,
-              tooltip: 'Regresar',
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            title: const Text('Ubicación en vivo'),
-            actions: [
-              IconButton(
-                onPressed: state.processing ? null : _controller.syncStatus,
-                tooltip: 'Actualizar estado',
-                icon: const Icon(Icons.refresh_rounded),
-              ),
-              const SizedBox(width: 6),
-            ],
+        return DogGoScreenScaffold(
+          title: 'Ubicación en vivo',
+          leading: IconButton(
+            onPressed: _close,
+            tooltip: 'Regresar',
+            icon: const Icon(Icons.arrow_back_rounded),
           ),
+          actions: [
+            IconButton(
+              onPressed: state.processing ? null : _controller.syncStatus,
+              tooltip: 'Actualizar estado',
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+            const SizedBox(width: 6),
+          ],
           body: state.loading
               ? const DogGoLoadingView(
                   message: 'Comprobando el servicio de ubicación...',
@@ -202,6 +245,12 @@ class _TrackingPaseoScreenState extends State<TrackingPaseoScreen>
                       const SizedBox(height: 16),
                       _TrackingStatistics(state: state),
                       const SizedBox(height: 14),
+                      _WalkMomentsCard(
+                        enabled: state.isCurrentWalkActive,
+                        onMoment: _registerMoment,
+                        onShare: _shareTracking,
+                      ),
+                      const SizedBox(height: 14),
                       _CurrentLocationCard(state: state),
                       const SizedBox(height: 14),
                       _BackgroundServiceCard(state: state),
@@ -221,6 +270,102 @@ class _TrackingPaseoScreenState extends State<TrackingPaseoScreen>
       },
     );
   }
+}
+
+class _WalkMomentsCard extends StatelessWidget {
+  final bool enabled;
+  final Future<void> Function(String type, String label) onMoment;
+  final VoidCallback onShare;
+
+  const _WalkMomentsCard({
+    required this.enabled,
+    required this.onMoment,
+    required this.onShare,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(17),
+    decoration: BoxDecoration(
+      color: DogGoTheme.card,
+      borderRadius: BorderRadius.circular(DogGoRadius.large),
+      border: Border.all(color: DogGoTheme.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Momentos del paseo', style: DogGoTheme.title(size: 16)),
+        const SizedBox(height: 4),
+        Text(
+          enabled
+              ? 'Registra cuidados sin salir del seguimiento.'
+              : 'Activa el seguimiento para registrar momentos.',
+          style: DogGoTheme.subtitle(size: 11),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            _MomentChip(
+              icon: Icons.water_drop_outlined,
+              label: 'Agua',
+              enabled: enabled,
+              onTap: () => onMoment('Agua', 'Agua'),
+            ),
+            _MomentChip(
+              icon: Icons.grass_outlined,
+              label: 'Pipi',
+              enabled: enabled,
+              onTap: () => onMoment('Pipi', 'Pipi'),
+            ),
+            _MomentChip(
+              icon: Icons.eco_outlined,
+              label: 'Popó',
+              enabled: enabled,
+              onTap: () => onMoment('Popo', 'Popó'),
+            ),
+            _MomentChip(
+              icon: Icons.pause_circle_outline,
+              label: 'Pausa',
+              enabled: enabled,
+              onTap: () => onMoment('Pausa', 'Pausa'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onShare,
+            icon: const Icon(Icons.share_location_outlined),
+            label: const Text('Compartir seguimiento temporal'),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _MomentChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _MomentChip({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => ActionChip(
+    avatar: Icon(icon, size: 17, color: DogGoTheme.teal),
+    label: Text(label),
+    onPressed: enabled ? onTap : null,
+  );
 }
 
 class _RouteMonitoringCard extends StatelessWidget {

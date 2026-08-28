@@ -78,9 +78,17 @@ class ChatService {
     return _normalizarLista(respuesta);
   }
 
+  Future<List<Map<String, dynamic>>> obtenerConversaciones() async {
+    final respuesta = await ApiService.getAuth('/api/chat/conversaciones');
+    return _normalizarLista(respuesta);
+  }
+
   Future<Map<String, dynamic>> enviarMensaje({
     required int paseoId,
     required String contenido,
+    String tipo = 'Texto',
+    String? metadatosJson,
+    int? respuestaAId,
   }) async {
     final texto = contenido.trim();
 
@@ -88,9 +96,27 @@ class ChatService {
       throw Exception('Escribe un mensaje antes de enviarlo.');
     }
 
-    final respuesta = await ApiService.postAuth(
-      '/api/chat/paseos/$paseoId/mensajes',
-      {'contenido': texto},
+    final respuesta =
+        await ApiService.postAuth('/api/chat/paseos/$paseoId/mensajes', {
+          'contenido': texto,
+          'tipo': tipo,
+          if (metadatosJson?.trim().isNotEmpty == true)
+            'metadatosJson': metadatosJson!.trim(),
+          'respuestaAId': ?respuestaAId,
+        });
+    return _normalizarRespuesta(respuesta);
+  }
+
+  Future<Map<String, dynamic>> enviarImagen({
+    required int paseoId,
+    required String ruta,
+    String descripcion = '',
+  }) async {
+    final respuesta = await ApiService.postMultipartAuth(
+      '/api/chat/paseos/$paseoId/imagenes',
+      filePath: ruta,
+      fileFieldName: 'archivo',
+      fields: {'descripcion': descripcion.trim()},
     );
     return _normalizarRespuesta(respuesta);
   }

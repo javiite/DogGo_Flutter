@@ -7,15 +7,13 @@ import '../services/auth_service.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
+import '../shared/widgets/doggo_progress_steps.dart';
 import '../widgets/doggo_logo.dart';
 
 class ConfirmarCorreoScreen extends StatefulWidget {
   final String? email;
 
-  const ConfirmarCorreoScreen({
-    super.key,
-    this.email,
-  });
+  const ConfirmarCorreoScreen({super.key, this.email});
 
   @override
   State<ConfirmarCorreoScreen> createState() {
@@ -23,13 +21,10 @@ class ConfirmarCorreoScreen extends StatefulWidget {
   }
 }
 
-class _ConfirmarCorreoScreenState
-    extends State<ConfirmarCorreoScreen> {
-  final TextEditingController _emailController =
-      TextEditingController();
+class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
+  final TextEditingController _emailController = TextEditingController();
 
-  final TextEditingController _codeController =
-      TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
 
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _codeFocus = FocusNode();
@@ -74,8 +69,7 @@ class _ConfirmarCorreoScreenState
     }
 
     if (code.isEmpty) {
-      codeError =
-          'Escribe el código de confirmación.';
+      codeError = 'Escribe el código de confirmación.';
     } else if (code.length < 4) {
       codeError = 'El código es demasiado corto.';
     }
@@ -100,9 +94,7 @@ class _ConfirmarCorreoScreenState
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(
-      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-    ).hasMatch(email);
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
 
   Future<void> _confirmEmail() async {
@@ -129,13 +121,10 @@ class _ConfirmarCorreoScreenState
 
       if (result['success'] == true) {
         _showMessage(
-          result['message']?.toString() ??
-              'Correo confirmado correctamente.',
+          result['message']?.toString() ?? 'Correo confirmado correctamente.',
         );
 
-        await Future<void>.delayed(
-          const Duration(milliseconds: 500),
-        );
+        await Future<void>.delayed(const Duration(milliseconds: 500));
 
         if (!mounted) {
           return;
@@ -152,8 +141,7 @@ class _ConfirmarCorreoScreenState
 
       setState(() {
         _generalError =
-            result['message']?.toString() ??
-                'No se pudo confirmar el correo.';
+            result['message']?.toString() ?? 'No se pudo confirmar el correo.';
       });
     } on ApiException catch (error) {
       if (!mounted) {
@@ -169,9 +157,7 @@ class _ConfirmarCorreoScreenState
       }
 
       setState(() {
-        _generalError = error
-            .toString()
-            .replaceFirst('Exception: ', '');
+        _generalError = error.toString().replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) {
@@ -183,8 +169,7 @@ class _ConfirmarCorreoScreenState
   }
 
   void _clearEmailError(String value) {
-    if (_emailError == null &&
-        _generalError == null) {
+    if (_emailError == null && _generalError == null) {
       return;
     }
 
@@ -195,8 +180,7 @@ class _ConfirmarCorreoScreenState
   }
 
   void _clearCodeError(String value) {
-    if (_codeError == null &&
-        _generalError == null) {
+    if (_codeError == null && _generalError == null) {
       return;
     }
 
@@ -207,17 +191,13 @@ class _ConfirmarCorreoScreenState
   }
 
   void _goToLogin() {
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.login,
-      (_) => false,
-    );
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -227,11 +207,8 @@ class _ConfirmarCorreoScreenState
       appBar: AppBar(
         toolbarHeight: 72,
         leading: IconButton(
-          onPressed:
-              _confirming ? null : _goToLogin,
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-          ),
+          onPressed: _confirming ? null : _goToLogin,
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: const DogGoLogo(size: 48),
       ),
@@ -243,8 +220,7 @@ class _ConfirmarCorreoScreenState
             FocusManager.instance.primaryFocus?.unfocus();
           },
           child: SingleChildScrollView(
-            keyboardDismissBehavior:
-                ScrollViewKeyboardDismissBehavior.onDrag,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(
               DogGoSpacing.screenHorizontal,
@@ -254,30 +230,22 @@ class _ConfirmarCorreoScreenState
             ),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 450,
-                ),
+                constraints: const BoxConstraints(maxWidth: 450),
                 child: Column(
                   children: [
                     const _ConfirmationHeader(),
-                    const SizedBox(
-                      height: DogGoSpacing.md,
-                    ),
+                    const SizedBox(height: DogGoSpacing.md),
                     _ConfirmationForm(
-                      emailController:
-                          _emailController,
-                      codeController:
-                          _codeController,
+                      emailController: _emailController,
+                      codeController: _codeController,
                       emailFocus: _emailFocus,
                       codeFocus: _codeFocus,
                       confirming: _confirming,
                       emailError: _emailError,
                       codeError: _codeError,
                       generalError: _generalError,
-                      onEmailChanged:
-                          _clearEmailError,
-                      onCodeChanged:
-                          _clearCodeError,
+                      onEmailChanged: _clearEmailError,
+                      onCodeChanged: _clearCodeError,
                       onConfirm: _confirmEmail,
                       onBackToLogin: _goToLogin,
                     ),
@@ -299,14 +267,10 @@ class _ConfirmationHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(
-        DogGoSpacing.lg,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.lg),
       decoration: BoxDecoration(
         color: DogGoTheme.teal,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
         boxShadow: DogGoTheme.elevatedShadow(),
       ),
       child: Column(
@@ -315,8 +279,7 @@ class _ConfirmationHeader extends StatelessWidget {
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color:
-                  Colors.white.withValues(alpha: .14),
+              color: Colors.white.withValues(alpha: .14),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -328,19 +291,13 @@ class _ConfirmationHeader extends StatelessWidget {
           const SizedBox(height: DogGoSpacing.md),
           Text(
             'VERIFICA TU CUENTA',
-            style: DogGoTheme.label(
-              size: 10.5,
-              color: DogGoTheme.orange,
-            ),
+            style: DogGoTheme.label(size: 10.5, color: DogGoTheme.orange),
           ),
           const SizedBox(height: DogGoSpacing.sm),
           Text(
             'Confirma tu correo',
             textAlign: TextAlign.center,
-            style: DogGoTheme.display(
-              size: 28,
-              color: Colors.white,
-            ),
+            style: DogGoTheme.display(size: 28, color: Colors.white),
           ),
           const SizedBox(height: DogGoSpacing.sm),
           Text(
@@ -348,10 +305,16 @@ class _ConfirmationHeader extends StatelessWidget {
             textAlign: TextAlign.center,
             style: DogGoTheme.body(
               size: 13,
-              color:
-                  Colors.white.withValues(alpha: .80),
+              color: Colors.white.withValues(alpha: .80),
               weight: FontWeight.w500,
             ),
+          ),
+          const SizedBox(height: DogGoSpacing.md),
+          const DogGoProgressSteps(
+            current: 2,
+            total: 3,
+            label: 'Verificación de correo',
+            onDarkBackground: true,
           ),
         ],
       ),
@@ -395,14 +358,10 @@ class _ConfirmationForm extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
         border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
@@ -413,9 +372,7 @@ class _ConfirmationForm extends StatelessWidget {
             enabled: !confirming,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
-            autofillHints: const [
-              AutofillHints.email,
-            ],
+            autofillHints: const [AutofillHints.email],
             autocorrect: false,
             enableSuggestions: false,
             onChanged: onEmailChanged,
@@ -426,22 +383,17 @@ class _ConfirmationForm extends StatelessWidget {
               labelText: 'Correo electrónico',
               hintText: 'correo@ejemplo.com',
               errorText: emailError,
-              prefixIcon:
-                  const Icon(Icons.email_outlined),
+              prefixIcon: const Icon(Icons.email_outlined),
             ),
           ),
-          const SizedBox(
-            height: DogGoSpacing.fieldGap,
-          ),
+          const SizedBox(height: DogGoSpacing.fieldGap),
           TextField(
             controller: codeController,
             focusNode: codeFocus,
             enabled: !confirming,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
-            autofillHints: const [
-              AutofillHints.oneTimeCode,
-            ],
+            autofillHints: const [AutofillHints.oneTimeCode],
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
               LengthLimitingTextInputFormatter(8),
@@ -452,23 +404,18 @@ class _ConfirmationForm extends StatelessWidget {
               labelText: 'Código de confirmación',
               hintText: 'Ej. 123456',
               errorText: codeError,
-              prefixIcon: const Icon(
-                Icons.password_rounded,
-              ),
+              prefixIcon: const Icon(Icons.password_rounded),
             ),
           ),
           if (generalError != null) ...[
             const SizedBox(height: DogGoSpacing.md),
-            _ConfirmationError(
-              message: generalError!,
-            ),
+            _ConfirmationError(message: generalError!),
           ],
           const SizedBox(height: DogGoSpacing.lg),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed:
-                  confirming ? null : onConfirm,
+              onPressed: confirming ? null : onConfirm,
               child: confirming
                   ? const SizedBox(
                       width: 21,
@@ -483,8 +430,7 @@ class _ConfirmationForm extends StatelessWidget {
           ),
           const SizedBox(height: DogGoSpacing.sm),
           TextButton(
-            onPressed:
-                confirming ? null : onBackToLogin,
+            onPressed: confirming ? null : onBackToLogin,
             child: const Text('Volver al login'),
           ),
         ],
@@ -496,25 +442,17 @@ class _ConfirmationForm extends StatelessWidget {
 class _ConfirmationError extends StatelessWidget {
   final String message;
 
-  const _ConfirmationError({
-    required this.message,
-  });
+  const _ConfirmationError({required this.message});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(
-        DogGoSpacing.md,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.md),
       decoration: BoxDecoration(
         color: DogGoTheme.redLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
-        border: Border.all(
-          color: DogGoTheme.red.withValues(alpha: .20),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
+        border: Border.all(color: DogGoTheme.red.withValues(alpha: .20)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

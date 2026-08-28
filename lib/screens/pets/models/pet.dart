@@ -145,6 +145,40 @@ class Pet {
     return '$breed · $ageLabel';
   }
 
+  List<String> get profileMissingItems {
+    final missing = <String>[];
+
+    if (!hasPhoto) missing.add('fotografía');
+    if (age == null) missing.add('edad');
+    if (size.trim().isEmpty || size == 'Sin tamaño registrado') {
+      missing.add('tamaño');
+    }
+    if (weight == null) missing.add('peso');
+    if (sex == null) missing.add('sexo');
+    if (temperament == null) missing.add('temperamento');
+    if (energyLevel == null) missing.add('nivel de energía');
+    if (leashBehavior == null) missing.add('comportamiento con correa');
+    if (socialWithDogs == null || socialWithPeople == null) {
+      missing.add('convivencia');
+    }
+    if (reactive == null || escapeRisk == null) {
+      missing.add('seguridad');
+    }
+
+    return List<String>.unmodifiable(missing);
+  }
+
+  int get profileCompletion {
+    const total = 10;
+    final completed = total - profileMissingItems.length;
+    return ((completed / total) * 100).round().clamp(0, 100);
+  }
+
+  bool get isProfileComplete => profileMissingItems.isEmpty;
+
+  String get profileStatusLabel =>
+      isProfileComplete ? 'Perfil completo' : '$profileCompletion% del perfil';
+
   String get initials {
     final cleanName = name.trim();
 

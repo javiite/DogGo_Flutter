@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_network_image.dart';
+import '../shared/widgets/doggo_section_card.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
+import '../shared/widgets/doggo_status_chip.dart';
+import '../shared/widgets/doggo_sticky_action_bar.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -10,6 +15,14 @@ import 'pets/models/pet.dart';
 import 'pets/pet_detail_controller.dart';
 import 'pets/pet_detail_state.dart';
 import 'pets/widgets/pet_gallery_section.dart';
+import 'pets/widgets/pet_walk_center.dart';
+import 'paseadores_screen.dart';
+import 'detalle_paseo_screen.dart';
+import 'walks/models/walk_detail.dart';
+import 'onboarding/contextual_onboarding.dart';
+import 'advanced/pet_wellness_screen.dart';
+
+enum _PetDetailSection { summary, care, photos }
 
 class DetallePerroScreen extends StatefulWidget {
   final Map<String, dynamic> perro;
@@ -24,12 +37,38 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
   late final PetDetailController _controller;
 
   bool _allowPop = false;
+  _PetDetailSection _section = _PetDetailSection.summary;
 
   @override
   void initState() {
     super.initState();
 
     _controller = PetDetailController(initialData: widget.perro)..initialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showContextualOnboarding(
+        context,
+        contextKey: 'pets',
+        title: 'Perfil de tu mascota',
+        steps: const [
+          OnboardingStep(
+            Icons.dashboard_customize_rounded,
+            'Centro rápido',
+            'Consulta su próximo y último paseo sin salir del perfil.',
+          ),
+          OnboardingStep(
+            Icons.health_and_safety_outlined,
+            'Cuidados claros',
+            'Completa conducta, seguridad y notas para ayudar al paseador.',
+          ),
+          OnboardingStep(
+            Icons.photo_library_outlined,
+            'Su historia en fotos',
+            'Organiza la galería y elige una fotografía principal.',
+          ),
+        ],
+      );
+    });
   }
 
   @override
@@ -63,6 +102,37 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
     }
   }
 
+  Future<void> _requestWalk(Pet pet) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => PaseadoresScreen(initialPetId: pet.id),
+      ),
+    );
+  }
+
+  Future<void> _openWalk(WalkDetail walk) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => DetallePaseoScreen(
+          paseoId: walk.id,
+          paseo: walk.rawData,
+          rol: 'Dueño',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openWellness(Pet pet) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => PetWellnessScreen(initialPetId: pet.id),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -77,25 +147,41 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
               _close();
             }
           },
-          child: Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: false,
-              leading: IconButton(
-                tooltip: 'Volver',
-                onPressed: _close,
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
-              title: Text(state.pet?.name ?? 'Mascota'),
-              actions: [
-                IconButton(
-                  tooltip: 'Actualizar información',
-                  onPressed: state.loading ? null : _controller.refresh,
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-                const SizedBox(width: DogGoSpacing.sm),
-              ],
+          child: DogGoScreenScaffold(
+            title: state.pet?.name ?? 'Mascota',
+            automaticallyImplyLeading: false,
+            leading: IconButton(
+              tooltip: 'Volver',
+              onPressed: _close,
+              icon: const Icon(Icons.arrow_back_rounded),
             ),
+            actions: [
+              if (state.pet != null)
+                IconButton(
+                  tooltip: 'Salud, cuidados y logros',
+                  onPressed: state.loading
+                      ? null
+                      : () => _openWellness(state.pet!),
+                  icon: const Icon(Icons.health_and_safety_outlined),
+                ),
+              IconButton(
+                tooltip: 'Actualizar información',
+                onPressed: state.loading ? null : _controller.refresh,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+              const SizedBox(width: DogGoSpacing.sm),
+            ],
             body: _buildBody(state),
+            bottomNavigationBar: state.pet == null || state.loading
+                ? null
+                : DogGoStickyActionBar(
+                    primaryLabel: 'Buscar paseador',
+                    primaryIcon: Icons.directions_walk_rounded,
+                    onPrimary: () => _requestWalk(state.pet!),
+                    secondaryLabel: 'Editar',
+                    secondaryIcon: Icons.edit_outlined,
+                    onSecondary: () => _openEdit(state.pet!),
+                  ),
           ),
         );
       },
@@ -139,7 +225,7 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
           DogGoSpacing.screenHorizontal,
           DogGoSpacing.md,
           DogGoSpacing.screenHorizontal,
-          DogGoSpacing.xxl,
+          DogGoSpacing.lg,
         ),
         children: [
           _PetHero(
@@ -148,31 +234,69 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
             onEdit: () => _openEdit(pet),
           ),
           const SizedBox(height: DogGoSpacing.md),
-          PetGallerySection(state: state, controller: _controller),
-          const SizedBox(height: DogGoSpacing.md),
-          _buildGeneralInformation(pet),
-          const SizedBox(height: DogGoSpacing.md),
-          _buildBehavior(pet),
-          const SizedBox(height: DogGoSpacing.md),
-          _buildSafety(pet),
-          const SizedBox(height: DogGoSpacing.md),
-          _buildNotes(pet),
-          const SizedBox(height: DogGoSpacing.lg),
-          SizedBox(
-            height: 54,
-            child: ElevatedButton.icon(
-              onPressed: () => _openEdit(pet),
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Editar información'),
-            ),
+          _PetSectionSelector(
+            selected: _section,
+            onSelected: (section) {
+              setState(() => _section = section);
+            },
           ),
           const SizedBox(height: DogGoSpacing.md),
-          SizedBox(
-            height: 50,
-            child: OutlinedButton(
-              onPressed: _close,
-              child: const Text('Volver'),
+          ...switch (_section) {
+            _PetDetailSection.summary => [
+              PetWalkCenter(
+                petId: pet.id,
+                onOpenWalk: _openWalk,
+                onRequestWalk: () => _requestWalk(pet),
+              ),
+              const SizedBox(height: DogGoSpacing.md),
+              _buildProfileProgress(pet),
+              const SizedBox(height: DogGoSpacing.md),
+              _buildGeneralInformation(pet),
+              const SizedBox(height: DogGoSpacing.md),
+              _buildNotes(pet),
+            ],
+            _PetDetailSection.care => [
+              _buildBehavior(pet),
+              const SizedBox(height: DogGoSpacing.md),
+              _buildSafety(pet),
+            ],
+            _PetDetailSection.photos => [
+              PetGallerySection(state: state, controller: _controller),
+            ],
+          },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileProgress(Pet pet) {
+    final missing = pet.profileMissingItems;
+    return DogGoSectionCard(
+      title: pet.isProfileComplete ? 'Perfil listo' : 'Completa su perfil',
+      subtitle: pet.isProfileComplete
+          ? 'El paseador tendrá la información esencial antes de salir.'
+          : 'Un perfil completo ayuda a preparar un paseo más seguro.',
+      icon: pet.isProfileComplete
+          ? Icons.verified_outlined
+          : Icons.tips_and_updates_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(DogGoRadius.pill),
+            child: LinearProgressIndicator(
+              minHeight: 9,
+              value: pet.profileCompletion / 100,
+              backgroundColor: DogGoTheme.cream2,
+              color: DogGoTheme.teal,
             ),
+          ),
+          const SizedBox(height: DogGoSpacing.compactGap),
+          Text(
+            pet.isProfileComplete
+                ? 'Todos los datos esenciales están registrados.'
+                : 'Falta: ${missing.take(3).join(', ')}${missing.length > 3 ? ' y ${missing.length - 3} más' : ''}.',
+            style: DogGoTheme.body(size: 12.5, color: DogGoTheme.muted),
           ),
         ],
       ),
@@ -180,7 +304,7 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
   }
 
   Widget _buildGeneralInformation(Pet pet) {
-    return _DetailCard(
+    return DogGoSectionCard(
       title: 'Información general',
       subtitle: 'Datos principales de tu mascota.',
       icon: Icons.pets_outlined,
@@ -232,7 +356,7 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
   }
 
   Widget _buildBehavior(Pet pet) {
-    return _DetailCard(
+    return DogGoSectionCard(
       title: 'Personalidad y convivencia',
       subtitle: 'Lo que el paseador debe conocer antes de salir.',
       icon: Icons.psychology_alt_outlined,
@@ -277,7 +401,7 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
   }
 
   Widget _buildSafety(Pet pet) {
-    return _DetailCard(
+    return DogGoSectionCard(
       title: 'Seguridad durante el paseo',
       subtitle: 'Precauciones e indicaciones importantes.',
       icon: Icons.shield_outlined,
@@ -319,7 +443,7 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
   Widget _buildNotes(Pet pet) {
     final hasNotes = pet.notes.trim().isNotEmpty;
 
-    return _DetailCard(
+    return DogGoSectionCard(
       title: 'Notas y cuidados',
       subtitle: 'Información importante para sus paseadores.',
       icon: Icons.notes_outlined,
@@ -421,6 +545,16 @@ class _PetHero extends StatelessWidget {
                                 color: Colors.white.withValues(alpha: 0.9),
                               ),
                             ),
+                            const SizedBox(height: DogGoSpacing.sm),
+                            DogGoStatusChip(
+                              label: pet.profileStatusLabel,
+                              icon: pet.isProfileComplete
+                                  ? Icons.check_circle_outline_rounded
+                                  : Icons.tips_and_updates_outlined,
+                              tone: pet.isProfileComplete
+                                  ? DogGoStatusTone.positive
+                                  : DogGoStatusTone.attention,
+                            ),
                           ],
                         ),
                       ),
@@ -454,17 +588,11 @@ class _HeroPhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (photoUrl != null) {
-      return Image.network(
-        photoUrl!,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) {
-          return _PetPlaceholder(initials: pet.initials);
-        },
-      );
-    }
-
-    return _PetPlaceholder(initials: pet.initials);
+    return DogGoNetworkImage(
+      url: photoUrl,
+      semanticLabel: 'Fotografía de ${pet.name}',
+      fallback: _PetPlaceholder(initials: pet.initials),
+    );
   }
 }
 
@@ -486,65 +614,40 @@ class _PetPlaceholder extends StatelessWidget {
   }
 }
 
-class _DetailCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBackground;
-  final Widget child;
+class _PetSectionSelector extends StatelessWidget {
+  final _PetDetailSection selected;
+  final ValueChanged<_PetDetailSection> onSelected;
 
-  const _DetailCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBackground,
-    required this.child,
-  });
+  const _PetSectionSelector({required this.selected, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(DogGoRadius.large),
-        border: Border.all(color: DogGoTheme.border),
-        boxShadow: DogGoTheme.softShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 43,
-                height: 43,
-                decoration: BoxDecoration(
-                  color: iconBackground,
-                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: DogGoSpacing.compactGap),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: DogGoTheme.title(size: 17)),
-                    const SizedBox(height: 3),
-                    Text(subtitle, style: DogGoTheme.subtitle(size: 12.5)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: DogGoSpacing.largeGap),
-          child,
-        ],
+    return Semantics(
+      label: 'Secciones del perfil de mascota',
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SegmentedButton<_PetDetailSection>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(
+              value: _PetDetailSection.summary,
+              icon: Icon(Icons.badge_outlined),
+              label: Text('Resumen'),
+            ),
+            ButtonSegment(
+              value: _PetDetailSection.care,
+              icon: Icon(Icons.health_and_safety_outlined),
+              label: Text('Cuidados'),
+            ),
+            ButtonSegment(
+              value: _PetDetailSection.photos,
+              icon: Icon(Icons.photo_library_outlined),
+              label: Text('Fotos'),
+            ),
+          ],
+          selected: {selected},
+          onSelectionChanged: (values) => onSelected(values.first),
+        ),
       ),
     );
   }

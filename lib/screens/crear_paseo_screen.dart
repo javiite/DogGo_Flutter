@@ -1,15 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_network_image.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_theme.dart';
+import '../services/app_preferences_service.dart';
+import '../widgets/doggo_map_preview.dart';
 import 'pets/models/pet.dart';
 import 'registrar_perro_screen.dart';
+import 'onboarding/contextual_onboarding.dart';
 import 'seleccionar_ubicacion_screen.dart';
 import 'walks/walk_request_controller.dart';
 import 'walks/walk_request_state.dart';
 import 'walks/models/walk_route_selection.dart';
+import 'walks/models/walk_request_draft.dart';
 import 'walks/widgets/walk_route_card.dart';
 import 'walks/widgets/available_date_selector.dart';
 import 'walks/widgets/available_time_selector.dart';
@@ -17,8 +25,15 @@ import 'walks/widgets/availability_warning_card.dart';
 
 class CrearPaseoScreen extends StatefulWidget {
   final Map<String, dynamic> paseador;
+  final int? initialPetId;
+  final WalkRequestDraft? initialDraft;
 
-  const CrearPaseoScreen({super.key, required this.paseador});
+  const CrearPaseoScreen({
+    super.key,
+    required this.paseador,
+    this.initialPetId,
+    this.initialDraft,
+  });
 
   @override
   State<CrearPaseoScreen> createState() => _CrearPaseoScreenState();
@@ -30,18 +45,115 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
   final TextEditingController _notesController = TextEditingController();
 
   WalkRouteSelection? _routeSelection;
+  Timer? _draftTimer;
+  bool _draftReady = false;
+  bool _draftRestored = false;
+  bool _showAllScheduledWalks = false;
 
   @override
   void initState() {
     super.initState();
 
-    _controller = WalkRequestController(walkerData: widget.paseador);
+    _controller = WalkRequestController(
+      walkerData: widget.paseador,
+      initialPetId: widget.initialPetId,
+    );
 
-    _controller.initialize();
+    _controller.addListener(_scheduleDraftSave);
+    _notesController.addListener(_scheduleDraftSave);
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _controller.initialize();
+    if (!mounted ||
+        _controller.state.loading ||
+        _controller.state.error != null) {
+      return;
+    }
+    WalkRequestDraft? draft = widget.initialDraft;
+    draft ??= await AppPreferencesService.loadJson(
+      'walk_request_draft',
+    ).then((value) => value == null ? null : WalkRequestDraft.fromMap(value));
+    if (draft != null && draft.walkerId == _controller.state.walker.id) {
+      _controller.applyDraft(draft);
+      _notesController.text = draft.notes;
+      _draftRestored = true;
+    }
+    _draftReady = true;
+    if (mounted) setState(() {});
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showContextualOnboarding(
+        context,
+        contextKey: 'walk_request',
+        title: 'Solicita con confianza',
+        steps: const [
+          OnboardingStep(
+            Icons.pets_rounded,
+            'Elige las mascotas',
+            'Puedes solicitar el mismo horario para una o varias mascotas.',
+          ),
+          OnboardingStep(
+            Icons.event_available_rounded,
+            'Confirma agenda y lugar',
+            'DogGo valida disponibilidad, duración y punto de recogida.',
+          ),
+          OnboardingStep(
+            Icons.edit_note_rounded,
+            'Tu avance se conserva',
+            'Si sales antes de enviar, recuperaremos este borrador.',
+          ),
+        ],
+      );
+    });
+  }
+
+  void _scheduleDraftSave() {
+    if (!_draftReady || _controller.state.loading || _controller.state.saving) {
+      return;
+    }
+    _draftTimer?.cancel();
+    _draftTimer = Timer(const Duration(milliseconds: 500), _saveDraft);
+  }
+
+  Future<void> _saveDraft() async {
+    final state = _controller.state;
+    await AppPreferencesService.saveJson(
+      'walk_request_draft',
+      WalkRequestDraft(
+        walkerId: state.walker.id,
+        petIds: state.selectedPetIds,
+        durationMinutes: state.durationMinutes,
+        scheduledAt: state.scheduledAt,
+        pickupLocation: state.pickupLocation,
+        notes: _notesController.text,
+        updatedAt: DateTime.now(),
+      ).toMap(),
+    );
+  }
+
+  Future<void> _discardDraft() async {
+    _draftTimer?.cancel();
+    _draftReady = false;
+    _controller.discardDraftState();
+    _notesController.clear();
+    _routeSelection = null;
+    await AppPreferencesService.remove('walk_request_draft');
+    if (!mounted) return;
+    setState(() {
+      _draftRestored = false;
+      _showAllScheduledWalks = false;
+    });
+    _draftReady = true;
   }
 
   @override
   void dispose() {
+    _draftTimer?.cancel();
+    _controller.removeListener(_scheduleDraftSave);
+    _notesController.removeListener(_scheduleDraftSave);
     _notesController.dispose();
     _controller.dispose();
     super.dispose();
@@ -178,20 +290,23 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
 
   void _addSchedule() {
     final error = _controller.addCurrentSchedule();
-    if (error != null) _showMessage(error);
+    if (error != null) {
+      _showMessage(error);
+      return;
+    }
+    setState(() => _showAllScheduledWalks = false);
   }
 
-  String _scheduleText(WalkScheduleDraft walk, WalkRequestState state) {
-    final date = walk.startsAt;
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    final pets = state.pets
-        .where((pet) => walk.petIds.contains(pet.id))
-        .map((pet) => pet.name)
-        .join(', ');
-    return '$day/$month · $hour:$minute · ${walk.durationMinutes} min · $pets';
+  void _addWeekly(int weeks) {
+    final before = _controller.state.scheduledWalks.length;
+    final error = _controller.addWeeklySchedules(weeks);
+    if (error != null) {
+      _showMessage(error);
+      return;
+    }
+    final added = _controller.state.scheduledWalks.length - before;
+    setState(() => _showAllScheduledWalks = false);
+    _showMessage('$added paseos semanales agregados.', success: true);
   }
 
   Future<void> _registerPet() async {
@@ -222,6 +337,9 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
     _showMessage(result.message, success: result.success);
 
     if (result.success) {
+      _draftTimer?.cancel();
+      await AppPreferencesService.remove('walk_request_draft');
+      if (!mounted) return;
       Navigator.pop(context, true);
     }
   }
@@ -248,17 +366,11 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
       builder: (context, _) {
         final state = _controller.state;
 
-        return Scaffold(
-          backgroundColor: DogGoTheme.cream,
-          appBar: AppBar(
-            backgroundColor: DogGoTheme.card,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            title: Text('Solicitar paseo', style: DogGoTheme.title(size: 20)),
+        return DogGoScreenScaffold(
+          title: 'Solicitar paseo',
+          leading: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_rounded),
           ),
           bottomNavigationBar: state.loading || state.error != null
               ? null
@@ -291,6 +403,10 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 130),
         children: [
+          if (_draftRestored) ...[
+            _DraftRestoredBanner(onDiscard: _discardDraft),
+            const SizedBox(height: 14),
+          ],
           _WalkerHero(state: state),
           const SizedBox(height: 26),
 
@@ -328,7 +444,7 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
           ),
           if (state.scheduledWalks.isNotEmpty) ...[
             const SizedBox(height: 10),
-            const _ProgramDraftHint(),
+            _ProgramDraftHint(existingWalkCount: state.scheduledWalks.length),
           ],
 
           const SizedBox(height: 28),
@@ -379,31 +495,41 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
                       : 'Agregar esta fecha a la programación',
                 ),
               ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => _addWeekly(4),
+                      icon: const Icon(Icons.event_repeat_rounded),
+                      label: const Text('1 mes · 4'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => _addWeekly(8),
+                      icon: const Icon(Icons.calendar_view_month_rounded),
+                      label: const Text('2 meses · 8'),
+                    ),
+                  ),
+                ],
+              ),
             ],
             if (state.scheduledWalks.isNotEmpty) ...[
               const SizedBox(height: 14),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${state.scheduledWalks.length} paseos en esta programación',
-                  style: DogGoTheme.body(weight: FontWeight.w800),
+              _ScheduleProgramCard(
+                state: state,
+                expanded: _showAllScheduledWalks,
+                onToggle: () => setState(
+                  () => _showAllScheduledWalks = !_showAllScheduledWalks,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: state.scheduledWalks
-                    .map(
-                      (walk) => InputChip(
-                        avatar: const Icon(Icons.event_rounded, size: 17),
-                        label: Text(_scheduleText(walk, state)),
-                        onDeleted: state.saving
-                            ? null
-                            : () => _controller.removeSchedule(walk),
-                      ),
-                    )
-                    .toList(),
+                onRemove: (walk) {
+                  _controller.removeSchedule(walk);
+                  if (_controller.state.scheduledWalks.length <= 2) {
+                    setState(() => _showAllScheduledWalks = false);
+                  }
+                },
               ),
             ],
           ],
@@ -456,6 +582,37 @@ class _CrearPaseoScreenState extends State<CrearPaseoScreen> {
   }
 }
 
+class _DraftRestoredBanner extends StatelessWidget {
+  final VoidCallback onDiscard;
+
+  const _DraftRestoredBanner({required this.onDiscard});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: DogGoTheme.orangeLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DogGoTheme.orange.withValues(alpha: .3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.edit_note_rounded, color: DogGoTheme.orange),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Recuperamos tu solicitud pendiente.',
+              style: DogGoTheme.body(size: 12, weight: FontWeight.w800),
+            ),
+          ),
+          TextButton(onPressed: onDiscard, child: const Text('Descartar')),
+        ],
+      ),
+    );
+  }
+}
+
 class _WalkerHero extends StatelessWidget {
   final WalkRequestState state;
 
@@ -490,18 +647,11 @@ class _WalkerHero extends StatelessWidget {
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: Colors.white.withValues(alpha: .20)),
             ),
-            child: photoUrl != null && photoUrl.trim().isNotEmpty
-                ? Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) {
-                      return _Initials(
-                        text: walker.initials,
-                        color: Colors.white,
-                      );
-                    },
-                  )
-                : _Initials(text: walker.initials, color: Colors.white),
+            child: DogGoNetworkImage(
+              url: photoUrl,
+              semanticLabel: 'Fotografía de ${walker.name}',
+              fallback: _Initials(text: walker.initials, color: Colors.white),
+            ),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -580,7 +730,9 @@ class _HeroData extends StatelessWidget {
 }
 
 class _ProgramDraftHint extends StatelessWidget {
-  const _ProgramDraftHint();
+  final int existingWalkCount;
+
+  const _ProgramDraftHint({required this.existingWalkCount});
 
   @override
   Widget build(BuildContext context) {
@@ -590,15 +742,15 @@ class _ProgramDraftHint extends StatelessWidget {
         color: DogGoTheme.tealLight,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.tune_rounded, size: 19, color: DogGoTheme.teal),
-          SizedBox(width: 9),
+          const Icon(Icons.add_rounded, size: 19, color: DogGoTheme.teal),
+          const SizedBox(width: 9),
           Expanded(
             child: Text(
-              'Los cambios de mascotas y duración se aplicarán al próximo paseo que agregues. Los anteriores conservan su configuración.',
-              style: TextStyle(
+              'Ahora estás preparando un paseo adicional. Los $existingWalkCount ya agregados conservarán sus mascotas y duración.',
+              style: const TextStyle(
                 color: DogGoTheme.tealDark,
                 fontSize: 11,
                 height: 1.35,
@@ -730,7 +882,7 @@ class _PetCard extends StatelessWidget {
                       ? Image.network(
                           photoUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) {
+                          errorBuilder: (_, _, _) {
                             return _Initials(
                               text: pet.initials,
                               color: DogGoTheme.teal,
@@ -846,73 +998,207 @@ class _DurationSelector extends StatelessWidget {
 
   const _DurationSelector({required this.state, required this.onSelected});
 
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      childAspectRatio: 2.1,
-      children: WalkRequestState.allowedDurations.map((minutes) {
-        final selected = minutes == state.durationMinutes;
+  Future<void> _selectCustomDuration(BuildContext context) async {
+    var minutes = state.durationMinutes
+        .clamp(
+          WalkRequestState.minDurationMinutes,
+          WalkRequestState.maxDurationMinutes,
+        )
+        .toDouble();
 
-        final base = state.hourlyRate * (minutes / 60);
-
-        return Material(
-          color: selected ? DogGoTheme.teal : DogGoTheme.card,
-          borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            onTap: () => onSelected(minutes),
-            borderRadius: BorderRadius.circular(18),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: selected ? DogGoTheme.teal : DogGoTheme.border,
-                ),
-              ),
-              child: Row(
+    final result = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: DogGoTheme.card,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final selectedMinutes = minutes.round();
+            final price = state.hourlyRate * (selectedMinutes / 60);
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.directions_walk_rounded,
-                    color: selected ? Colors.white : DogGoTheme.teal,
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: DogGoTheme.border,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                   ),
-                  const SizedBox(width: 9),
-                  Expanded(
+                  const SizedBox(height: 18),
+                  Text(
+                    'Duración personalizada',
+                    style: DogGoTheme.title(size: 20),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Elige entre 30 y 90 minutos',
+                    style: DogGoTheme.subtitle(size: 11.5),
+                  ),
+                  const SizedBox(height: 22),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      color: DogGoTheme.tealLight,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _durationLabel(minutes),
-                          style: DogGoTheme.body(
-                            size: 12,
-                            color: selected ? Colors.white : DogGoTheme.ink,
-                            weight: FontWeight.w800,
+                          _durationLabel(selectedMinutes),
+                          style: DogGoTheme.title(
+                            size: 29,
+                            color: DogGoTheme.teal,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
-                          '\$${base.toStringAsFixed(2)} base',
-                          style: DogGoTheme.caption(
-                            size: 9.5,
-                            color: selected
-                                ? Colors.white.withValues(alpha: .75)
-                                : DogGoTheme.muted,
-                          ),
+                          '\$${price.toStringAsFixed(2)} por paseo para una mascota',
+                          style: DogGoTheme.caption(size: 10.5),
                         ),
                       ],
                     ),
                   ),
+                  Slider(
+                    value: minutes,
+                    min: WalkRequestState.minDurationMinutes.toDouble(),
+                    max: WalkRequestState.maxDurationMinutes.toDouble(),
+                    divisions:
+                        (WalkRequestState.maxDurationMinutes -
+                            WalkRequestState.minDurationMinutes) ~/
+                        WalkRequestState.durationStepMinutes,
+                    label: '$selectedMinutes min',
+                    onChanged: (value) {
+                      setModalState(() => minutes = value);
+                    },
+                  ),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [Text('30 min'), Text('90 min')],
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context, selectedMinutes),
+                      child: const Text('Usar esta duración'),
+                    ),
+                  ),
                 ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) onSelected(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final customSelected = !WalkRequestState.allowedDurations.contains(
+      state.durationMinutes,
+    );
+
+    return Column(
+      children: [
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 2.1,
+          children: WalkRequestState.allowedDurations.map((minutes) {
+            final selected = minutes == state.durationMinutes;
+
+            final base = state.hourlyRate * (minutes / 60);
+
+            return Material(
+              color: selected ? DogGoTheme.teal : DogGoTheme.card,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                onTap: () => onSelected(minutes),
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: selected ? DogGoTheme.teal : DogGoTheme.border,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.directions_walk_rounded,
+                        color: selected ? Colors.white : DogGoTheme.teal,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _durationLabel(minutes),
+                              style: DogGoTheme.body(
+                                size: 12,
+                                color: selected ? Colors.white : DogGoTheme.ink,
+                                weight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '\$${base.toStringAsFixed(2)} base',
+                              style: DogGoTheme.caption(
+                                size: 9.5,
+                                color: selected
+                                    ? Colors.white.withValues(alpha: .75)
+                                    : DogGoTheme.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _selectCustomDuration(context),
+            icon: const Icon(Icons.tune_rounded),
+            label: Text(
+              customSelected
+                  ? 'Personalizada · ${_durationLabel(state.durationMinutes)}'
+                  : 'Elegir otra duración',
+            ),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: customSelected
+                  ? DogGoTheme.tealLight
+                  : DogGoTheme.card,
+              side: BorderSide(
+                color: customSelected ? DogGoTheme.teal : DogGoTheme.border,
               ),
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 
@@ -925,6 +1211,353 @@ class _DurationSelector extends StatelessWidget {
       default:
         return '$minutes min';
     }
+  }
+}
+
+class _ScheduleProgramCard extends StatelessWidget {
+  final WalkRequestState state;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final ValueChanged<WalkScheduleDraft> onRemove;
+
+  const _ScheduleProgramCard({
+    required this.state,
+    required this.expanded,
+    required this.onToggle,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final walks = state.scheduledWalks;
+    final grouped = <String, _ScheduleConfigGroup>{};
+    for (final walk in walks) {
+      final petIds = [...walk.petIds]..sort();
+      final key = '${walk.durationMinutes}:${petIds.join("-")}';
+      grouped
+          .putIfAbsent(
+            key,
+            () => _ScheduleConfigGroup(
+              durationMinutes: walk.durationMinutes,
+              petIds: petIds,
+            ),
+          )
+          .walks
+          .add(walk);
+    }
+    final groups = grouped.values.toList()
+      ..sort(
+        (left, right) =>
+            left.walks.first.startsAt.compareTo(right.walks.first.startsAt),
+      );
+    final groupLabel = groups.length == 1
+        ? '1 grupo con la misma configuración'
+        : '${groups.length} grupos con distinta configuración';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: DogGoTheme.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DogGoTheme.teal.withValues(alpha: .28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: DogGoTheme.tealLight,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.event_repeat_rounded,
+                  color: DogGoTheme.teal,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${walks.length} paseos en esta solicitud',
+                      style: DogGoTheme.title(size: 14.5),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      groupLabel,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: DogGoTheme.caption(size: 9.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: DogGoTheme.tealLight,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Text(
+              'Cada fecha será un paseo independiente. DogGo los enviará juntos para que no repitas todo el formulario.',
+              style: DogGoTheme.caption(
+                size: 9.5,
+                color: DogGoTheme.tealDark,
+                weight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...groups.indexed.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: _ScheduleGroupCard(
+                index: entry.$1,
+                group: entry.$2,
+                state: state,
+                showDates: expanded || walks.length <= 2,
+                onRemove: onRemove,
+              ),
+            ),
+          ),
+          if (walks.length > 2) ...[
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: onToggle,
+                icon: Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                ),
+                label: Text(
+                  expanded
+                      ? 'Ocultar fechas'
+                      : 'Revisar las ${walks.length} fechas',
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _shortDate(DateTime date) {
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
+  }
+}
+
+class _ScheduleConfigGroup {
+  final int durationMinutes;
+  final List<int> petIds;
+  final List<WalkScheduleDraft> walks = [];
+
+  _ScheduleConfigGroup({required this.durationMinutes, required this.petIds});
+}
+
+class _ScheduleGroupCard extends StatelessWidget {
+  final int index;
+  final _ScheduleConfigGroup group;
+  final WalkRequestState state;
+  final bool showDates;
+  final ValueChanged<WalkScheduleDraft> onRemove;
+
+  const _ScheduleGroupCard({
+    required this.index,
+    required this.group,
+    required this.state,
+    required this.showDates,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pets = state.pets
+        .where((pet) => group.petIds.contains(pet.id))
+        .map((pet) => pet.name)
+        .join(', ');
+    final first = group.walks.first.startsAt;
+    final last = group.walks.last.startsAt;
+    final countLabel = group.walks.length == 1
+        ? '1 paseo'
+        : '${group.walks.length} paseos';
+    final accent = index.isEven ? DogGoTheme.teal : DogGoTheme.purple;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: .055),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: accent.withValues(alpha: .15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${index + 1}',
+                  style: DogGoTheme.label(size: 10, color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$countLabel · ${group.durationMinutes} min',
+                      style: DogGoTheme.body(size: 11, weight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      pets,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DogGoTheme.caption(
+                        size: 9.5,
+                        color: accent,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      group.walks.length == 1
+                          ? _dateTimeLabel(first)
+                          : '${_shortDate(first)}–${_shortDate(last)}',
+                      style: DogGoTheme.caption(size: 9),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (showDates) ...[
+            const SizedBox(height: 10),
+            ...group.walks.map(
+              (walk) => _ScheduledWalkRow(
+                walk: walk,
+                state: state,
+                onRemove: () => onRemove(walk),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _dateTimeLabel(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '${_ScheduleProgramCard._shortDate(date)} · $hour:$minute';
+  }
+
+  static String _shortDate(DateTime date) {
+    return _ScheduleProgramCard._shortDate(date);
+  }
+}
+
+class _ScheduledWalkRow extends StatelessWidget {
+  final WalkScheduleDraft walk;
+  final WalkRequestState state;
+  final VoidCallback onRemove;
+
+  const _ScheduledWalkRow({
+    required this.walk,
+    required this.state,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final date = walk.startsAt;
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final pets = state.pets
+        .where((pet) => walk.petIds.contains(pet.id))
+        .map((pet) => pet.name)
+        .join(', ');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(11, 8, 4, 8),
+        decoration: BoxDecoration(
+          color: DogGoTheme.cream,
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.calendar_today_rounded,
+              color: DogGoTheme.teal,
+              size: 17,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_ScheduleProgramCard._shortDate(date)} · $hour:$minute',
+                    style: DogGoTheme.body(size: 11, weight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${walk.durationMinutes} min · $pets',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DogGoTheme.caption(size: 9.5),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Quitar esta fecha',
+              onPressed: onRemove,
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.close_rounded, size: 19),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1051,6 +1684,8 @@ class _LocationCard extends StatelessWidget {
                     Text(
                       location == null
                           ? 'Elige una opción'
+                          : location.address == 'Ubicación actual'
+                          ? location.coordinatesLabel
                           : 'Punto de recogida seleccionado',
                       style: DogGoTheme.subtitle(size: 10.5),
                     ),
@@ -1061,6 +1696,16 @@ class _LocationCard extends StatelessWidget {
                 const Icon(Icons.check_circle_rounded, color: DogGoTheme.teal),
             ],
           ),
+          if (location != null) ...[
+            const SizedBox(height: 13),
+            DogGoMapPreview(
+              latitud: location.latitude,
+              longitud: location.longitude,
+              height: 145,
+              markerLabel: 'Punto de recogida',
+              onTap: onMap,
+            ),
+          ],
           const SizedBox(height: 15),
           Row(
             children: [
@@ -1178,6 +1823,31 @@ class _PriceSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final groups = <String, _WalkPriceGroup>{};
+    for (final walk in state.effectiveScheduledWalks) {
+      final price = state.priceForWalk(walk);
+      final key =
+          '${walk.durationMinutes}:${walk.petIds.length}:'
+          '${price.toStringAsFixed(2)}';
+      final group = groups.putIfAbsent(
+        key,
+        () => _WalkPriceGroup(
+          durationMinutes: walk.durationMinutes,
+          petCount: walk.petIds.length,
+          pricePerWalk: price,
+        ),
+      );
+      group.count++;
+    }
+    if (groups.isEmpty && state.hasSelectedPets) {
+      final preview = _WalkPriceGroup(
+        durationMinutes: state.durationMinutes,
+        petCount: state.selectedPetCount,
+        pricePerWalk: state.pricePerWalk,
+      )..count = 1;
+      groups['preview'] = preview;
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1186,18 +1856,29 @@ class _PriceSummary extends StatelessWidget {
         border: Border.all(color: DogGoTheme.orange.withValues(alpha: .24)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _PriceRow(
-            label: 'Tarifa base · ${state.durationLabel}',
-            value: '\$${state.basePrice.toStringAsFixed(2)}',
+          Text('Desglose del precio', style: DogGoTheme.title(size: 18)),
+          const SizedBox(height: 4),
+          Text(
+            'Revisa cuánto cuesta cada paseo antes de solicitar.',
+            style: DogGoTheme.caption(size: 10.5),
           ),
-          if (state.selectedPetCount > 1) ...[
-            const SizedBox(height: 10),
-            _PriceRow(
-              label:
-                  '${state.selectedPetCount - 1} '
-                  '${state.selectedPetCount == 2 ? "mascota adicional" : "mascotas adicionales"} · 50%',
-              value: '\$${state.additionalPetsPrice.toStringAsFixed(2)}',
+          const SizedBox(height: 15),
+          _PriceRow(
+            label: 'Tarifa del paseador',
+            value: '\$${state.hourlyRate.toStringAsFixed(2)} / hora',
+          ),
+          if (groups.isNotEmpty) ...[
+            const SizedBox(height: 13),
+            ...groups.values.map(
+              (group) => Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: _WalkPriceGroupCard(
+                  group: group,
+                  hourlyRate: state.hourlyRate,
+                ),
+              ),
             ),
           ],
           const Padding(
@@ -1213,7 +1894,11 @@ class _PriceSummary extends StatelessWidget {
                     Text('Total estimado', style: DogGoTheme.title(size: 17)),
                     const SizedBox(height: 3),
                     Text(
-                      state.pricingExplanation,
+                      state.walkCount == 1
+                          ? '1 paseo programado'
+                          : state.walkCount > 1
+                          ? '${state.walkCount} paseos programados'
+                          : 'Referencia para 1 paseo',
                       style: DogGoTheme.caption(size: 10),
                     ),
                   ],
@@ -1225,8 +1910,154 @@ class _PriceSummary extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 11),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                color: DogGoTheme.muted,
+                size: 15,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'El backend confirmará el importe con la tarifa vigente del paseador.',
+                  style: DogGoTheme.caption(size: 9),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _WalkPriceGroup {
+  final int durationMinutes;
+  final int petCount;
+  final double pricePerWalk;
+  int count = 0;
+
+  _WalkPriceGroup({
+    required this.durationMinutes,
+    required this.petCount,
+    required this.pricePerWalk,
+  });
+
+  double get subtotal => pricePerWalk * count;
+}
+
+class _WalkPriceGroupCard extends StatelessWidget {
+  final _WalkPriceGroup group;
+  final double hourlyRate;
+
+  const _WalkPriceGroupCard({required this.group, required this.hourlyRate});
+
+  @override
+  Widget build(BuildContext context) {
+    final basePrice = hourlyRate * (group.durationMinutes / 60);
+    final additionalPrice = group.pricePerWalk - basePrice;
+    final walkLabel = group.count == 1 ? '1 paseo' : '${group.count} paseos';
+    final petLabel = group.petCount == 1
+        ? '1 mascota'
+        : '${group.petCount} mascotas';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DogGoTheme.orange.withValues(alpha: .22)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$walkLabel · ${group.durationMinutes} min · $petLabel',
+                  style: DogGoTheme.body(size: 10.5, weight: FontWeight.w900),
+                ),
+              ),
+              Text(
+                '\$${group.pricePerWalk.toStringAsFixed(2)} c/u',
+                style: DogGoTheme.body(
+                  size: 11,
+                  color: DogGoTheme.teal,
+                  weight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          _PriceDetailRow(
+            label:
+                '${group.durationMinutes} min × \$${hourlyRate.toStringAsFixed(2)}/hora',
+            value: '\$${basePrice.toStringAsFixed(2)}',
+          ),
+          if (group.petCount > 1) ...[
+            const SizedBox(height: 5),
+            _PriceDetailRow(
+              label:
+                  '${group.petCount - 1} ${group.petCount == 2 ? "mascota adicional" : "mascotas adicionales"} · 50%',
+              value: '+ \$${additionalPrice.toStringAsFixed(2)}',
+            ),
+          ],
+          if (group.count > 1) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(height: 1),
+            ),
+            _PriceDetailRow(
+              label:
+                  '${group.count} × \$${group.pricePerWalk.toStringAsFixed(2)}',
+              value: '\$${group.subtotal.toStringAsFixed(2)}',
+              strong: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PriceDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool strong;
+
+  const _PriceDetailRow({
+    required this.label,
+    required this.value,
+    this.strong = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: DogGoTheme.caption(
+              size: 9.5,
+              color: strong ? DogGoTheme.ink : DogGoTheme.muted,
+              weight: strong ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          value,
+          style: DogGoTheme.body(
+            size: 10.5,
+            weight: strong ? FontWeight.w900 : FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1262,6 +2093,7 @@ class _SubmitBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = state.selectedPetCount;
+    final walkCount = state.walkCount;
 
     return SafeArea(
       top: false,
@@ -1306,6 +2138,8 @@ class _SubmitBar extends StatelessWidget {
                       child: Text(
                         count == 0
                             ? 'Selecciona una mascota'
+                            : walkCount > 1
+                            ? 'Solicitar $walkCount paseos'
                             : count == 1
                             ? 'Solicitar paseo'
                             : 'Solicitar para $count mascotas',

@@ -6,26 +6,23 @@ import '../services/usuario_service.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
+import '../shared/widgets/doggo_sticky_action_bar.dart';
 
 class CambiarPasswordScreen extends StatefulWidget {
   const CambiarPasswordScreen({super.key});
 
   @override
-  State<CambiarPasswordScreen> createState() =>
-      _CambiarPasswordScreenState();
+  State<CambiarPasswordScreen> createState() => _CambiarPasswordScreenState();
 }
 
-class _CambiarPasswordScreenState
-    extends State<CambiarPasswordScreen> {
+class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   final UsuarioService _usuarioService = UsuarioService();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _actualController =
-      TextEditingController();
-  final TextEditingController _nuevaController =
-      TextEditingController();
-  final TextEditingController _confirmarController =
-      TextEditingController();
+  final TextEditingController _actualController = TextEditingController();
+  final TextEditingController _nuevaController = TextEditingController();
+  final TextEditingController _confirmarController = TextEditingController();
 
   bool _guardando = false;
   bool _mostrarActual = false;
@@ -71,20 +68,15 @@ class _CambiarPasswordScreenState
 
   bool get _longitudCorrecta => _nueva.length >= 8;
 
-  bool get _tieneMayuscula =>
-      RegExp(r'[A-ZÁÉÍÓÚÑ]').hasMatch(_nueva);
+  bool get _tieneMayuscula => RegExp(r'[A-ZÁÉÍÓÚÑ]').hasMatch(_nueva);
 
-  bool get _tieneMinuscula =>
-      RegExp(r'[a-záéíóúñ]').hasMatch(_nueva);
+  bool get _tieneMinuscula => RegExp(r'[a-záéíóúñ]').hasMatch(_nueva);
 
-  bool get _tieneNumero =>
-      RegExp(r'[0-9]').hasMatch(_nueva);
+  bool get _tieneNumero => RegExp(r'[0-9]').hasMatch(_nueva);
 
-  bool get _esDiferente =>
-      _nueva.isNotEmpty && _nueva != _actual;
+  bool get _esDiferente => _nueva.isNotEmpty && _nueva != _actual;
 
-  bool get _coinciden =>
-      _nueva.isNotEmpty && _nueva == _confirmacion;
+  bool get _coinciden => _nueva.isNotEmpty && _nueva == _confirmacion;
 
   int get _securityScore {
     var score = 0;
@@ -193,23 +185,17 @@ class _CambiarPasswordScreenState
         .replaceFirst('ApiException: ', '')
         .trim();
 
-    return message.isEmpty
-        ? 'No se pudo actualizar la contraseña.'
-        : message;
+    return message.isEmpty ? 'No se pudo actualizar la contraseña.' : message;
   }
 
-  void _showMessage(
-    String message, {
-    bool error = false,
-  }) {
+  void _showMessage(String message, {bool error = false}) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          backgroundColor:
-              error ? DogGoTheme.red : DogGoTheme.ink,
+          backgroundColor: error ? DogGoTheme.red : DogGoTheme.ink,
           content: Row(
             children: [
               Icon(
@@ -249,26 +235,17 @@ class _CambiarPasswordScreenState
 
       if (!mounted) return;
 
-      TextInput.finishAutofillContext(
-        shouldSave: true,
-      );
+      TextInput.finishAutofillContext(shouldSave: true);
 
-      _showMessage(
-        'Tu contraseña se actualizó correctamente.',
-      );
+      _showMessage('Tu contraseña se actualizó correctamente.');
 
-      await Future<void>.delayed(
-        const Duration(milliseconds: 600),
-      );
+      await Future<void>.delayed(const Duration(milliseconds: 600));
 
       if (mounted) {
         Navigator.pop(context, true);
       }
     } catch (error) {
-      _showMessage(
-        _cleanError(error),
-        error: true,
-      );
+      _showMessage(_cleanError(error), error: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -280,10 +257,8 @@ class _CambiarPasswordScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cambiar contraseña'),
-      ),
+    return DogGoScreenScaffold(
+      title: 'Cambiar contraseña',
       body: SafeArea(
         child: AutofillGroup(
           child: Form(
@@ -292,8 +267,7 @@ class _CambiarPasswordScreenState
                 ? AutovalidateMode.onUserInteraction
                 : AutovalidateMode.disabled,
             child: ListView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.fromLTRB(
                 DogGoSpacing.screenHorizontal,
                 DogGoSpacing.md,
@@ -302,17 +276,13 @@ class _CambiarPasswordScreenState
               ),
               children: [
                 _buildHeader(),
-                const SizedBox(
-                  height: DogGoSpacing.largeGap,
-                ),
+                const SizedBox(height: DogGoSpacing.largeGap),
                 _PasswordField(
                   controller: _actualController,
                   label: 'Contraseña actual',
                   hint: 'Escribe tu contraseña actual',
                   visible: _mostrarActual,
-                  autofillHints: const [
-                    AutofillHints.password,
-                  ],
+                  autofillHints: const [AutofillHints.password],
                   textInputAction: TextInputAction.next,
                   validator: _validarActual,
                   onToggleVisibility: () {
@@ -327,9 +297,7 @@ class _CambiarPasswordScreenState
                   label: 'Nueva contraseña',
                   hint: 'Crea una contraseña segura',
                   visible: _mostrarNueva,
-                  autofillHints: const [
-                    AutofillHints.newPassword,
-                  ],
+                  autofillHints: const [AutofillHints.newPassword],
                   textInputAction: TextInputAction.next,
                   validator: _validarNueva,
                   onToggleVisibility: () {
@@ -344,9 +312,7 @@ class _CambiarPasswordScreenState
                   label: 'Confirmar contraseña',
                   hint: 'Escríbela nuevamente',
                   visible: _mostrarConfirmacion,
-                  autofillHints: const [
-                    AutofillHints.newPassword,
-                  ],
+                  autofillHints: const [AutofillHints.newPassword],
                   textInputAction: TextInputAction.done,
                   validator: _validarConfirmacion,
                   onFieldSubmitted: (_) {
@@ -356,40 +322,12 @@ class _CambiarPasswordScreenState
                   },
                   onToggleVisibility: () {
                     setState(() {
-                      _mostrarConfirmacion =
-                          !_mostrarConfirmacion;
+                      _mostrarConfirmacion = !_mostrarConfirmacion;
                     });
                   },
                 ),
-                const SizedBox(
-                  height: DogGoSpacing.largeGap,
-                ),
+                const SizedBox(height: DogGoSpacing.largeGap),
                 _buildSecurityCard(),
-                const SizedBox(height: DogGoSpacing.lg),
-                SizedBox(
-                  height: 54,
-                  child: ElevatedButton.icon(
-                    onPressed:
-                        _puedeGuardar ? _save : null,
-                    icon: _guardando
-                        ? const SizedBox(
-                            width: 19,
-                            height: 19,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.lock_reset_rounded,
-                          ),
-                    label: Text(
-                      _guardando
-                          ? 'Actualizando...'
-                          : 'Actualizar contraseña',
-                    ),
-                  ),
-                ),
                 const SizedBox(height: DogGoSpacing.md),
                 _buildInformation(),
               ],
@@ -397,22 +335,21 @@ class _CambiarPasswordScreenState
           ),
         ),
       ),
+      bottomNavigationBar: DogGoStickyActionBar(
+        primaryLabel: _guardando ? 'Actualizando...' : 'Actualizar contraseña',
+        primaryIcon: Icons.lock_reset_rounded,
+        onPrimary: _puedeGuardar ? _save : null,
+      ),
     );
   }
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.tealLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.teal.withValues(alpha: 0.12),
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.teal.withValues(alpha: 0.12)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,9 +359,7 @@ class _CambiarPasswordScreenState
             height: 52,
             decoration: BoxDecoration(
               color: DogGoTheme.card,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.medium,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.medium),
             ),
             child: const Icon(
               Icons.shield_outlined,
@@ -437,10 +372,7 @@ class _CambiarPasswordScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Protege tu cuenta',
-                  style: DogGoTheme.title(size: 20),
-                ),
+                Text('Protege tu cuenta', style: DogGoTheme.title(size: 20)),
                 const SizedBox(height: DogGoSpacing.xs),
                 Text(
                   'Usa una contraseña distinta a las que utilizas en otros servicios.',
@@ -455,21 +387,14 @@ class _CambiarPasswordScreenState
   }
 
   Widget _buildSecurityCard() {
-    final progress =
-        (_securityScore / 5).clamp(0.0, 1.0);
+    final progress = (_securityScore / 5).clamp(0.0, 1.0);
 
     return Container(
-      padding: const EdgeInsets.all(
-        DogGoSpacing.cardPadding,
-      ),
+      padding: const EdgeInsets.all(DogGoSpacing.cardPadding),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.large,
-        ),
-        border: Border.all(
-          color: DogGoTheme.border,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.large),
+        border: Border.all(color: DogGoTheme.border),
       ),
       child: Column(
         children: [
@@ -480,21 +405,13 @@ class _CambiarPasswordScreenState
                 height: 42,
                 decoration: BoxDecoration(
                   color: _securityBackground,
-                  borderRadius: BorderRadius.circular(
-                    DogGoRadius.medium,
-                  ),
+                  borderRadius: BorderRadius.circular(DogGoRadius.medium),
                 ),
-                child: Icon(
-                  Icons.security_rounded,
-                  color: _securityColor,
-                ),
+                child: Icon(Icons.security_rounded, color: _securityColor),
               ),
               const SizedBox(width: DogGoSpacing.compactGap),
               Expanded(
-                child: Text(
-                  'Seguridad',
-                  style: DogGoTheme.title(size: 16),
-                ),
+                child: Text('Seguridad', style: DogGoTheme.title(size: 16)),
               ),
               Text(
                 _securityLabel,
@@ -508,9 +425,7 @@ class _CambiarPasswordScreenState
           ),
           const SizedBox(height: DogGoSpacing.md),
           ClipRRect(
-            borderRadius: BorderRadius.circular(
-              DogGoRadius.pill,
-            ),
+            borderRadius: BorderRadius.circular(DogGoRadius.pill),
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
@@ -531,10 +446,7 @@ class _CambiarPasswordScreenState
             text: 'Una letra minúscula',
             completed: _tieneMinuscula,
           ),
-          _PasswordRule(
-            text: 'Al menos un número',
-            completed: _tieneNumero,
-          ),
+          _PasswordRule(text: 'Al menos un número', completed: _tieneNumero),
           _PasswordRule(
             text: 'Diferente a la contraseña actual',
             completed: _esDiferente,
@@ -554,25 +466,17 @@ class _CambiarPasswordScreenState
       padding: const EdgeInsets.all(DogGoSpacing.md),
       decoration: BoxDecoration(
         color: DogGoTheme.orangeLight,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.medium,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.medium),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: DogGoTheme.orange,
-          ),
+          const Icon(Icons.info_outline_rounded, color: DogGoTheme.orange),
           const SizedBox(width: DogGoSpacing.compactGap),
           Expanded(
             child: Text(
               'Después de actualizarla, utiliza la nueva contraseña en tus próximos inicios de sesión.',
-              style: DogGoTheme.body(
-                size: 12.5,
-                color: DogGoTheme.muted,
-              ),
+              style: DogGoTheme.body(size: 12.5, color: DogGoTheme.muted),
             ),
           ),
         ],
@@ -618,18 +522,12 @@ class _PasswordField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: const Icon(
-          Icons.lock_outline_rounded,
-        ),
+        prefixIcon: const Icon(Icons.lock_outline_rounded),
         suffixIcon: IconButton(
-          tooltip: visible
-              ? 'Ocultar contraseña'
-              : 'Mostrar contraseña',
+          tooltip: visible ? 'Ocultar contraseña' : 'Mostrar contraseña',
           onPressed: onToggleVisibility,
           icon: Icon(
-            visible
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined,
+            visible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
           ),
         ),
       ),
@@ -651,18 +549,14 @@ class _PasswordRule extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: last ? 0 : DogGoSpacing.sm,
-      ),
+      padding: EdgeInsets.only(bottom: last ? 0 : DogGoSpacing.sm),
       child: Row(
         children: [
           Icon(
             completed
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
-            color: completed
-                ? DogGoTheme.green
-                : DogGoTheme.muted,
+            color: completed ? DogGoTheme.green : DogGoTheme.muted,
             size: 19,
           ),
           const SizedBox(width: DogGoSpacing.sm),
@@ -671,12 +565,8 @@ class _PasswordRule extends StatelessWidget {
               text,
               style: DogGoTheme.body(
                 size: 12.5,
-                color: completed
-                    ? DogGoTheme.ink
-                    : DogGoTheme.muted,
-                weight: completed
-                    ? FontWeight.w700
-                    : FontWeight.w500,
+                color: completed ? DogGoTheme.ink : DogGoTheme.muted,
+                weight: completed ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),

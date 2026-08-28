@@ -207,7 +207,7 @@ class _NetworkPetImage extends StatelessWidget {
           ),
         );
       },
-      errorBuilder: (_, __, ___) {
+      errorBuilder: (_, _, _) {
         return const _Placeholder();
       },
     );

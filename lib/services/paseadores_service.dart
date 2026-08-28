@@ -4,6 +4,14 @@ import 'api_service.dart';
 import 'storage_service.dart';
 
 class PaseadoresService {
+  static Future<Map<String, dynamic>> obtenerPaseador(int paseadorId) async {
+    final response = await ApiService.getAuth('/api/paseadores/$paseadorId');
+    return _normalizarRespuesta(
+      response,
+      errorDefault: 'No se pudo obtener el perfil del paseador.',
+    );
+  }
+
   static Future<Map<String, dynamic>> obtenerPaseadores() async {
     final response = await ApiService.getAuth(
       '/api/paseadores/buscar?pagina=1&tamanioPagina=50',

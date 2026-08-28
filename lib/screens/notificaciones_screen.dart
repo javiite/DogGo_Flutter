@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../shared/widgets/doggo_screen_scaffold.dart';
 import 'chat_paseo_screen.dart';
 import 'detalle_paseo_screen.dart';
 import 'mis_paseos_screen.dart';
 import 'programacion_paseos_screen.dart';
+import 'perfil_screen.dart';
 import 'notifications/models/app_notification.dart';
 import 'notifications/notifications_controller.dart';
 import 'notifications/notifications_state.dart';
@@ -113,6 +115,11 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
           context,
           MaterialPageRoute<void>(builder: (_) => const MisPaseosScreen()),
         );
+      } else if (notification.opensProfile) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const PerfilScreen()),
+        );
       }
 
       if (mounted) {
@@ -151,52 +158,45 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   Widget build(BuildContext context) {
     final state = _controller.state;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8F7),
-      appBar: AppBar(
-        title: const Text('Notificaciones'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF20212D),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        actions: [
-          IconButton(
-            tooltip: 'Actualizar',
-            onPressed: state.refreshing ? null : _controller.refresh,
-            icon: state.refreshing
-                ? const SizedBox(
-                    width: 21,
-                    height: 21,
-                    child: CircularProgressIndicator(strokeWidth: 2.2),
-                  )
-                : const Icon(Icons.refresh_rounded),
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Más opciones',
-            enabled: !state.busy,
-            onSelected: (value) {
-              if (value == 'mark_all') {
-                _markAllAsRead();
-              }
-            },
-            itemBuilder: (_) {
-              return [
-                PopupMenuItem<String>(
-                  value: 'mark_all',
-                  enabled: state.hasUnread,
-                  child: const Row(
-                    children: [
-                      Icon(Icons.done_all_rounded, size: 21),
-                      SizedBox(width: 11),
-                      Text('Marcar todas como leídas'),
-                    ],
-                  ),
+    return DogGoScreenScaffold(
+      title: 'Notificaciones',
+      actions: [
+        IconButton(
+          tooltip: 'Actualizar',
+          onPressed: state.refreshing ? null : _controller.refresh,
+          icon: state.refreshing
+              ? const SizedBox(
+                  width: 21,
+                  height: 21,
+                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                )
+              : const Icon(Icons.refresh_rounded),
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'Más opciones',
+          enabled: !state.busy,
+          onSelected: (value) {
+            if (value == 'mark_all') {
+              _markAllAsRead();
+            }
+          },
+          itemBuilder: (_) {
+            return [
+              PopupMenuItem<String>(
+                value: 'mark_all',
+                enabled: state.hasUnread,
+                child: const Row(
+                  children: [
+                    Icon(Icons.done_all_rounded, size: 21),
+                    SizedBox(width: 11),
+                    Text('Marcar todas como leídas'),
+                  ],
                 ),
-              ];
-            },
-          ),
-        ],
-      ),
+              ),
+            ];
+          },
+        ),
+      ],
       body: SafeArea(top: false, child: _buildBody(state)),
     );
   }
@@ -481,7 +481,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           sliver: SliverList.separated(
             itemCount: notifications.length,
-            separatorBuilder: (_, __) {
+            separatorBuilder: (_, _) {
               return const SizedBox(height: 11);
             },
             itemBuilder: (_, index) {
@@ -783,12 +783,22 @@ class _NotificationCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        if (notification.opensChat || notification.opensWalks)
+                        if (notification.hasAction) ...[
+                          Text(
+                            notification.actionLabel,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
                           Icon(
                             Icons.arrow_forward_rounded,
                             color: color,
                             size: 18,
                           ),
+                        ],
                       ],
                     ),
                   ],

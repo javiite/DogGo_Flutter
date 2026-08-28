@@ -48,11 +48,11 @@ class _DogGoPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final pawPaint = Paint()
-      ..color = patternColor.withOpacity(.18 * opacity)
+      ..color = patternColor.withValues(alpha: .18 * opacity)
       ..style = PaintingStyle.fill;
 
     final bonePaint = Paint()
-      ..color = patternColor.withOpacity(.16 * opacity)
+      ..color = patternColor.withValues(alpha: .16 * opacity)
       ..style = PaintingStyle.fill;
 
     const tile = 120.0;

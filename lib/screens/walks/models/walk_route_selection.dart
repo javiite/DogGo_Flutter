@@ -6,19 +6,18 @@ class WalkRouteSelection {
   final bool saveAsTemplate;
   final String? templateName;
 
-  const WalkRouteSelection.saved(
-    SavedDoggoRoute route,
-  )   : savedRoute = route,
-        customRoute = null,
-        saveAsTemplate = false,
-        templateName = null;
+  const WalkRouteSelection.saved(SavedDoggoRoute route)
+    : savedRoute = route,
+      customRoute = null,
+      saveAsTemplate = false,
+      templateName = null;
 
   const WalkRouteSelection.custom({
     required DoggoRouteDraft route,
     this.saveAsTemplate = false,
     this.templateName,
-  })  : savedRoute = null,
-        customRoute = route;
+  }) : savedRoute = null,
+       customRoute = route;
 
   bool get usesSavedRoute {
     return savedRoute != null;
@@ -29,15 +28,11 @@ class WalkRouteSelection {
   }
 
   String get name {
-    return savedRoute?.name ??
-        customRoute?.name ??
-        'Sin recorrido';
+    return savedRoute?.name ?? customRoute?.name ?? 'Sin recorrido';
   }
 
   String get controlMode {
-    return savedRoute?.controlMode ??
-        customRoute?.controlMode ??
-        'Ruta';
+    return savedRoute?.controlMode ?? customRoute?.controlMode ?? 'Ruta';
   }
 
   int get allowedRadiusMeters {
@@ -47,18 +42,16 @@ class WalkRouteSelection {
   }
 
   int get pointCount {
-    return savedRoute?.points.length ??
-        customRoute?.points.length ??
-        0;
+    return savedRoute?.points.length ?? customRoute?.points.length ?? 0;
   }
 
   int get checkpointCount {
-    final points = savedRoute?.points ??
-        customRoute?.points ??
-        const [];
+    final points = savedRoute?.points ?? customRoute?.points ?? const [];
 
-    return points
-        .where((point) => point.isCheckpoint)
-        .length;
+    return points.where((point) => point.isCheckpoint).length;
+  }
+
+  List<DoggoRoutePoint> get points {
+    return savedRoute?.points ?? customRoute?.points ?? const [];
   }
 }

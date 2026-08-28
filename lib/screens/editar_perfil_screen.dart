@@ -6,6 +6,8 @@ import 'package:latlong2/latlong.dart';
 
 import '../shared/widgets/doggo_error_view.dart';
 import '../shared/widgets/doggo_loading_view.dart';
+import '../shared/widgets/doggo_screen_scaffold.dart';
+import '../shared/widgets/doggo_sticky_action_bar.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -153,13 +155,9 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
     if (result == null) return;
 
-    final latitude = EditProfileState.safeDouble(
-      result['latitud'],
-    );
+    final latitude = EditProfileState.safeDouble(result['latitud']);
 
-    final longitude = EditProfileState.safeDouble(
-      result['longitud'],
-    );
+    final longitude = EditProfileState.safeDouble(result['longitud']);
 
     if (latitude == null || longitude == null) {
       _showMessage('La ubicación seleccionada no es válida.', error: true);
@@ -221,18 +219,23 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
         return PopScope(
           canPop: !state.saving,
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('Editar perfil'),
-              actions: [
-                TextButton(
-                  onPressed: state.saving ? null : _save,
-                  child: const Text('Guardar'),
-                ),
-                const SizedBox(width: DogGoSpacing.sm),
-              ],
-            ),
+          child: DogGoScreenScaffold(
+            title: 'Editar perfil',
             body: _buildBody(state),
+            bottomNavigationBar: state.loading
+                ? null
+                : DogGoStickyActionBar(
+                    primaryLabel: state.saving
+                        ? 'Guardando...'
+                        : 'Guardar cambios',
+                    primaryIcon: Icons.save_outlined,
+                    onPrimary: state.saving ? null : _save,
+                    secondaryLabel: 'Cancelar',
+                    secondaryIcon: Icons.close_rounded,
+                    onSecondary: state.saving
+                        ? null
+                        : () => Navigator.pop(context, false),
+                  ),
           ),
         );
       },
@@ -284,9 +287,6 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             _buildWalkingPreferences(),
           ],
           const SizedBox(height: DogGoSpacing.lg),
-          _buildSaveButton(state),
-          const SizedBox(height: DogGoSpacing.md),
-          _buildCancelButton(state),
         ],
       ),
     );
@@ -531,40 +531,6 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSaveButton(EditProfileState state) {
-    return SizedBox(
-      height: 54,
-      child: ElevatedButton.icon(
-        onPressed: state.saving ? null : _save,
-        icon: state.saving
-            ? const SizedBox(
-                width: 19,
-                height: 19,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.save_outlined),
-        label: Text(state.saving ? 'Guardando cambios...' : 'Guardar cambios'),
-      ),
-    );
-  }
-
-  Widget _buildCancelButton(EditProfileState state) {
-    return SizedBox(
-      height: 50,
-      child: TextButton(
-        onPressed: state.saving
-            ? null
-            : () {
-                Navigator.pop(context, false);
-              },
-        child: const Text('Cancelar'),
       ),
     );
   }

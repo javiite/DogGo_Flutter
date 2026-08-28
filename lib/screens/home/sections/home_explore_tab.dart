@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/navigation/app_routes.dart';
 import '../../../theme/doggo_theme.dart';
 import '../../explore/guides_screen.dart';
 import '../../explore/places_screen.dart';
@@ -24,19 +25,23 @@ class HomeExploreTab extends StatelessWidget {
   });
 
   void _openPlaces(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const PlacesScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const PlacesScreen()));
   }
 
   void _openGuides(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const GuidesScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const GuidesScreen()));
+  }
+
+  void _openDogGo360(BuildContext context) {
+    Navigator.pushNamed(context, AppRoutes.advanced);
+  }
+
+  void _openConversations(BuildContext context) {
+    Navigator.pushNamed(context, AppRoutes.conversations);
   }
 
   @override
@@ -53,51 +58,71 @@ class HomeExploreTab extends StatelessWidget {
           const SizedBox(height: 18),
           _WalkersHero(onTap: onWalkers),
           const SizedBox(height: 28),
-          Text(
-            'Descubre',
-            style: DogGoTheme.title(size: 21),
-          ),
+          Text('Descubre', style: DogGoTheme.title(size: 21)),
           const SizedBox(height: 6),
           Text(
             'Ideas, servicios y espacios para compartir.',
             style: DogGoTheme.subtitle(size: 12),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _DiscoveryCard(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cards = [
+                _DiscoveryCard(
                   icon: Icons.place_outlined,
                   title: 'Lugares',
                   subtitle: 'Sitios cercanos',
                   color: DogGoTheme.orange,
                   background: DogGoTheme.orangeLight,
-                  onTap: () {
-                    _openPlaces(context);
-                  },
+                  onTap: () => _openPlaces(context),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _DiscoveryCard(
+                _DiscoveryCard(
                   icon: Icons.menu_book_outlined,
                   title: 'Guías',
                   subtitle: 'Consejos útiles',
                   color: DogGoTheme.purple,
                   background: DogGoTheme.purpleLight,
-                  onTap: () {
-                    _openGuides(context);
-                  },
+                  onTap: () => _openGuides(context),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 29),
-          Text(
-            'Tu espacio DogGo',
-            style: DogGoTheme.title(size: 21),
+              ];
+
+              if (constraints.maxWidth < 330) {
+                return Column(
+                  children: [
+                    cards.first,
+                    const SizedBox(height: 12),
+                    cards.last,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: cards.first),
+                  const SizedBox(width: 12),
+                  Expanded(child: cards.last),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 14),
+          _DogGo360Card(
+            isWalker: isWalker,
+            onTap: () => _openDogGo360(context),
+          ),
+          const SizedBox(height: 29),
+          Text('Tu espacio DogGo', style: DogGoTheme.title(size: 21)),
+          const SizedBox(height: 14),
+          _ExploreFeature(
+            icon: Icons.forum_outlined,
+            title: 'Conversaciones',
+            description:
+                'Encuentra en un solo lugar los chats de tus paseos activos y anteriores.',
+            color: DogGoTheme.teal,
+            background: DogGoTheme.tealLight,
+            onTap: () => _openConversations(context),
+          ),
+          const SizedBox(height: 12),
           _ExploreFeature(
             icon: isWalker
                 ? Icons.event_available_outlined
@@ -107,8 +132,9 @@ class HomeExploreTab extends StatelessWidget {
                 ? 'Configura tus días, horarios y periodos no disponibles.'
                 : 'Administra perfiles, fotografías y datos importantes.',
             color: isWalker ? DogGoTheme.teal : DogGoTheme.orange,
-            background:
-                isWalker ? DogGoTheme.tealLight : DogGoTheme.orangeLight,
+            background: isWalker
+                ? DogGoTheme.tealLight
+                : DogGoTheme.orangeLight,
             onTap: isWalker ? onAvailability : onPets,
           ),
           const SizedBox(height: 12),
@@ -139,12 +165,130 @@ class HomeExploreTab extends StatelessWidget {
   }
 }
 
+class _DogGo360Card extends StatelessWidget {
+  final bool isWalker;
+  final VoidCallback onTap;
+
+  const _DogGo360Card({required this.isWalker, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: DogGoTheme.ink,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF303348), Color(0xFF5F6680)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -16,
+                bottom: -24,
+                child: Icon(
+                  Icons.blur_circular_rounded,
+                  size: 112,
+                  color: Colors.white.withValues(alpha: .06),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Color(0xFFFFC65C),
+                      size: 27,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                'DogGo 360',
+                                overflow: TextOverflow.ellipsis,
+                                style: DogGoTheme.title(
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFC65C),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Text(
+                                'NUEVO',
+                                style: DogGoTheme.body(
+                                  size: 8,
+                                  color: DogGoTheme.ink,
+                                  weight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          isWalker
+                              ? 'Agenda, llegadas, acuerdos y confianza profesional.'
+                              : 'Planificación, matching, cuidados, logros y familia.',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: DogGoTheme.body(
+                            size: 11,
+                            color: Colors.white.withValues(alpha: .76),
+                            weight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 23,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WalkersHero extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _WalkersHero({
-    required this.onTap,
-  });
+  const _WalkersHero({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -158,10 +302,7 @@ class _WalkersHero extends StatelessWidget {
           height: 172,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [
-                Color(0xFF076858),
-                Color(0xFF079A7D),
-              ],
+              colors: [Color(0xFF076858), Color(0xFF079A7D)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -184,8 +325,7 @@ class _WalkersHero extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -193,11 +333,8 @@ class _WalkersHero extends StatelessWidget {
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(
-                                alpha: .14,
-                              ),
-                              borderRadius:
-                                  BorderRadius.circular(30),
+                              color: Colors.white.withValues(alpha: .14),
+                              borderRadius: BorderRadius.circular(30),
                             ),
                             child: Text(
                               'PASEADORES DOGGO',
@@ -223,9 +360,7 @@ class _WalkersHero extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: DogGoTheme.body(
                               size: 11.5,
-                              color: Colors.white.withValues(
-                                alpha: .78,
-                              ),
+                              color: Colors.white.withValues(alpha: .78),
                               weight: FontWeight.w600,
                             ),
                           ),
@@ -302,25 +437,14 @@ class _DiscoveryCard extends StatelessWidget {
                       color: background,
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: Icon(
-                      icon,
-                      color: color,
-                      size: 23,
-                    ),
+                    child: Icon(icon, color: color, size: 23),
                   ),
                   const Spacer(),
-                  Icon(
-                    Icons.arrow_outward_rounded,
-                    color: color,
-                    size: 19,
-                  ),
+                  Icon(Icons.arrow_outward_rounded, color: color, size: 19),
                 ],
               ),
               const Spacer(),
-              Text(
-                title,
-                style: DogGoTheme.title(size: 17),
-              ),
+              Text(title, style: DogGoTheme.title(size: 17)),
               const SizedBox(height: 4),
               Text(
                 subtitle,
@@ -377,11 +501,7 @@ class _ExploreFeature extends StatelessWidget {
                   color: background,
                   borderRadius: BorderRadius.circular(17),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 25,
-                ),
+                child: Icon(icon, color: color, size: 25),
               ),
               const SizedBox(width: 13),
               Expanded(
@@ -407,10 +527,7 @@ class _ExploreFeature extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 7),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: DogGoTheme.muted,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: DogGoTheme.muted),
             ],
           ),
         ),
@@ -454,10 +571,7 @@ class _SafetyCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Seguridad DogGo',
-                      style: DogGoTheme.title(size: 18),
-                    ),
+                    Text('Seguridad DogGo', style: DogGoTheme.title(size: 18)),
                     const SizedBox(height: 3),
                     Text(
                       'Acompañamiento durante cada paseo',
@@ -473,14 +587,8 @@ class _SafetyCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _SafetyChip(
-                icon: Icons.badge_outlined,
-                text: 'Perfiles',
-              ),
-              _SafetyChip(
-                icon: Icons.location_on_outlined,
-                text: 'Ubicación',
-              ),
+              _SafetyChip(icon: Icons.badge_outlined, text: 'Perfiles'),
+              _SafetyChip(icon: Icons.location_on_outlined, text: 'Ubicación'),
               _SafetyChip(
                 icon: Icons.photo_camera_outlined,
                 text: 'Evidencias',
@@ -497,18 +605,12 @@ class _SafetyChip extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _SafetyChip({
-    required this.icon,
-    required this.text,
-  });
+  const _SafetyChip({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: DogGoTheme.cream,
         borderRadius: BorderRadius.circular(30),
@@ -517,11 +619,7 @@ class _SafetyChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: DogGoTheme.teal,
-            size: 16,
-          ),
+          Icon(icon, color: DogGoTheme.teal, size: 16),
           const SizedBox(width: 6),
           Text(
             text,

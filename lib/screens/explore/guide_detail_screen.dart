@@ -1,29 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/doggo_screen_scaffold.dart';
 import '../../theme/doggo_theme.dart';
 import 'models/guide_article.dart';
 
 class GuideDetailScreen extends StatelessWidget {
   final GuideArticle guide;
 
-  const GuideDetailScreen({
-    super.key,
-    required this.guide,
-  });
+  const GuideDetailScreen({super.key, required this.guide});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DogGoTheme.cream,
-      appBar: AppBar(
-        backgroundColor: DogGoTheme.card,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'Guía DogGo',
-          style: DogGoTheme.title(size: 19),
-        ),
-      ),
+    return DogGoScreenScaffold(
+      title: 'Guía DogGo',
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
@@ -39,17 +28,14 @@ class GuideDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 26),
-          for (var index = 0;
-              index < guide.sections.length;
-              index++) ...[
+          for (var index = 0; index < guide.sections.length; index++) ...[
             _ArticleSection(
               number: index + 1,
               section: guide.sections[index],
               color: guide.color,
               background: guide.background,
             ),
-            if (index < guide.sections.length - 1)
-              const SizedBox(height: 16),
+            if (index < guide.sections.length - 1) const SizedBox(height: 16),
           ],
           const SizedBox(height: 25),
           _QuickTipsCard(guide: guide),
@@ -64,9 +50,7 @@ class GuideDetailScreen extends StatelessWidget {
 class _ArticleHeader extends StatelessWidget {
   final GuideArticle guide;
 
-  const _ArticleHeader({
-    required this.guide,
-  });
+  const _ArticleHeader({required this.guide});
 
   @override
   Widget build(BuildContext context) {
@@ -75,10 +59,7 @@ class _ArticleHeader extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            guide.color,
-            Color.lerp(guide.color, Colors.black, .18)!,
-          ],
+          colors: [guide.color, Color.lerp(guide.color, Colors.black, .18)!],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -105,11 +86,7 @@ class _ArticleHeader extends StatelessWidget {
                   color: Colors.white.withValues(alpha: .16),
                   borderRadius: BorderRadius.circular(17),
                 ),
-                child: Icon(
-                  guide.icon,
-                  color: Colors.white,
-                  size: 26,
-                ),
+                child: Icon(guide.icon, color: Colors.white, size: 26),
               ),
               const SizedBox(height: 24),
               Text(
@@ -123,10 +100,7 @@ class _ArticleHeader extends StatelessWidget {
               const SizedBox(height: 7),
               Text(
                 guide.title,
-                style: DogGoTheme.title(
-                  size: 25,
-                  color: Colors.white,
-                ),
+                style: DogGoTheme.title(size: 25, color: Colors.white),
               ),
               const SizedBox(height: 12),
               Row(
@@ -204,10 +178,7 @@ class _ArticleSection extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 5),
-                  child: Text(
-                    section.title,
-                    style: DogGoTheme.title(size: 17),
-                  ),
+                  child: Text(section.title, style: DogGoTheme.title(size: 17)),
                 ),
               ),
             ],
@@ -230,9 +201,7 @@ class _ArticleSection extends StatelessWidget {
 class _QuickTipsCard extends StatelessWidget {
   final GuideArticle guide;
 
-  const _QuickTipsCard({
-    required this.guide,
-  });
+  const _QuickTipsCard({required this.guide});
 
   @override
   Widget build(BuildContext context) {
@@ -253,24 +222,15 @@ class _QuickTipsCard extends StatelessWidget {
                 size: 23,
               ),
               const SizedBox(width: 9),
-              Text(
-                'Consejos rápidos',
-                style: DogGoTheme.title(size: 18),
-              ),
+              Text('Consejos rápidos', style: DogGoTheme.title(size: 18)),
             ],
           ),
           const SizedBox(height: 16),
-          for (var index = 0;
-              index < guide.quickTips.length;
-              index++) ...[
+          for (var index = 0; index < guide.quickTips.length; index++) ...[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.check_circle_rounded,
-                  color: guide.color,
-                  size: 18,
-                ),
+                Icon(Icons.check_circle_rounded, color: guide.color, size: 18),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
@@ -284,8 +244,7 @@ class _QuickTipsCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (index < guide.quickTips.length - 1)
-              const SizedBox(height: 11),
+            if (index < guide.quickTips.length - 1) const SizedBox(height: 11),
           ],
         ],
       ),

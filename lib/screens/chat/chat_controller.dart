@@ -12,18 +12,12 @@ class ChatSendResult {
   final bool success;
   final String message;
 
-  const ChatSendResult({
-    required this.success,
-    required this.message,
-  });
+  const ChatSendResult({required this.success, required this.message});
 
-  const ChatSendResult.success([
-    this.message = 'Mensaje enviado.',
-  ]) : success = true;
+  const ChatSendResult.success([this.message = 'Mensaje enviado.'])
+    : success = true;
 
-  const ChatSendResult.failure(
-    this.message,
-  ) : success = false;
+  const ChatSendResult.failure(this.message) : success = false;
 }
 
 class ChatController extends ChangeNotifier {
@@ -39,17 +33,14 @@ class ChatController extends ChangeNotifier {
   bool _loadInProgress = false;
   bool _sendInProgress = false;
 
-  ChatController({
-    required this.walkId,
-    ChatService? service,
-  }) : _service = service ?? ChatService();
+  ChatController({required this.walkId, ChatService? service})
+    : _service = service ?? ChatService();
 
   ChatState get state => _state;
 
   Future<void> initialize() async {
     try {
-      final userId =
-          await SessionService.obtenerUsuarioId();
+      final userId = await SessionService.obtenerUsuarioId();
 
       if (_disposed) {
         return;
@@ -74,24 +65,18 @@ class ChatController extends ChangeNotifier {
 
     _timer?.cancel();
 
-    _timer = Timer.periodic(
-      const Duration(seconds: 8),
-      (_) {
-        if (!_disposed &&
-            !_state.sending) {
-          loadMessages(silent: true);
-        }
-      },
-    );
+    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (!_disposed && !_state.sending) {
+        loadMessages(silent: true);
+      }
+    });
   }
 
   Future<void> refresh() {
     return loadMessages();
   }
 
-  Future<void> loadMessages({
-    bool silent = false,
-  }) async {
+  Future<void> loadMessages({bool silent = false}) async {
     if (_loadInProgress || _disposed) {
       return;
     }
@@ -99,18 +84,12 @@ class ChatController extends ChangeNotifier {
     _loadInProgress = true;
 
     if (silent) {
-      _setState(
-        _state.copyWith(
-          refreshing: true,
-          clearBackgroundError: true,
-        ),
-      );
+      _setState(_state.copyWith(refreshing: true, clearBackgroundError: true));
     } else {
       _setState(
         _state.copyWith(
           loading: _state.messages.isEmpty,
-          refreshing:
-              _state.messages.isNotEmpty,
+          refreshing: _state.messages.isNotEmpty,
           clearError: true,
           clearBackgroundError: true,
         ),
@@ -118,40 +97,29 @@ class ChatController extends ChangeNotifier {
     }
 
     try {
-      final rawMessages =
-          await _service.obtenerMensajesPaseo(
-        walkId,
-      );
+      final rawMessages = await _service.obtenerMensajesPaseo(walkId);
 
       if (_disposed) {
         return;
       }
 
-      final messages =
-          ChatMessage.listFrom(rawMessages);
+      final messages = ChatMessage.listFrom(rawMessages);
 
-      final changed = _messagesChanged(
-        _state.messages,
-        messages,
-      );
+      final changed = _messagesChanged(_state.messages, messages);
 
       _setState(
         _state.copyWith(
           loading: false,
           refreshing: false,
           messages: messages,
-          revision: changed
-              ? _state.revision + 1
-              : _state.revision,
+          revision: changed ? _state.revision + 1 : _state.revision,
           clearError: true,
           clearBackgroundError: true,
         ),
       );
 
       try {
-        await _service.marcarComoLeidos(
-          walkId,
-        );
+        await _service.marcarComoLeidos(walkId);
       } catch (_) {
         // Leer mensajes no debe fallar si el
         // endpoint de confirmación aún no existe.
@@ -166,8 +134,7 @@ class ChatController extends ChangeNotifier {
           _state.copyWith(
             loading: false,
             refreshing: false,
-            backgroundError:
-                _cleanError(error),
+            backgroundError: _cleanError(error),
           ),
         );
       } else {
@@ -185,12 +152,13 @@ class ChatController extends ChangeNotifier {
   }
 
   Future<ChatSendResult> send(
-    String content,
-  ) async {
+    String content, {
+    String type = 'Texto',
+    String? metadataJson,
+    int? replyToId,
+  }) async {
     if (_sendInProgress) {
-      return const ChatSendResult.failure(
-        'El mensaje ya se está enviando.',
-      );
+      return const ChatSendResult.failure('El mensaje ya se está enviando.');
     }
 
     final text = content.trim();
@@ -202,62 +170,63 @@ class ChatController extends ChangeNotifier {
     }
 
     if (text.length > maximumMessageLength) {
-      return const ChatSendResult.failure(
-        'El mensaje es demasiado largo.',
-      );
+      return const ChatSendResult.failure('El mensaje es demasiado largo.');
     }
 
     _sendInProgress = true;
 
-    _setState(
-      _state.copyWith(
-        sending: true,
-        clearBackgroundError: true,
-      ),
-    );
+    _setState(_state.copyWith(sending: true, clearBackgroundError: true));
 
     try {
       await _service.enviarMensaje(
         paseoId: walkId,
         contenido: text,
+        tipo: type,
+        metadatosJson: metadataJson,
+        respuestaAId: replyToId,
       );
 
       await loadMessages(silent: true);
 
       return const ChatSendResult.success();
     } catch (error) {
-      return ChatSendResult.failure(
-        _cleanError(error),
-      );
+      return ChatSendResult.failure(_cleanError(error));
     } finally {
       _sendInProgress = false;
 
-      _setState(
-        _state.copyWith(
-          sending: false,
-        ),
-      );
+      _setState(_state.copyWith(sending: false));
     }
   }
 
-  bool _messagesChanged(
-    List<ChatMessage> previous,
-    List<ChatMessage> next,
-  ) {
+  Future<ChatSendResult> sendImage(String path) async {
+    if (_sendInProgress) {
+      return const ChatSendResult.failure('El archivo ya se está enviando.');
+    }
+    _sendInProgress = true;
+    _setState(_state.copyWith(sending: true, clearBackgroundError: true));
+    try {
+      await _service.enviarImagen(paseoId: walkId, ruta: path);
+      await loadMessages(silent: true);
+      return const ChatSendResult.success('Fotografía enviada.');
+    } catch (error) {
+      return ChatSendResult.failure(_cleanError(error));
+    } finally {
+      _sendInProgress = false;
+      _setState(_state.copyWith(sending: false));
+    }
+  }
+
+  bool _messagesChanged(List<ChatMessage> previous, List<ChatMessage> next) {
     if (previous.length != next.length) {
       return true;
     }
 
-    for (var index = 0;
-        index < previous.length;
-        index++) {
-      if (previous[index].stableKey !=
-          next[index].stableKey) {
+    for (var index = 0; index < previous.length; index++) {
+      if (previous[index].stableKey != next[index].stableKey) {
         return true;
       }
 
-      if (previous[index].read !=
-          next[index].read) {
+      if (previous[index].read != next[index].read) {
         return true;
       }
     }
@@ -276,9 +245,7 @@ class ChatController extends ChangeNotifier {
         .replaceFirst('ApiException: ', '')
         .trim();
 
-    return message.isEmpty
-        ? 'No se pudo actualizar el chat.'
-        : message;
+    return message.isEmpty ? 'No se pudo actualizar el chat.' : message;
   }
 
   void _setState(ChatState newState) {

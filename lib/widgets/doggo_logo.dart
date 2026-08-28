@@ -14,7 +14,7 @@ class DogGoLogo extends StatelessWidget {
       'assets/images/logo_doggo.png',
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) {
+      errorBuilder: (_, _, _) {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
