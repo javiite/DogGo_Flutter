@@ -114,6 +114,9 @@ Future<void> showContextualOnboarding(
                       child: const Text('Omitir'),
                     );
                     final next = FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 50),
+                      ),
                       onPressed: () {
                         if (index < steps.length - 1) {
                           setSheetState(() => index++);
