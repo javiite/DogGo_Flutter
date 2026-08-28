@@ -26,6 +26,7 @@ class WalkDetail {
 
   final String walkerName;
   final String ownerName;
+  final int ownerId;
 
   final String pickupAddress;
   final String pickupReferences;
@@ -35,6 +36,8 @@ class WalkDetail {
   final double? pickupLongitude;
 
   final String? petPhotoPath;
+  final String? walkerPhotoPath;
+  final String? ownerPhotoPath;
   final String? startPhotoPath;
   final String? endPhotoPath;
 
@@ -68,12 +71,15 @@ class WalkDetail {
     this.activePetCount = 0,
     this.walkerName = 'Paseador no asignado',
     this.ownerName = 'Dueño no disponible',
+    this.ownerId = 0,
     this.pickupAddress = 'Ubicación de recogida no definida',
     this.pickupReferences = 'Sin referencias adicionales',
     this.notes = '',
     this.pickupLatitude,
     this.pickupLongitude,
     this.petPhotoPath,
+    this.walkerPhotoPath,
+    this.ownerPhotoPath,
     this.startPhotoPath,
     this.endPhotoPath,
     this.cancellationReason,
@@ -155,6 +161,9 @@ class WalkDetail {
       pickupLatitude: _decimal(_value(map, const ['latitudRecogida'])),
       pickupLongitude: _decimal(_value(map, const ['longitudRecogida'])),
       petPhotoPath: primaryPet?.photoPath,
+      walkerPhotoPath: _nullableText(_value(map, const ['paseadorFotoUrl'])),
+      ownerId: _integer(_value(map, const ['duenioId'])) ?? 0,
+      ownerPhotoPath: _nullableText(_value(map, const ['duenioFotoUrl'])),
       startPhotoPath: _nullableText(_value(map, const ['fotoInicioUrl'])),
       endPhotoPath: _nullableText(_value(map, const ['fotoFinUrl'])),
       cancellationReason: _nullableText(
@@ -323,6 +332,12 @@ class WalkDetail {
   String? publicPetPhotoUrl(String? baseUrl) {
     return _publicUrl(petPhotoPath, baseUrl);
   }
+
+  String? publicWalkerPhotoUrl(String? baseUrl) =>
+      _publicUrl(walkerPhotoPath, baseUrl);
+
+  String? publicOwnerPhotoUrl(String? baseUrl) =>
+      _publicUrl(ownerPhotoPath, baseUrl);
 
   String? publicStartPhotoUrl(String? baseUrl) {
     return _publicUrl(startPhotoPath, baseUrl);

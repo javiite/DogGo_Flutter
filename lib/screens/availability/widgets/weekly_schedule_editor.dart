@@ -218,9 +218,9 @@ class _DaySection extends StatelessWidget {
     );
     if (value == null || !context.mounted) return;
 
-    // El selector se cierra mediante una ruta animada. Esperar al siguiente
-    // frame evita reconstruir esta lista mientras Flutter aún la está midiendo.
-    await WidgetsBinding.instance.endOfFrame;
+    // Espera a que la ruta del selector termine de salir antes de reconstruir
+    // los controles de horario que permanecen debajo de ella.
+    await Future<void>.delayed(kThemeAnimationDuration);
     if (!context.mounted) return;
     select(
       '${value.hour.toString().padLeft(2, '0')}:'

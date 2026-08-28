@@ -429,7 +429,17 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('📅 AGENDA DOGGO', style: DogGoTheme.label(size: 11)),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_month_rounded,
+                size: 17,
+                color: DogGoTheme.teal,
+              ),
+              const SizedBox(width: 7),
+              Text('AGENDA DOGGO', style: DogGoTheme.label(size: 11)),
+            ],
+          ),
           const SizedBox(height: 10),
           Text('Calendario de paseos', style: DogGoTheme.title(size: 32)),
           const SizedBox(height: 10),
@@ -789,7 +799,11 @@ class _CalendarioPaseosScreenState extends State<CalendarioPaseosScreen> {
               ),
               child: Column(
                 children: [
-                  const Text('🐾', style: TextStyle(fontSize: 42)),
+                  const Icon(
+                    Icons.pets_rounded,
+                    size: 42,
+                    color: DogGoTheme.teal,
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     'No hay paseos este día',

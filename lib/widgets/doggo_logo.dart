@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class DogGoLogo extends StatelessWidget {
   final double size;
 
-  const DogGoLogo({
-    super.key,
-    this.size = 56,
-  });
+  const DogGoLogo({super.key, this.size = 56});
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +15,10 @@ class DogGoLogo extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '🐕',
-              style: TextStyle(fontSize: size * 0.65),
+            Icon(
+              Icons.pets_rounded,
+              size: size * 0.58,
+              color: const Color(0xFF006C5B),
             ),
             const SizedBox(width: 4),
             Text(

@@ -245,16 +245,16 @@ class _WalkSafetyCenterScreenState extends State<WalkSafetyCenterScreen> {
     bool digits = false,
     int maximum = 300,
   }) async {
-    final controller = TextEditingController();
+    var value = '';
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
         content: TextField(
-          controller: controller,
           autofocus: true,
           maxLength: maximum,
           maxLines: digits ? 1 : 4,
+          onChanged: (text) => value = text,
           keyboardType: digits ? TextInputType.number : TextInputType.text,
           inputFormatters: digits
               ? [FilteringTextInputFormatter.digitsOnly]
@@ -268,15 +268,14 @@ class _WalkSafetyCenterScreenState extends State<WalkSafetyCenterScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final value = controller.text.trim();
-              if (value.isNotEmpty) Navigator.pop(context, value);
+              final normalized = value.trim();
+              if (normalized.isNotEmpty) Navigator.pop(context, normalized);
             },
             child: const Text('Guardar'),
           ),
         ],
       ),
     );
-    controller.dispose();
     return result;
   }
 
@@ -561,7 +560,7 @@ class _WalkSafetyCenterScreenState extends State<WalkSafetyCenterScreen> {
               Expanded(
                 child: _Tool(
                   Icons.gps_fixed_rounded,
-                  'En vivo',
+                  'Seguimiento',
                   widget.canOpenTracking,
                   widget.onTracking,
                 ),
@@ -575,13 +574,21 @@ class _WalkSafetyCenterScreenState extends State<WalkSafetyCenterScreen> {
                 ? OutlinedButton.icon(
                     onPressed: _acting ? null : _revokeShare,
                     icon: const Icon(Icons.link_off_rounded),
-                    label: const Text('Desactivar enlace compartido'),
+                    label: const Text('Dejar de compartir seguimiento'),
                   )
                 : FilledButton.icon(
                     onPressed: _acting ? null : _share,
                     icon: const Icon(Icons.share_location_outlined),
                     label: const Text('Compartir seguimiento temporal'),
                   ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            sharing
+                ? 'Al desactivarlo, el enlace temporal dejará de mostrar nuevas ubicaciones.'
+                : 'Crea un enlace temporal de solo lectura para una persona de confianza.',
+            textAlign: TextAlign.center,
+            style: DogGoTheme.caption(size: 9.5),
           ),
         ],
       ),

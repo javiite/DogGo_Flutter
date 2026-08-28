@@ -133,23 +133,9 @@ class OfflineSyncBanner extends StatelessWidget {
 
     switch (_service.status) {
       case OfflineRecoveryStatus.synchronized:
-        return const _BannerPresentation(
-          title: 'Todo sincronizado',
-          subtitle: 'DogGo guardó los cambios en el servidor.',
-          icon: Icons.cloud_done_rounded,
-          foreground: DogGoTheme.teal,
-          background: Color(0xFFE8F6F1),
-          border: Color(0xFFB8E2D5),
-        );
+        return null;
       case OfflineRecoveryStatus.syncing:
-        return _BannerPresentation(
-          title: 'Sincronizando ${summary.total} elementos',
-          subtitle: _pendingDescription(),
-          icon: Icons.sync_rounded,
-          foreground: DogGoTheme.teal,
-          background: const Color(0xFFE8F6F1),
-          border: const Color(0xFFB8E2D5),
-        );
+        return null;
       case OfflineRecoveryStatus.offline:
         if (!summary.hasPending) return null;
         return _BannerPresentation(
@@ -175,31 +161,8 @@ class OfflineSyncBanner extends StatelessWidget {
           canRetry: true,
         );
       case OfflineRecoveryStatus.idle:
-        if (!summary.hasPending) return null;
-        return _BannerPresentation(
-          title: '${summary.total} elementos pendientes',
-          subtitle: _pendingDescription(),
-          icon: Icons.cloud_upload_outlined,
-          foreground: DogGoTheme.teal,
-          background: const Color(0xFFE8F6F1),
-          border: const Color(0xFFB8E2D5),
-          canRetry: true,
-        );
+        return null;
     }
-  }
-
-  String _pendingDescription() {
-    final summary = _service.summary;
-    final parts = <String>[];
-
-    if (summary.walkOperations > 0) {
-      parts.add('${summary.walkOperations} operaciones');
-    }
-    if (summary.trackingPoints > 0) {
-      parts.add('${summary.trackingPoints} puntos GPS');
-    }
-
-    return parts.join(' · ');
   }
 }
 

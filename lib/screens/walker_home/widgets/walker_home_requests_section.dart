@@ -108,128 +108,131 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(23),
+      child: InkWell(
+        onTap: loading ? null : onDetails,
         borderRadius: BorderRadius.circular(23),
-        border: Border.all(color: const Color(0xFFF0D4AE)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0E343434),
-            blurRadius: 16,
-            offset: Offset(0, 7),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(23),
+            border: Border.all(color: const Color(0xFFF0D4AE)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0E343434),
+                blurRadius: 16,
+                offset: Offset(0, 7),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: loading ? null : onDetails,
-            borderRadius: BorderRadius.circular(17),
-            child: Row(
-              children: [
-                HomeWalkPetAvatar(
-                  imageUrls: walk.petImageUrls,
-                  fallbackImageUrl: walk.imageUrl,
-                  petCount: walk.petCount,
-                  size: 56,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        programCount > 1
-                            ? 'Programación · $programCount paseos'
-                            : walk.petName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF20212B),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${walk.formattedSchedule} · ${walk.ownerDisplayName}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFFD77713),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      if (walk.pickupAddress.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  HomeWalkPetAvatar(
+                    imageUrls: walk.petImageUrls,
+                    fallbackImageUrl: walk.imageUrl,
+                    petCount: walk.petCount,
+                    size: 56,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          walk.pickupAddress,
+                          programCount > 1
+                              ? 'Programación · $programCount paseos'
+                              : walk.petName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xFF777980),
-                            fontSize: 10.5,
+                            color: Color(0xFF20212B),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${walk.formattedSchedule} · ${walk.ownerDisplayName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFFD77713),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (walk.pickupAddress.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            walk.pickupAddress,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF777980),
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFFB4B6BB),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          if (loading)
-            const LinearProgressIndicator(
-              minHeight: 3,
-              color: Color(0xFFD87812),
-            )
-          else if (programCount > 1)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onDetails,
-                icon: const Icon(Icons.event_note_rounded),
-                label: const Text('Revisar programación'),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFFB4B6BB),
+                  ),
+                ],
               ),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onReject,
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 46),
-                      foregroundColor: const Color(0xFFB64238),
-                      side: const BorderSide(color: Color(0xFFE5B5B1)),
-                    ),
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text('Rechazar'),
-                  ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
+              const SizedBox(height: 14),
+              if (loading)
+                const LinearProgressIndicator(
+                  minHeight: 3,
+                  color: Color(0xFFD87812),
+                )
+              else if (programCount > 1)
+                SizedBox(
+                  width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: onAccept,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 46),
-                      backgroundColor: const Color(0xFF087D68),
-                    ),
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Aceptar'),
+                    onPressed: onDetails,
+                    icon: const Icon(Icons.event_note_rounded),
+                    label: const Text('Revisar programación'),
                   ),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onReject,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 46),
+                          foregroundColor: const Color(0xFFB64238),
+                          side: const BorderSide(color: Color(0xFFE5B5B1)),
+                        ),
+                        icon: const Icon(Icons.close_rounded),
+                        label: const Text('Rechazar'),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: onAccept,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 46),
+                          backgroundColor: const Color(0xFF087D68),
+                        ),
+                        icon: const Icon(Icons.check_rounded),
+                        label: const Text('Aceptar'),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

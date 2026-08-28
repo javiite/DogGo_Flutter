@@ -147,7 +147,7 @@ class _EvidenciaPaseoScreenState extends State<EvidenciaPaseoScreen> {
           ),
           content: Text(
             '${state.type.confirmationMessage}\n\n'
-            'Después de enviarla quedará vinculada al paseo #${state.walkId}.',
+            'Después de enviarla quedará protegida dentro del historial del paseo.',
           ),
           actions: [
             TextButton(
@@ -238,8 +238,6 @@ class _EvidenciaPaseoScreenState extends State<EvidenciaPaseoScreen> {
               ),
               const SizedBox(height: 22),
               _InstructionsCard(type: state.type),
-              const SizedBox(height: 14),
-              _EvidenceInformation(state: state),
               const SizedBox(height: 14),
               const _PrivacyCard(),
             ],
@@ -655,36 +653,6 @@ class _InstructionsCard extends StatelessWidget {
   }
 }
 
-class _EvidenceInformation extends StatelessWidget {
-  final EvidenceState state;
-
-  const _EvidenceInformation({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    return _InformationCard(
-      icon: Icons.info_outline_rounded,
-      iconColor: DogGoTheme.orange,
-      iconBackground: DogGoTheme.orangeLight,
-      title: 'Datos del archivo',
-      subtitle: 'La imagen se optimiza antes de seleccionarse',
-      child: Column(
-        children: [
-          _InformationRow(label: 'Paseo', value: '#${state.walkId}'),
-          const Divider(height: 22),
-          _InformationRow(label: 'Tipo', value: state.type.title),
-          const Divider(height: 22),
-          _InformationRow(label: 'Archivo', value: state.fileName),
-          const Divider(height: 22),
-          _InformationRow(label: 'Tamaño', value: state.fileSizeLabel),
-          const Divider(height: 22),
-          const _InformationRow(label: 'Límite', value: '12 MB'),
-        ],
-      ),
-    );
-  }
-}
-
 class _PrivacyCard extends StatelessWidget {
   const _PrivacyCard();
 
@@ -834,38 +802,6 @@ class _InformationCard extends StatelessWidget {
           child,
         ],
       ),
-    );
-  }
-}
-
-class _InformationRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InformationRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: DogGoTheme.body(size: 10.5, color: DogGoTheme.muted),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: DogGoTheme.body(size: 10.5, weight: FontWeight.w800),
-          ),
-        ),
-      ],
     );
   }
 }

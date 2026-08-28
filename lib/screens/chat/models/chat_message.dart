@@ -7,6 +7,10 @@ class ChatMessage {
   final String? mediaUrl;
   final String? metadataJson;
   final int? replyToId;
+  final String? replyContent;
+  final String? replyType;
+  final String? replyMediaUrl;
+  final String? replySenderName;
   final DateTime? sentAt;
   final bool read;
   final bool systemMessage;
@@ -21,6 +25,10 @@ class ChatMessage {
     this.mediaUrl,
     this.metadataJson,
     this.replyToId,
+    this.replyContent,
+    this.replyType,
+    this.replyMediaUrl,
+    this.replySenderName,
     this.sentAt,
     this.read = false,
     this.systemMessage = false,
@@ -37,6 +45,10 @@ class ChatMessage {
       mediaUrl: _nullableText(map['mediaUrl']),
       metadataJson: _nullableText(map['metadatosJson']),
       replyToId: _integer(map['respuestaAId']),
+      replyContent: _nullableText(map['respuestaAContenido']),
+      replyType: _nullableText(map['respuestaATipo']),
+      replyMediaUrl: _nullableText(map['respuestaAMediaUrl']),
+      replySenderName: _nullableText(map['respuestaAEmisorNombreCompleto']),
       sentAt: _dateTime(map['fechaEnvio']),
       read: _boolean(map['leido']),
       systemMessage:
@@ -200,10 +212,40 @@ class ChatMessage {
 
   static DateTime? _dateTime(dynamic value) {
     if (value is DateTime) {
-      return value;
+      return value.isUtc
+          ? value
+          : DateTime.utc(
+              value.year,
+              value.month,
+              value.day,
+              value.hour,
+              value.minute,
+              value.second,
+              value.millisecond,
+              value.microsecond,
+            );
     }
 
-    return DateTime.tryParse(value?.toString() ?? '');
+    final raw = value?.toString().trim() ?? '';
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null ||
+        parsed.isUtc ||
+        parsed.timeZoneOffset != Duration.zero) {
+      return parsed;
+    }
+
+    // Las fechas de chat se almacenan en UTC. MySQL puede devolverlas sin el
+    // sufijo Z, por lo que se reconstruyen explícitamente como UTC.
+    return DateTime.utc(
+      parsed.year,
+      parsed.month,
+      parsed.day,
+      parsed.hour,
+      parsed.minute,
+      parsed.second,
+      parsed.millisecond,
+      parsed.microsecond,
+    );
   }
 
   static bool _boolean(dynamic value) {

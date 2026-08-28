@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../core/navigation/app_routes.dart';
 import '../services/session_service.dart';
 import '../services/walk_reminder_service.dart';
-import '../shared/widgets/offline_sync_banner.dart';
 import '../theme/doggo_theme.dart';
 import 'chat_paseo_screen.dart';
 import 'availability/availability_screen.dart';
@@ -573,7 +572,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   onMenuTap: _showMenu,
                 ),
               ),
-              SliverToBoxAdapter(child: OfflineSyncBanner()),
               SliverToBoxAdapter(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 280),

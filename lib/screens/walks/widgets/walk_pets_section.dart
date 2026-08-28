@@ -122,7 +122,8 @@ class WalkPetsSection extends StatelessWidget {
           ],
 
           const SizedBox(height: 14),
-          _PriceInformation(state: state),
+          if (state.walk!.hasPendingPetProposal)
+            _PriceInformation(state: state),
           if (state.canEditRequestedPets) ...[
             const SizedBox(height: 14),
             OutlinedButton.icon(

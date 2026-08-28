@@ -6,13 +6,13 @@ import '../../core/errors/api_exception.dart';
 import '../../services/routes_service.dart';
 import '../../services/session_service.dart';
 import '../../services/tracking_service.dart';
+import '../../services/storage_service.dart';
 import '../routes/models/doggo_route.dart';
 import '../walks/models/walk_detail.dart';
 import 'models/tracking_point.dart';
 import 'walk_map_state.dart';
 
-class WalkMapController
-    extends ChangeNotifier {
+class WalkMapController extends ChangeNotifier {
   final TrackingService _service;
 
   WalkMapState _state;
@@ -24,30 +24,21 @@ class WalkMapController
   WalkMapController({
     required Map<String, dynamic> walkData,
     TrackingService? service,
-  })  : _service =
-            service ?? TrackingService(),
-        _state = WalkMapState(
-          walk: WalkDetail.fromMap(
-            walkData,
-          ),
-        );
+  }) : _service = service ?? TrackingService(),
+       _state = WalkMapState(walk: WalkDetail.fromMap(walkData));
 
   WalkMapState get state => _state;
 
   Future<void> initialize() async {
     try {
-      final role =
-          await SessionService.obtenerRol();
+      final role = await SessionService.obtenerRol();
+      final baseUrl = await StorageService.obtenerBaseUrl();
 
       if (_disposed) {
         return;
       }
 
-      _setState(
-        _state.copyWith(
-          role: role ?? '',
-        ),
-      );
+      _setState(_state.copyWith(role: role ?? '', baseUrl: baseUrl));
     } catch (_) {
       // El mapa puede abrir aunque no se
       // consiga recuperar el rol.
@@ -62,14 +53,11 @@ class WalkMapController
     _timer?.cancel();
 
     if (_state.walk.isInProgress) {
-      _timer = Timer.periodic(
-        const Duration(seconds: 10),
-        (_) {
-          if (!_disposed) {
-            loadRoute(silent: true);
-          }
-        },
-      );
+      _timer = Timer.periodic(const Duration(seconds: 10), (_) {
+        if (!_disposed) {
+          loadRoute(silent: true);
+        }
+      });
     }
   }
 
@@ -77,9 +65,7 @@ class WalkMapController
     return loadRoute();
   }
 
-  Future<void> loadRoute({
-    bool silent = false,
-  }) async {
+  Future<void> loadRoute({bool silent = false}) async {
     if (_loadInProgress || _disposed) {
       return;
     }
@@ -91,8 +77,7 @@ class WalkMapController
         _state.copyWith(
           loading: false,
           refreshing: false,
-          error:
-              'No se pudo identificar el paseo.',
+          error: 'No se pudo identificar el paseo.',
         ),
       );
       return;
@@ -102,12 +87,9 @@ class WalkMapController
 
     _setState(
       _state.copyWith(
-        loading: !silent &&
-            _state.route.isEmpty &&
-            _state.plannedRoute == null,
-        refreshing: silent ||
-            _state.route.isNotEmpty ||
-            _state.plannedRoute != null,
+        loading: !silent && _state.route.isEmpty && _state.plannedRoute == null,
+        refreshing:
+            silent || _state.route.isNotEmpty || _state.plannedRoute != null,
         clearError: true,
       ),
     );
@@ -119,58 +101,36 @@ class WalkMapController
       PlannedDoggoRoute? plannedRoute;
 
       try {
-        plannedRoute =
-            await RoutesService
-                .getPlannedRoute(id);
+        plannedRoute = await RoutesService.getPlannedRoute(id);
       } catch (error) {
         plannedError = error;
-        plannedRoute =
-            _state.plannedRoute;
+        plannedRoute = _state.plannedRoute;
       }
 
-      List<TrackingPoint> actualRoute =
-          const [];
+      List<TrackingPoint> actualRoute = const [];
 
       TrackingPoint? latestPoint;
 
       if (_state.shouldLoadTracking) {
         try {
-          final rawHistory =
-              await _service
-                  .obtenerHistorialUbicaciones(
-            id,
-          );
+          final rawHistory = await _service.obtenerHistorialUbicaciones(id);
 
-          actualRoute =
-              TrackingPoint.listFrom(
-            rawHistory,
-          );
+          actualRoute = TrackingPoint.listFrom(rawHistory);
         } catch (error) {
           historyError = error;
         }
 
         if (actualRoute.isNotEmpty) {
-          latestPoint =
-              actualRoute.last;
+          latestPoint = actualRoute.last;
         } else {
           try {
-            final rawLatest =
-                await _service
-                    .obtenerUltimaUbicacion(
-              id,
-            );
+            final rawLatest = await _service.obtenerUltimaUbicacion(id);
 
-            latestPoint =
-                TrackingPoint.fromMap(
-              rawLatest,
-            );
+            latestPoint = TrackingPoint.fromMap(rawLatest);
 
-            actualRoute = [
-              latestPoint,
-            ];
+            actualRoute = [latestPoint];
           } catch (latestError) {
-            if (historyError != null &&
-                plannedRoute == null) {
+            if (historyError != null && plannedRoute == null) {
               throw historyError;
             }
 
@@ -178,8 +138,7 @@ class WalkMapController
             // mostrarse aunque no exista GPS.
           }
         }
-      } else if (plannedError != null &&
-          plannedRoute == null) {
+      } else if (plannedError != null && plannedRoute == null) {
         throw plannedError;
       }
 
@@ -193,11 +152,9 @@ class WalkMapController
           refreshing: false,
           route: actualRoute,
           latestPoint: latestPoint,
-          clearLatestPoint:
-              latestPoint == null,
+          clearLatestPoint: latestPoint == null,
           plannedRoute: plannedRoute,
-          clearPlannedRoute:
-              plannedRoute == null,
+          clearPlannedRoute: plannedRoute == null,
           clearError: true,
         ),
       );
@@ -218,33 +175,21 @@ class WalkMapController
     }
   }
 
-  String _cleanError(
-    Object error,
-  ) {
+  String _cleanError(Object error) {
     if (error is ApiException) {
       return error.message;
     }
 
     final message = error
         .toString()
-        .replaceFirst(
-          'Exception: ',
-          '',
-        )
-        .replaceFirst(
-          'ApiException: ',
-          '',
-        )
+        .replaceFirst('Exception: ', '')
+        .replaceFirst('ApiException: ', '')
         .trim();
 
-    return message.isEmpty
-        ? 'No se pudo actualizar el recorrido.'
-        : message;
+    return message.isEmpty ? 'No se pudo actualizar el recorrido.' : message;
   }
 
-  void _setState(
-    WalkMapState newState,
-  ) {
+  void _setState(WalkMapState newState) {
     if (_disposed) {
       return;
     }

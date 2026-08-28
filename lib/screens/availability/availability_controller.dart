@@ -10,8 +10,10 @@ class AvailabilityController extends ChangeNotifier {
 
   AvailabilityState get state => _state;
 
-  Future<void> load() async {
-    _set(_state.copyWith(loading: true, clearError: true));
+  Future<void> load({bool silent = false}) async {
+    if (!silent) {
+      _set(_state.copyWith(loading: true, clearError: true));
+    }
     try {
       final now = DateTime.now();
       final map = await PaseadorDisponibilidadService.obtenerMiAgenda(
@@ -96,7 +98,7 @@ class AvailabilityController extends ChangeNotifier {
         finUtc: end.toUtc(),
         motivo: reason,
       );
-      await load();
+      await load(silent: true);
       _set(_state.copyWith(saving: false, clearError: true));
       return 'El bloqueo quedó agregado a tu agenda.';
     } catch (error) {
@@ -110,7 +112,7 @@ class AvailabilityController extends ChangeNotifier {
     _set(_state.copyWith(saving: true, clearError: true));
     try {
       await PaseadorDisponibilidadService.eliminarBloqueo(id);
-      await load();
+      await load(silent: true);
       _set(_state.copyWith(saving: false, clearError: true));
       return 'Bloqueo eliminado.';
     } catch (error) {

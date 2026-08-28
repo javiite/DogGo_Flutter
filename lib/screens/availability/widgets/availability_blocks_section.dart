@@ -47,6 +47,11 @@ class AvailabilityBlocksSection extends StatelessWidget {
             ),
             FilledButton.tonalIcon(
               onPressed: busy ? null : onAdd,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 42),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               icon: const Icon(Icons.add_rounded),
               label: const Text('Bloquear'),
             ),

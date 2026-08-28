@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../shared/widgets/doggo_screen_scaffold.dart';
+import '../shared/widgets/doggo_network_image.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
@@ -504,6 +505,7 @@ class _MapCard extends StatelessWidget {
                 : state.walk.isCompleted
                 ? 'Último punto'
                 : 'Paseador',
+            imageUrl: state.walk.publicPetPhotoUrl(state.baseUrl),
           ),
         ),
       );
@@ -850,12 +852,14 @@ class _MapMarker extends StatelessWidget {
   final Color color;
   final String label;
   final bool compact;
+  final String? imageUrl;
 
   const _MapMarker({
     required this.icon,
     required this.color,
     required this.label,
     this.compact = false,
+    this.imageUrl,
   });
 
   @override
@@ -880,7 +884,19 @@ class _MapMarker extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(icon, color: Colors.white, size: compact ? 19 : 22),
+          clipBehavior: Clip.antiAlias,
+          child: imageUrl == null
+              ? Icon(icon, color: Colors.white, size: compact ? 19 : 22)
+              : DogGoNetworkImage(
+                  url: imageUrl,
+                  semanticLabel: 'Fotografía de la mascota en el mapa',
+                  fit: BoxFit.cover,
+                  fallback: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: compact ? 19 : 22,
+                  ),
+                ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -1214,18 +1230,6 @@ class _RouteDetailsCard extends StatelessWidget {
             icon: Icons.home_outlined,
             label: 'Punto de recogida',
             value: walk.pickupAddress,
-          ),
-          const Divider(height: 22),
-          _RouteDetailRow(
-            icon: Icons.pin_drop_outlined,
-            label: 'Coordenadas de recogida',
-            value: walk.pickupCoordinatesLabel,
-          ),
-          const Divider(height: 22),
-          _RouteDetailRow(
-            icon: Icons.my_location_rounded,
-            label: 'Última posición',
-            value: current?.coordinatesLabel ?? 'No disponible',
           ),
           const Divider(height: 22),
           _RouteDetailRow(

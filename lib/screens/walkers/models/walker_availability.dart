@@ -115,21 +115,72 @@ class WalkerSchedule {
   }
 }
 
+class WalkerBusyBlock {
+  final DateTime start;
+  final DateTime end;
+
+  const WalkerBusyBlock({required this.start, required this.end});
+
+  factory WalkerBusyBlock.fromMap(Map<String, dynamic> map) {
+    return WalkerBusyBlock(
+      start: _dateTime(map['inicioUtc']),
+      end: _dateTime(map['finUtc']),
+    );
+  }
+
+  bool get isValid => end.isAfter(start);
+
+  String get dateLabel {
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic',
+    ];
+    return '${start.day} ${months[start.month - 1]}';
+  }
+
+  String get timeRange => '${_clock(start)}–${_clock(end)}';
+
+  static DateTime _dateTime(dynamic value) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+    return (parsed ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true))
+        .toLocal();
+  }
+
+  static String _clock(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+}
+
 class WalkerAvailability {
   final bool available;
   final String timeZone;
   final List<WalkerSchedule> schedules;
+  final List<WalkerBusyBlock> busyBlocks;
 
   const WalkerAvailability({
     required this.available,
     required this.timeZone,
     required this.schedules,
+    required this.busyBlocks,
   });
 
   const WalkerAvailability.empty()
     : available = false,
       timeZone = '',
-      schedules = const [];
+      schedules = const [],
+      busyBlocks = const [];
 
   factory WalkerAvailability.fromMap(Map<String, dynamic> map) {
     final rawSchedules = map['horarios'];
@@ -144,14 +195,32 @@ class WalkerAvailability {
               .toList(growable: false)
         : const <WalkerSchedule>[];
 
+    final rawBusy = <dynamic>[
+      if (map['bloqueos'] is List) ...(map['bloqueos'] as List),
+      if (map['ocupaciones'] is List) ...(map['ocupaciones'] as List),
+    ];
+    final busyBlocks =
+        rawBusy
+            .whereType<Map>()
+            .map(
+              (item) =>
+                  WalkerBusyBlock.fromMap(Map<String, dynamic>.from(item)),
+            )
+            .where((item) => item.isValid && item.end.isAfter(DateTime.now()))
+            .toList(growable: false)
+          ..sort((a, b) => a.start.compareTo(b.start));
+
     return WalkerAvailability(
       available: map['disponible'] == true,
       timeZone: map['zonaHoraria']?.toString().trim() ?? '',
       schedules: schedules,
+      busyBlocks: busyBlocks,
     );
   }
 
   bool get hasSchedules => schedules.isNotEmpty;
+
+  bool get hasBusyBlocks => busyBlocks.isNotEmpty;
 
   List<WalkerSchedule> get upcomingSchedules {
     final result = [...schedules];

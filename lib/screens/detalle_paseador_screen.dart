@@ -119,11 +119,25 @@ class _DetallePaseadorScreenState extends State<DetallePaseadorScreen> {
 
         return Scaffold(
           backgroundColor: DogGoTheme.cream,
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            toolbarHeight: 70,
+            backgroundColor: DogGoTheme.cream,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            titleSpacing: horizontalPadding,
+            title: _DetailTopBar(
+              available: state.walker.available,
+              favorite: _favorite,
+              onFavorite: _toggleFavorite,
+            ),
+          ),
           bottomNavigationBar: _RequestBottomBar(
             walker: state.walker,
             onRequest: _requestWalk,
           ),
           body: SafeArea(
+            top: false,
             bottom: false,
             child: RefreshIndicator(
               onRefresh: _controller.refresh,
@@ -142,11 +156,6 @@ class _DetallePaseadorScreenState extends State<DetallePaseadorScreen> {
                       constraints: const BoxConstraints(maxWidth: 720),
                       child: Column(
                         children: [
-                          _DetailTopBar(
-                            available: state.walker.available,
-                            favorite: _favorite,
-                            onFavorite: _toggleFavorite,
-                          ),
                           if (state.loadingProfile) ...[
                             const SizedBox(height: 4),
                             const LinearProgressIndicator(minHeight: 2),
@@ -446,27 +455,77 @@ class _WalkerProfilePhoto extends StatelessWidget {
     return value.startsWith('http://') || value.startsWith('https://');
   }
 
+  void _showPhoto(BuildContext context) {
+    if (!_hasValidPhoto) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: InteractiveViewer(
+                minScale: 1,
+                maxScale: 5,
+                child: Center(
+                  child: Image.network(
+                    photoUrl!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Icon(
+                      DogGoIcons.profile,
+                      color: Colors.white,
+                      size: 72,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: IconButton.filled(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  tooltip: 'Cerrar fotografía',
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          width: 96,
-          height: 96,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .14),
-            borderRadius: BorderRadius.circular(DogGoRadius.large),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: .2),
-              width: 2,
+        Semantics(
+          button: _hasValidPhoto,
+          label: _hasValidPhoto
+              ? 'Ampliar fotografía de ${walker.name}'
+              : 'Fotografía de ${walker.name}',
+          child: GestureDetector(
+            onTap: _hasValidPhoto ? () => _showPhoto(context) : null,
+            child: Container(
+              width: 96,
+              height: 96,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .14),
+                borderRadius: BorderRadius.circular(DogGoRadius.large),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: .2),
+                  width: 2,
+                ),
+              ),
+              child: DogGoNetworkImage(
+                url: _hasValidPhoto ? photoUrl : null,
+                semanticLabel: 'Fotografía de ${walker.name}',
+                fallback: _WalkerInitials(initials: walker.initials),
+              ),
             ),
-          ),
-          child: DogGoNetworkImage(
-            url: _hasValidPhoto ? photoUrl : null,
-            semanticLabel: 'Fotografía de ${walker.name}',
-            fallback: _WalkerInitials(initials: walker.initials),
           ),
         ),
         if (walker.verified)
@@ -1065,7 +1124,7 @@ class _ScheduleSection extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2.5),
               ),
             )
-          : availability.hasSchedules
+          : availability.hasSchedules || availability.hasBusyBlocks
           ? Column(
               children: [
                 ...availability.upcomingSchedules
@@ -1083,6 +1142,32 @@ class _ScheduleSection extends StatelessWidget {
                       ),
                     ),
                   ),
+                if (availability.hasBusyBlocks) ...[
+                  const Divider(height: 22),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Espacios ya ocupados',
+                      style: DogGoTheme.body(
+                        size: 11.5,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  ...availability.busyBlocks
+                      .take(4)
+                      .map((block) => _BusyScheduleRow(block: block)),
+                  if (availability.busyBlocks.length > 4)
+                    Text(
+                      '+ ${availability.busyBlocks.length - 4} horarios ocupados',
+                      style: DogGoTheme.caption(
+                        size: 10,
+                        color: DogGoTheme.muted,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                ],
                 const SizedBox(height: 9),
                 Text(
                   'El horario definitivo se valida al solicitar el paseo.',
@@ -1094,6 +1179,53 @@ class _ScheduleSection extends StatelessWidget {
               'Aún no publicó bloques semanales. Puedes enviar una solicitud para consultar disponibilidad.',
               style: DogGoTheme.subtitle(size: 11.5),
             ),
+    );
+  }
+}
+
+class _BusyScheduleRow extends StatelessWidget {
+  final WalkerBusyBlock block;
+
+  const _BusyScheduleRow({required this.block});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 62,
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: DogGoTheme.purpleLight,
+              borderRadius: BorderRadius.circular(DogGoRadius.small),
+            ),
+            child: Text(
+              block.dateLabel,
+              style: DogGoTheme.caption(
+                size: 9.5,
+                color: DogGoTheme.muted,
+                weight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Ocupado',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const Icon(DogGoIcons.clock, size: 16, color: DogGoTheme.muted),
+          const SizedBox(width: 5),
+          Text(
+            block.timeRange,
+            style: DogGoTheme.body(size: 11, weight: FontWeight.w800),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1521,7 +1653,7 @@ class _ReviewsSection extends StatelessWidget {
                 padding: EdgeInsets.only(
                   bottom: index == state.reviews.length - 1 ? 0 : 11,
                 ),
-                child: _ReviewCard(review: review),
+                child: _ReviewCard(review: review, baseUrl: state.baseUrl),
               );
             }),
           ),
@@ -1594,8 +1726,9 @@ class _NoReviewsCard extends StatelessWidget {
 
 class _ReviewCard extends StatelessWidget {
   final WalkerReview review;
+  final String? baseUrl;
 
-  const _ReviewCard({required this.review});
+  const _ReviewCard({required this.review, required this.baseUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -1613,17 +1746,22 @@ class _ReviewCard extends StatelessWidget {
           Container(
             width: 42,
             height: 42,
+            clipBehavior: Clip.antiAlias,
             alignment: Alignment.center,
             decoration: const BoxDecoration(
               color: DogGoTheme.tealLight,
               shape: BoxShape.circle,
             ),
-            child: Text(
-              review.authorInitials,
-              style: DogGoTheme.body(
-                size: 12,
-                color: DogGoTheme.teal,
-                weight: FontWeight.w900,
+            child: DogGoNetworkImage(
+              url: review.publicPhotoUrl(baseUrl),
+              semanticLabel: 'Fotografía de ${review.authorName}',
+              fallback: Text(
+                review.authorInitials,
+                style: DogGoTheme.body(
+                  size: 12,
+                  color: DogGoTheme.teal,
+                  weight: FontWeight.w900,
+                ),
               ),
             ),
           ),

@@ -142,189 +142,194 @@ class _WalkCard extends StatelessWidget {
 
     return Semantics(
       container: true,
+      button: true,
       label: '$eyebrow. $title. $subtitle. $statusText',
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: palette.primary,
-          borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
-          boxShadow: [
-            BoxShadow(
-              color: palette.primary.withValues(alpha: 0.23),
-              blurRadius: 28,
-              offset: const Offset(0, 13),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: HomeWalkPetImages(
-                imageUrls: imageUrls,
-                petCount: petCount,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPrimary,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: palette.primary,
+            borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
+            boxShadow: [
+              BoxShadow(
+                color: palette.primary.withValues(alpha: 0.23),
+                blurRadius: 28,
+                offset: const Offset(0, 13),
               ),
-            ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      palette.primary.withValues(alpha: 0.98),
-                      palette.primary.withValues(alpha: 0.89),
-                      palette.primary.withValues(alpha: 0.37),
-                    ],
-                    stops: const [0, 0.54, 1],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: HomeWalkPetImages(
+                  imageUrls: imageUrls,
+                  petCount: petCount,
+                ),
+              ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        palette.primary.withValues(alpha: 0.98),
+                        palette.primary.withValues(alpha: 0.89),
+                        palette.primary.withValues(alpha: 0.37),
+                      ],
+                      stops: const [0, 0.54, 1],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              right: -28,
-              bottom: -38,
-              child: Icon(
-                routeAlert ? Icons.warning_amber_rounded : Icons.pets_rounded,
-                size: 155,
-                color: Colors.white.withValues(alpha: 0.08),
+              Positioned(
+                right: -28,
+                bottom: -38,
+                child: Icon(
+                  routeAlert ? Icons.warning_amber_rounded : Icons.pets_rounded,
+                  size: 155,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(palette.icon, color: Colors.white, size: 15),
-                            const SizedBox(width: 6),
-                            Text(
-                              routeAlert ? 'ALERTA DE RUTA' : eyebrow,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.65,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      if (timingText.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
                         Container(
-                          constraints: const BoxConstraints(maxWidth: 140),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withValues(alpha: 0.16),
                             borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Text(
-                            timingText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: palette.primary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 21),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 275),
-                    child: Text(
-                      routeAlert ? 'El paseo salió de la ruta' : title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 27,
-                        height: 1.04,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 290),
-                    child: Text(
-                      routeAlert
-                          ? 'El paseador debe regresar a la zona permitida. Puedes revisar el recorrido en tiempo real.'
-                          : subtitle,
-                      maxLines: routeAlert ? 3 : 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFFE9F5F2),
-                        fontSize: 12.5,
-                        height: 1.4,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  if (locationText.isNotEmpty) ...[
-                    const SizedBox(height: 15),
-                    Container(
-                      constraints: const BoxConstraints(maxWidth: 300),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 11,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.13),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            color: Colors.white,
-                            size: 17,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(palette.icon, color: Colors.white, size: 15),
+                              const SizedBox(width: 6),
+                              Text(
+                                routeAlert ? 'ALERTA DE RUTA' : eyebrow,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.65,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Flexible(
+                        ),
+                        const Spacer(),
+                        if (timingText.isNotEmpty)
+                          Container(
+                            constraints: const BoxConstraints(maxWidth: 140),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(30),
+                            ),
                             child: Text(
-                              locationText,
+                              timingText,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w600,
+                              style: TextStyle(
+                                color: palette.primary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ),
-                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 21),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 275),
+                      child: Text(
+                        routeAlert ? 'El paseo salió de la ruta' : title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 27,
+                          height: 1.04,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 9),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 290),
+                      child: Text(
+                        routeAlert
+                            ? 'El paseador debe regresar a la zona permitida. Puedes revisar el recorrido en tiempo real.'
+                            : subtitle,
+                        maxLines: routeAlert ? 3 : 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFFE9F5F2),
+                          fontSize: 12.5,
+                          height: 1.4,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (locationText.isNotEmpty) ...[
+                      const SizedBox(height: 15),
+                      Container(
+                        constraints: const BoxConstraints(maxWidth: 300),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.13),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              color: Colors.white,
+                              size: 17,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                locationText,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    _buildActions(palette),
                   ],
-                  const SizedBox(height: 20),
-                  _buildActions(palette),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

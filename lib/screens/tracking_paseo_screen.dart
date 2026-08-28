@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
 
 import '../services/walk_experience_service.dart';
 import '../shared/widgets/doggo_error_view.dart';
@@ -572,7 +573,7 @@ class _TrackingHero extends StatelessWidget {
                   borderRadius: BorderRadius.circular(DogGoRadius.pill),
                 ),
                 child: Text(
-                  'Paseo #${state.walkId}',
+                  'Paseo actual',
                   style: DogGoTheme.caption(
                     size: 9,
                     color: active ? Colors.white : DogGoTheme.teal,
@@ -796,12 +797,6 @@ class _CurrentLocationCard extends StatelessWidget {
       child: Column(
         children: [
           _InformationRow(
-            icon: Icons.pin_drop_outlined,
-            label: 'Coordenadas',
-            value: state.coordinatesLabel,
-          ),
-          const Divider(height: 22),
-          _InformationRow(
             icon: Icons.access_time_rounded,
             label: 'Hora',
             value: state.lastSentLabel,
@@ -845,7 +840,9 @@ class _BackgroundServiceCard extends StatelessWidget {
         children: [
           _ServiceCheck(
             completed: state.serviceRunning,
-            title: 'Servicio de Android',
+            title: Platform.isIOS
+                ? 'Servicio de iPhone'
+                : 'Servicio de Android',
             description: state.serviceRunning
                 ? 'Activo en primer plano'
                 : 'Sin ejecutar',
@@ -855,7 +852,7 @@ class _BackgroundServiceCard extends StatelessWidget {
             completed: state.isCurrentWalkActive,
             title: 'Paseo vinculado',
             description: state.isCurrentWalkActive
-                ? 'Paseo #${state.walkId}'
+                ? 'Paseo actual vinculado'
                 : 'Sin vínculo activo',
           ),
           const SizedBox(height: 13),

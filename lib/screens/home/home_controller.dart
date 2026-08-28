@@ -54,8 +54,8 @@ class HomeController extends ChangeNotifier {
 
     await Future.wait([
       loadProfilePhoto(),
-      if (_state.isOwner || _state.isAdmin) loadPets(),
-      loadWalks(),
+      if (_state.isOwner || _state.isAdmin) loadPets(silent: true),
+      loadWalks(silent: true),
       loadNotifications(silent: true),
     ]);
 
@@ -180,12 +180,14 @@ class HomeController extends ChangeNotifier {
     return '$cleanServer$cleanPath';
   }
 
-  Future<void> loadPets() async {
+  Future<void> loadPets({bool silent = false}) async {
     if (_disposed) {
       return;
     }
 
-    _setState(_state.copyWith(petsLoading: true, clearPetsError: true));
+    if (!silent) {
+      _setState(_state.copyWith(petsLoading: true, clearPetsError: true));
+    }
 
     try {
       final result = await PerrosService.obtenerMisPerros();
@@ -244,12 +246,14 @@ class HomeController extends ChangeNotifier {
     }
   }
 
-  Future<void> loadWalks() async {
+  Future<void> loadWalks({bool silent = false}) async {
     if (_disposed) {
       return;
     }
 
-    _setState(_state.copyWith(walksLoading: true, clearWalksError: true));
+    if (!silent) {
+      _setState(_state.copyWith(walksLoading: true, clearWalksError: true));
+    }
 
     try {
       final result = await PaseosService.obtenerMisPaseos();
@@ -454,10 +458,7 @@ class HomeController extends ChangeNotifier {
             return notification;
           }
 
-          return <String, dynamic>{
-            ...notification,
-            'leida': true,
-          };
+          return <String, dynamic>{...notification, 'leida': true};
         })
         .toList(growable: false);
 

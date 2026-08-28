@@ -90,6 +90,13 @@ class WalksState {
         return firstActive ? -1 : 1;
       }
 
+      final statusComparison = _statusPriority(
+        first.status,
+      ).compareTo(_statusPriority(second.status));
+      if (statusComparison != 0) {
+        return statusComparison;
+      }
+
       final firstDate = first.scheduledAt;
       final secondDate = second.scheduledAt;
 
@@ -137,9 +144,24 @@ class WalksState {
   bool canCancel(HomeWalk walk) {
     if (!isOwner && !isWalker) return false;
 
-    return walk.status == HomeWalkStatus.pending ||
-        walk.status == HomeWalkStatus.accepted;
+    if (walk.status != HomeWalkStatus.pending &&
+        walk.status != HomeWalkStatus.accepted) {
+      return false;
+    }
+
+    final scheduledAt = walk.scheduledAt;
+    return scheduledAt == null || scheduledAt.isAfter(DateTime.now());
   }
+
+  static int _statusPriority(HomeWalkStatus status) => switch (status) {
+    HomeWalkStatus.inProgress => 0,
+    HomeWalkStatus.pending => 1,
+    HomeWalkStatus.accepted => 2,
+    HomeWalkStatus.completed => 3,
+    HomeWalkStatus.cancelled => 4,
+    HomeWalkStatus.rejected => 5,
+    HomeWalkStatus.none || HomeWalkStatus.unknown => 6,
+  };
 
   WalksState copyWith({
     bool? loading,

@@ -306,7 +306,6 @@ class _ChatPaseoScreenState extends State<ChatPaseoScreen>
                 _ChatTopBar(
                   messageCount: state.messageCount,
                   refreshing: state.refreshing,
-                  onRefresh: _controller.refresh,
                 ),
                 _ConversationHeader(
                   petName: widget.nombrePerro,
@@ -408,6 +407,7 @@ class _ChatPaseoScreenState extends State<ChatPaseoScreen>
                   message: message,
                   mine: mine,
                   mediaUrl: _mediaUrl(message.mediaUrl),
+                  replyMediaUrl: _mediaUrl(message.replyMediaUrl),
                   onLongPress: () => _showMessageOptions(message),
                 ),
             ],
@@ -433,13 +433,8 @@ class _ChatPaseoScreenState extends State<ChatPaseoScreen>
 class _ChatTopBar extends StatelessWidget {
   final int messageCount;
   final bool refreshing;
-  final VoidCallback onRefresh;
 
-  const _ChatTopBar({
-    required this.messageCount,
-    required this.refreshing,
-    required this.onRefresh,
-  });
+  const _ChatTopBar({required this.messageCount, required this.refreshing});
 
   @override
   Widget build(BuildContext context) {
@@ -481,12 +476,6 @@ class _ChatTopBar extends StatelessWidget {
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
-            )
-          else
-            IconButton(
-              onPressed: onRefresh,
-              tooltip: 'Actualizar',
-              icon: const Icon(Icons.refresh_rounded),
             ),
         ],
       ),
@@ -548,35 +537,6 @@ class _ConversationHeader extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: DogGoTheme.subtitle(size: 10.5),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-              decoration: BoxDecoration(
-                color: DogGoTheme.greenLight,
-                borderRadius: BorderRadius.circular(DogGoRadius.pill),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: DogGoTheme.green,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Actualización automática',
-                    style: DogGoTheme.caption(
-                      size: 8.5,
-                      color: DogGoTheme.green,
-                      weight: FontWeight.w700,
-                    ),
                   ),
                 ],
               ),
@@ -704,12 +664,14 @@ class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool mine;
   final String? mediaUrl;
+  final String? replyMediaUrl;
   final VoidCallback onLongPress;
 
   const _MessageBubble({
     required this.message,
     required this.mine,
     required this.mediaUrl,
+    required this.replyMediaUrl,
     required this.onLongPress,
   });
 
@@ -774,29 +736,89 @@ class _MessageBubble extends StatelessWidget {
                           : DogGoTheme.tealLight,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(
-                      'Respuesta a un mensaje anterior',
-                      style: DogGoTheme.caption(
-                        size: 9.5,
-                        color: mine ? Colors.white : DogGoTheme.teal,
-                        weight: FontWeight.w700,
-                      ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          message.replyType?.toLowerCase() == 'imagen'
+                              ? Icons.photo_outlined
+                              : Icons.reply_rounded,
+                          size: 15,
+                          color: mine ? Colors.white : DogGoTheme.teal,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (message.replySenderName != null)
+                                Text(
+                                  message.replySenderName!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: DogGoTheme.caption(
+                                    size: 8.5,
+                                    color: mine
+                                        ? Colors.white.withValues(alpha: .75)
+                                        : DogGoTheme.muted,
+                                    weight: FontWeight.w700,
+                                  ),
+                                ),
+                              Text(
+                                message.replyType?.toLowerCase() == 'imagen'
+                                    ? 'Fotografía compartida'
+                                    : message.replyContent ??
+                                          'Mensaje anterior',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: DogGoTheme.caption(
+                                  size: 9.5,
+                                  color: mine ? Colors.white : DogGoTheme.teal,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 if (message.isImage)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: SizedBox(
-                      width: 230,
-                      height: 180,
-                      child: DogGoNetworkImage(
-                        url: mediaUrl,
-                        semanticLabel: 'Fotografía compartida en el chat',
-                        fallback: Container(
-                          color: DogGoTheme.tealLight,
-                          child: const Icon(Icons.broken_image_outlined),
+                  GestureDetector(
+                    onTap: mediaUrl == null
+                        ? null
+                        : () => _openChatImage(context, mediaUrl!),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: SizedBox(
+                            width: 230,
+                            height: 180,
+                            child: DogGoNetworkImage(
+                              url: mediaUrl,
+                              semanticLabel: 'Fotografía compartida en el chat',
+                              fallback: Container(
+                                color: DogGoTheme.tealLight,
+                                child: const Icon(Icons.broken_image_outlined),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        const Positioned(
+                          right: 8,
+                          top: 8,
+                          child: CircleAvatar(
+                            radius: 15,
+                            backgroundColor: Colors.black54,
+                            child: Icon(
+                              Icons.zoom_out_map_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 if (message.content.isNotEmpty) ...[
@@ -842,6 +864,49 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _openChatImage(BuildContext context, String url) {
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black87,
+    builder: (dialogContext) => Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: InteractiveViewer(
+                minScale: .8,
+                maxScale: 5,
+                child: Center(
+                  child: DogGoNetworkImage(
+                    url: url,
+                    semanticLabel: 'Fotografía ampliada del chat',
+                    fit: BoxFit.contain,
+                    fallback: const Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.white,
+                      size: 48,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              top: 8,
+              child: IconButton.filledTonal(
+                onPressed: () => Navigator.pop(dialogContext),
+                tooltip: 'Cerrar fotografía',
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _SystemMessage extends StatelessWidget {

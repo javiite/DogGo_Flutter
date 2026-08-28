@@ -16,100 +16,113 @@ class AvailabilityScreen extends StatefulWidget {
 
 class _AvailabilityScreenState extends State<AvailabilityScreen> {
   late final AvailabilityController _controller;
-  bool _refreshScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = AvailabilityController()..addListener(_refresh);
+    _controller = AvailabilityController();
     _controller.load();
-  }
-
-  void _refresh() {
-    if (!mounted || _refreshScheduled) return;
-    _refreshScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshScheduled = false;
-      if (mounted) setState(() {});
-    });
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_refresh);
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = _controller.state;
-    return DogGoScreenScaffold(
-      title: 'Mi disponibilidad',
-      actions: [
-        IconButton(
-          tooltip: 'Actualizar disponibilidad',
-          onPressed: state.loading ? null : _controller.load,
-          icon: const Icon(Icons.refresh_rounded),
-        ),
-      ],
-      body: state.loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _controller.load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
-                children: [
-                  _AvailabilityHero(
-                    available: state.available,
-                    saving: state.saving,
-                    onChanged: _controller.setAvailable,
-                  ),
-                  if (state.error != null) ...[
-                    const SizedBox(height: 14),
-                    _ErrorCard(
-                      message: state.error!,
-                      onRetry: _controller.load,
-                    ),
-                  ],
-                  const SizedBox(height: 27),
-                  const Text(
-                    'Tu semana habitual',
-                    style: TextStyle(
-                      color: DogGoTheme.ink,
-                      fontSize: 21,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    'Elige los días y las horas en que puedes recibir solicitudes.',
-                    style: TextStyle(color: DogGoTheme.muted, fontSize: 12.5),
-                  ),
-                  const SizedBox(height: 14),
-                  WeeklyScheduleEditor(
-                    schedules: state.schedules,
-                    enabled: !state.saving,
-                    onChanged: _controller.setSchedules,
-                  ),
-                  const SizedBox(height: 28),
-                  AvailabilityBlocksSection(
-                    blocks: state.blocks,
-                    occupations: state.occupations,
-                    busy: state.saving,
-                    onAdd: _showBlockEditor,
-                    onDelete: _confirmDelete,
-                  ),
-                ],
-              ),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
+        return DogGoScreenScaffold(
+          title: 'Mi disponibilidad',
+          actions: [
+            IconButton(
+              tooltip: 'Actualizar disponibilidad',
+              onPressed: state.loading
+                  ? null
+                  : () => _controller.load(silent: true),
+              icon: const Icon(Icons.refresh_rounded),
             ),
-      bottomNavigationBar: state.loading
-          ? null
-          : DogGoStickyActionBar(
-              primaryLabel: state.saving ? 'Guardando...' : 'Guardar cambios',
-              primaryIcon: Icons.check_rounded,
-              onPrimary: state.saving ? null : _save,
-            ),
+          ],
+          body: state.loading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: () => _controller.load(silent: true),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RepaintBoundary(
+                          child: _AvailabilityHero(
+                            available: state.available,
+                            saving: state.saving,
+                            onChanged: _controller.setAvailable,
+                          ),
+                        ),
+                        if (state.error != null) ...[
+                          const SizedBox(height: 14),
+                          _ErrorCard(
+                            message: state.error!,
+                            onRetry: () => _controller.load(silent: true),
+                          ),
+                        ],
+                        const SizedBox(height: 27),
+                        const Text(
+                          'Tu semana habitual',
+                          style: TextStyle(
+                            color: DogGoTheme.ink,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        const Text(
+                          'Elige los días y las horas en que puedes recibir solicitudes.',
+                          style: TextStyle(
+                            color: DogGoTheme.muted,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        RepaintBoundary(
+                          child: WeeklyScheduleEditor(
+                            schedules: state.schedules,
+                            enabled: !state.saving,
+                            onChanged: _controller.setSchedules,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        RepaintBoundary(
+                          child: AvailabilityBlocksSection(
+                            blocks: state.blocks,
+                            occupations: state.occupations,
+                            busy: state.saving,
+                            onAdd: _showBlockEditor,
+                            onDelete: _confirmDelete,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+          bottomNavigationBar: state.loading
+              ? null
+              : DogGoStickyActionBar(
+                  primaryLabel: state.saving
+                      ? 'Guardando...'
+                      : 'Guardar cambios',
+                  primaryIcon: Icons.check_rounded,
+                  onPrimary: state.saving ? null : _save,
+                ),
+        );
+      },
     );
   }
 

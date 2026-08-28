@@ -254,6 +254,17 @@ class _HomeWalkerPanelSectionState extends State<HomeWalkerPanelSection>
             onViewRequests: widget.onWalksTap,
             onViewWalks: widget.onWalksTap,
           ),
+          if (state.pendingRequests.isNotEmpty) ...[
+            const SizedBox(height: 25),
+            WalkerHomeRequestsSection(
+              requests: state.pendingRequests,
+              isActingOn: state.isActingOn,
+              onDetails: _openDetails,
+              onAccept: _acceptRequest,
+              onReject: _rejectRequest,
+              onSeeAll: widget.onWalksTap,
+            ),
+          ],
           const SizedBox(height: 25),
           WalkerHomeSummarySection(
             profile: state.profile,
@@ -274,17 +285,6 @@ class _HomeWalkerPanelSectionState extends State<HomeWalkerPanelSection>
               AppRoutes.availability,
             ).then((_) => _controller.refresh()),
           ),
-          if (state.pendingRequests.isNotEmpty) ...[
-            const SizedBox(height: 27),
-            WalkerHomeRequestsSection(
-              requests: state.pendingRequests,
-              isActingOn: state.isActingOn,
-              onDetails: _openDetails,
-              onAccept: _acceptRequest,
-              onReject: _rejectRequest,
-              onSeeAll: widget.onWalksTap,
-            ),
-          ],
           if (state.recentCompleted.isNotEmpty) ...[
             const SizedBox(height: 27),
             _RecentServicesSection(

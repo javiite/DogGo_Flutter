@@ -7,6 +7,7 @@ import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../theme/doggo_radius.dart';
 import '../theme/doggo_spacing.dart';
 import '../theme/doggo_theme.dart';
+import '../widgets/doggo_map_preview.dart';
 import 'calificar_paseo_screen.dart';
 import 'chat_paseo_screen.dart';
 import 'evidencia_paseo_screen.dart';
@@ -25,8 +26,8 @@ import 'walks/widgets/walk_pets_section.dart';
 import 'walks/widgets/walk_action_dialogs.dart';
 import 'package:latlong2/latlong.dart';
 import 'walks/widgets/walk_route_management_card.dart';
-import 'walks/widgets/walk_status_timeline.dart';
 import 'advanced/walk_planning_screen.dart';
+import 'public_owner_profile_screen.dart';
 
 class DetallePaseoScreen extends StatefulWidget {
   final int? id;
@@ -306,6 +307,17 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
     await _controller.refresh();
   }
 
+  Future<void> _openOwnerProfile() async {
+    final walk = _controller.state.walk;
+    if (walk == null || walk.ownerId <= 0) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PublicOwnerProfileScreen(ownerId: walk.ownerId),
+      ),
+    );
+  }
+
   Future<void> _openEvidence(String type) async {
     final state = _controller.state;
     final walk = state.walk;
@@ -530,8 +542,6 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           _StatusHero(state: state),
           const SizedBox(height: 16),
           _WalkProgress(walk: walk),
-          const SizedBox(height: 14),
-          WalkStatusTimeline(walk: walk),
           const SizedBox(height: 22),
           _RecommendedStep(
             state: state,
@@ -552,6 +562,12 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
+            onPressed: _openPlanning,
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('Preparar paseo y acordar llegada'),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
             onPressed: _openSafetyCenter,
             icon: const Icon(Icons.health_and_safety_rounded),
             label: const Text('Abrir experiencia completa'),
@@ -565,7 +581,12 @@ class _DetallePaseoScreenState extends State<DetallePaseoScreen> {
             canViewPetProfiles: true,
           ),
           const SizedBox(height: 14),
-          _ParticipantsCard(walk: walk, isWalker: state.isWalker),
+          _ParticipantsCard(
+            walk: walk,
+            isWalker: state.isWalker,
+            baseUrl: state.baseUrl,
+            onOwnerTap: state.isWalker ? _openOwnerProfile : null,
+          ),
           const SizedBox(height: 14),
           _PickupCard(
             walk: walk,
@@ -670,7 +691,6 @@ class _StatusHero extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Text('#${walk.id}', style: DogGoTheme.caption(size: 10.5)),
             ],
           ),
           const SizedBox(height: 18),
@@ -1201,10 +1221,20 @@ class _ServiceInformation extends StatelessWidget {
           const Divider(height: 22),
           _DetailRow(
             icon: Icons.payments_outlined,
-            label: 'Precio',
+            label: 'Total del paseo',
             value: walk.priceLabel,
             valueColor: DogGoTheme.teal,
           ),
+          if (walk.basePrice != null && walk.activePetCount > 1) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${walk.basePriceLabel} por mascota × ${walk.activePetCount}',
+                style: DogGoTheme.caption(size: 9.5),
+              ),
+            ),
+          ],
           if (walk.startedAt != null) ...[
             const Divider(height: 22),
             _DetailRow(
@@ -1230,8 +1260,15 @@ class _ServiceInformation extends StatelessWidget {
 class _ParticipantsCard extends StatelessWidget {
   final WalkDetail walk;
   final bool isWalker;
+  final String? baseUrl;
+  final VoidCallback? onOwnerTap;
 
-  const _ParticipantsCard({required this.walk, required this.isWalker});
+  const _ParticipantsCard({
+    required this.walk,
+    required this.isWalker,
+    required this.baseUrl,
+    this.onOwnerTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1245,6 +1282,7 @@ class _ParticipantsCard extends StatelessWidget {
             role: 'Mascota',
             name: walk.petName,
             color: DogGoTheme.teal,
+            photoUrl: walk.publicPetPhotoUrl(baseUrl),
           ),
           const SizedBox(height: 13),
           _Participant(
@@ -1252,6 +1290,7 @@ class _ParticipantsCard extends StatelessWidget {
             role: 'Paseador',
             name: walk.walkerName,
             color: DogGoTheme.purple,
+            photoUrl: walk.publicWalkerPhotoUrl(baseUrl),
           ),
           const SizedBox(height: 13),
           _Participant(
@@ -1259,6 +1298,8 @@ class _ParticipantsCard extends StatelessWidget {
             role: 'Dueño',
             name: walk.ownerName,
             color: DogGoTheme.orange,
+            photoUrl: walk.publicOwnerPhotoUrl(baseUrl),
+            onTap: onOwnerTap,
           ),
         ],
       ),
@@ -1271,44 +1312,65 @@ class _Participant extends StatelessWidget {
   final String role;
   final String name;
   final Color color;
+  final String? photoUrl;
+  final VoidCallback? onTap;
 
   const _Participant({
     required this.icon,
     required this.role,
     required this.name,
     required this.color,
+    this.photoUrl,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 39,
-          height: 39,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: .1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 19),
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(role, style: DogGoTheme.caption(size: 9.5)),
-              const SizedBox(height: 2),
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: DogGoTheme.body(size: 12, weight: FontWeight.w800),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            Container(
+              width: 39,
+              height: 39,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: .1),
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
+              clipBehavior: Clip.antiAlias,
+              child: photoUrl == null
+                  ? Icon(icon, color: color, size: 19)
+                  : DogGoNetworkImage(
+                      url: photoUrl,
+                      semanticLabel: 'Fotografía de $name',
+                      fit: BoxFit.cover,
+                      fallback: Icon(icon, color: color, size: 19),
+                    ),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(role, style: DogGoTheme.caption(size: 9.5)),
+                  const SizedBox(height: 2),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DogGoTheme.body(size: 12, weight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              const Icon(Icons.chevron_right_rounded, color: DogGoTheme.muted),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -1341,43 +1403,26 @@ class _PickupCard extends StatelessWidget {
           ),
           const SizedBox(height: 7),
           Text(walk.pickupReferences, style: DogGoTheme.subtitle(size: 11)),
-          const SizedBox(height: 11),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: walk.hasPickupCoordinates
-                  ? DogGoTheme.tealLight
-                  : DogGoTheme.orangeLight,
-              borderRadius: BorderRadius.circular(DogGoRadius.medium),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  walk.hasPickupCoordinates
-                      ? Icons.gps_fixed_rounded
-                      : Icons.gps_off_rounded,
-                  color: walk.hasPickupCoordinates
-                      ? DogGoTheme.teal
-                      : DogGoTheme.orange,
-                  size: 17,
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    walk.pickupCoordinatesLabel,
-                    style: DogGoTheme.caption(
-                      size: 10,
-                      color: walk.hasPickupCoordinates
-                          ? DogGoTheme.teal
-                          : DogGoTheme.orange,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 12),
+          DogGoMapPreview(
+            latitud: walk.pickupLatitude,
+            longitud: walk.pickupLongitude,
+            height: 145,
+            markerLabel: 'Punto de recogida',
+            emptyText: 'No hay coordenadas para mostrar',
+            onTap: onOpenMap,
           ),
+          if (onOpenMap != null) ...[
+            const SizedBox(height: 11),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onOpenMap,
+                icon: const Icon(Icons.map_outlined),
+                label: const Text('Ver punto de recogida en el mapa'),
+              ),
+            ),
+          ],
         ],
       ),
     );

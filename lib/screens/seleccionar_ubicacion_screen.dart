@@ -29,21 +29,21 @@ class G {
   ];
 
   static TextStyle h3(Color c) => TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: c,
-        letterSpacing: -.2,
-      );
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    color: c,
+    letterSpacing: -.2,
+  );
 
   static TextStyle body(Color c, {double size = 13.5}) =>
       TextStyle(fontSize: size, fontWeight: FontWeight.w400, color: c);
 
   static TextStyle label(Color c, {double size = 12}) => TextStyle(
-        fontSize: size,
-        fontWeight: FontWeight.w700,
-        color: c,
-        letterSpacing: .3,
-      );
+    fontSize: size,
+    fontWeight: FontWeight.w700,
+    color: c,
+    letterSpacing: .3,
+  );
 }
 
 class SeleccionarUbicacionScreen extends StatefulWidget {
@@ -180,7 +180,7 @@ class _SeleccionarUbicacionScreenState
             }
           });
         } else {
-          _snack('No se encontró la dirección 📍');
+          _snack('No se encontró la dirección.');
         }
       } else {
         _snack('No se pudo buscar la dirección.');
@@ -411,10 +411,7 @@ class _SeleccionarUbicacionScreenState
                       ),
                       focusedBorder: const OutlineInputBorder(
                         borderRadius: G.r16,
-                        borderSide: BorderSide(
-                          color: G.brand,
-                          width: 1.5,
-                        ),
+                        borderSide: BorderSide(color: G.brand, width: 1.5),
                       ),
                     ),
                   ),
@@ -507,11 +504,7 @@ class _MarcadorAnimadoState extends State<_MarcadorAnimado>
         ),
         child: child,
       ),
-      child: const Icon(
-        Icons.location_on_rounded,
-        color: G.clay,
-        size: 50,
-      ),
+      child: const Icon(Icons.location_on_rounded, color: G.clay, size: 50),
     );
   }
 }
