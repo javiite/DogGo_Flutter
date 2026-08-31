@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../../screens/authenticated_entry_screen.dart';
 import '../../screens/availability/availability_screen.dart';
 import '../../screens/advanced/advanced_experience_screen.dart';
-import '../../screens/conversations_screen.dart';
+import '../../screens/chat/conversations_screen.dart';
 import '../../screens/login_screen.dart';
-import '../../screens/mis_perros_screen.dart';
-import '../../screens/mis_paseos_screen.dart';
-import '../../screens/notificaciones_screen.dart';
-import '../../screens/paseadores_screen.dart';
+import '../../screens/notifications/notifications_screen.dart';
+import '../../screens/pets/pets_screen.dart';
+import '../../screens/walkers/walkers_screen.dart';
+import '../../screens/walks/walks_screen.dart';
 import '../../screens/perfil_screen.dart';
 
 abstract final class AppRoutes {
@@ -32,16 +32,16 @@ abstract final class AppRoutes {
         return _route(settings, const AuthenticatedEntryScreen());
 
       case pets:
-        return _route(settings, const MisPerrosScreen());
+        return _route(settings, const PetsScreen());
 
       case walks:
-        return _route(settings, const MisPaseosScreen());
+        return _route(settings, const WalksScreen());
 
       case walkers:
-        return _route(settings, const PaseadoresScreen());
+        return _route(settings, const WalkersScreen());
 
       case notifications:
-        return _route(settings, const NotificacionesScreen());
+        return _route(settings, const NotificationsScreen());
 
       case profile:
         return _route(settings, const PerfilScreen());

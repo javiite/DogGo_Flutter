@@ -6,7 +6,7 @@ import '../services/session_service.dart';
 import '../services/usuario_service.dart';
 import '../shared/widgets/doggo_error_view.dart';
 import '../theme/doggo_theme.dart';
-import 'home_screen.dart';
+import 'home/home_screen.dart';
 import 'profile_completion_screen.dart';
 
 class AuthenticatedEntryScreen extends StatefulWidget {

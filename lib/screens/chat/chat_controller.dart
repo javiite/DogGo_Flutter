@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../core/errors/api_exception.dart';
-import '../../services/chat_service.dart';
 import '../../services/session_service.dart';
+import 'chat_repository.dart';
 import 'chat_state.dart';
 import 'models/chat_message.dart';
 
@@ -24,7 +24,7 @@ class ChatController extends ChangeNotifier {
   static const int maximumMessageLength = 1000;
 
   final int walkId;
-  final ChatService _service;
+  final ChatRepository _repository;
 
   ChatState _state = const ChatState();
 
@@ -33,8 +33,8 @@ class ChatController extends ChangeNotifier {
   bool _loadInProgress = false;
   bool _sendInProgress = false;
 
-  ChatController({required this.walkId, ChatService? service})
-    : _service = service ?? ChatService();
+  ChatController({required this.walkId, ChatRepository? repository})
+    : _repository = repository ?? ChatRepository();
 
   ChatState get state => _state;
 
@@ -97,13 +97,11 @@ class ChatController extends ChangeNotifier {
     }
 
     try {
-      final rawMessages = await _service.obtenerMensajesPaseo(walkId);
+      final messages = await _repository.getMessages(walkId);
 
       if (_disposed) {
         return;
       }
-
-      final messages = ChatMessage.listFrom(rawMessages);
 
       final changed = _messagesChanged(_state.messages, messages);
 
@@ -119,7 +117,7 @@ class ChatController extends ChangeNotifier {
       );
 
       try {
-        await _service.marcarComoLeidos(walkId);
+        await _repository.markAsRead(walkId);
       } catch (_) {
         // Leer mensajes no debe fallar si el
         // endpoint de confirmación aún no existe.
@@ -178,12 +176,12 @@ class ChatController extends ChangeNotifier {
     _setState(_state.copyWith(sending: true, clearBackgroundError: true));
 
     try {
-      await _service.enviarMensaje(
-        paseoId: walkId,
-        contenido: text,
-        tipo: type,
-        metadatosJson: metadataJson,
-        respuestaAId: replyToId,
+      await _repository.send(
+        walkId: walkId,
+        content: text,
+        type: type,
+        metadataJson: metadataJson,
+        replyToId: replyToId,
       );
 
       await loadMessages(silent: true);
@@ -205,7 +203,7 @@ class ChatController extends ChangeNotifier {
     _sendInProgress = true;
     _setState(_state.copyWith(sending: true, clearBackgroundError: true));
     try {
-      await _service.enviarImagen(paseoId: walkId, ruta: path);
+      await _repository.sendImage(walkId: walkId, path: path);
       await loadMessages(silent: true);
       return const ChatSendResult.success('Fotografía enviada.');
     } catch (error) {

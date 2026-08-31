@@ -1,8 +1,11 @@
+import '../core/auth/auth_result.dart';
+import '../core/session/authenticated_session.dart';
+import '../core/session/user_role.dart';
 import 'api_service.dart';
 import 'session_service.dart';
 
 class AuthService {
-  static Future<Map<String, dynamic>> login({
+  static Future<AuthResult> login({
     required String email,
     required String password,
   }) async {
@@ -16,30 +19,31 @@ class AuthService {
 
     if (statusCode == 200 && body['success'] == true) {
       final data = body['data'];
+      final dataMap = _nullableMap(data);
 
-      if (data is Map<String, dynamic>) {
-        await SessionService.guardarSesionDesdeLogin(data);
-      } else if (data is Map) {
-        await SessionService.guardarSesionDesdeLogin(
-          Map<String, dynamic>.from(data),
+      if (dataMap == null) {
+        return const AuthResult.failure(
+          'El servidor no devolvió una sesión válida.',
+          statusCode: 200,
         );
       }
 
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Inicio de sesión correcto.',
-        'data': body['data'],
-      };
+      final session = AuthenticatedSession.fromJson(dataMap);
+      await SessionService.guardarSesionAutenticada(session);
+
+      return AuthResult.success(
+        body['message']?.toString() ?? 'Inicio de sesión correcto.',
+        statusCode: statusCode,
+      );
     }
 
-    return {
-      'success': false,
-      'message': body['message'] ?? 'Error al iniciar sesión.',
-      'statusCode': statusCode,
-    };
+    return AuthResult.failure(
+      body['message']?.toString() ?? 'Error al iniciar sesión.',
+      statusCode: statusCode is int ? statusCode : null,
+    );
   }
 
-  static Future<Map<String, dynamic>> registrar({
+  static Future<AuthResult> registrar({
     required String nombre,
     required String apellido,
     required String email,
@@ -60,21 +64,19 @@ class AuthService {
     final body = _bodyComoMapa(response['body']);
 
     if ((statusCode == 200 || statusCode == 201) && body['success'] == true) {
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Usuario registrado correctamente.',
-        'data': body['data'],
-      };
+      return AuthResult.success(
+        body['message']?.toString() ?? 'Usuario registrado correctamente.',
+        statusCode: statusCode,
+      );
     }
 
-    return {
-      'success': false,
-      'message': body['message'] ?? 'No se pudo registrar el usuario.',
-      'statusCode': statusCode,
-    };
+    return AuthResult.failure(
+      body['message']?.toString() ?? 'No se pudo registrar el usuario.',
+      statusCode: statusCode is int ? statusCode : null,
+    );
   }
 
-  static Future<Map<String, dynamic>> confirmarCorreo({
+  static Future<AuthResult> confirmarCorreo({
     required String email,
     required String codigo,
   }) async {
@@ -87,20 +89,19 @@ class AuthService {
     final body = _bodyComoMapa(response['body']);
 
     if (statusCode == 200 && body['success'] == true) {
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Correo confirmado correctamente.',
-      };
+      return AuthResult.success(
+        body['message']?.toString() ?? 'Correo confirmado correctamente.',
+        statusCode: statusCode,
+      );
     }
 
-    return {
-      'success': false,
-      'message': body['message'] ?? 'No se pudo confirmar el correo.',
-      'statusCode': statusCode,
-    };
+    return AuthResult.failure(
+      body['message']?.toString() ?? 'No se pudo confirmar el correo.',
+      statusCode: statusCode is int ? statusCode : null,
+    );
   }
 
-  static Future<Map<String, dynamic>> solicitarRecuperacion({
+  static Future<AuthResult> solicitarRecuperacion({
     required String email,
   }) async {
     final response = await ApiService.post('/api/auth/forgot-password', {
@@ -111,20 +112,19 @@ class AuthService {
     final body = _bodyComoMapa(response['body']);
 
     if ((statusCode == 200 || statusCode == 201) && body['success'] == true) {
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Se enviaron instrucciones al correo.',
-      };
+      return AuthResult.success(
+        body['message']?.toString() ?? 'Se enviaron instrucciones al correo.',
+        statusCode: statusCode,
+      );
     }
 
-    return {
-      'success': false,
-      'message': body['message'] ?? 'No se pudo iniciar la recuperación.',
-      'statusCode': statusCode,
-    };
+    return AuthResult.failure(
+      body['message']?.toString() ?? 'No se pudo iniciar la recuperación.',
+      statusCode: statusCode is int ? statusCode : null,
+    );
   }
 
-  static Future<Map<String, dynamic>> recuperarPassword({
+  static Future<AuthResult> recuperarPassword({
     required String email,
     required String codigo,
     required String nuevaPassword,
@@ -139,19 +139,16 @@ class AuthService {
     final body = _bodyComoMapa(response['body']);
 
     if ((statusCode == 200 || statusCode == 201) && body['success'] == true) {
-      return {
-        'success': true,
-        'message': body['message'] ?? 'Contraseña actualizada correctamente.',
-      };
+      return AuthResult.success(
+        body['message']?.toString() ?? 'Contraseña actualizada correctamente.',
+        statusCode: statusCode,
+      );
     }
 
-    return {
-      'success': false,
-      'message':
-          '${body['message'] ?? 'No se pudo actualizar la contraseña.'} Código: $statusCode',
-      'statusCode': statusCode,
-      'data': body,
-    };
+    return AuthResult.failure(
+      '${body['message'] ?? 'No se pudo actualizar la contraseña.'} Código: $statusCode',
+      statusCode: statusCode is int ? statusCode : null,
+    );
   }
 
   static Future<void> cerrarSesion() async {
@@ -159,19 +156,8 @@ class AuthService {
   }
 
   static String _rolParaApi(String rol) {
-    final normalizado = rol.trim().toLowerCase();
-
-    if (normalizado == 'dueño' ||
-        normalizado == 'duenio' ||
-        normalizado == 'cliente') {
-      return 'Duenio';
-    }
-
-    if (normalizado == 'paseador') {
-      return 'Paseador';
-    }
-
-    return rol.trim();
+    final parsed = UserRoleCodec.parse(rol);
+    return parsed == UserRole.unknown ? rol.trim() : parsed.apiValue;
   }
 
   static Map<String, dynamic> _bodyComoMapa(dynamic body) {
@@ -187,5 +173,11 @@ class AuthService {
       'success': false,
       'message': body?.toString() ?? 'Respuesta inválida del servidor.',
     };
+  }
+
+  static Map<String, dynamic>? _nullableMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return null;
   }
 }

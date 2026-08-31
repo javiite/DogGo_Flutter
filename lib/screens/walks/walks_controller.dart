@@ -1,13 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import '../../core/errors/api_exception.dart';
-import '../../core/offline/offline_walk_cache_repository.dart';
 import '../../core/offline/offline_walk_sync_service.dart';
-import '../../services/paseos_service.dart';
-import '../../services/session_service.dart';
-import '../../services/storage_service.dart';
 import '../home/models/home_walk.dart';
 import '../home/models/home_walk_status.dart';
+import 'walks_repository.dart';
 import 'walks_state.dart';
 
 class WalkActionResult {
@@ -25,7 +22,7 @@ class WalkActionResult {
 class WalksController extends ChangeNotifier {
   final String? initialRole;
   final OfflineWalkSyncService _offlineSyncService;
-  final OfflineWalkCacheRepository _cacheRepository;
+  final WalksRepository _repository;
 
   WalksState _state = const WalksState();
 
@@ -35,10 +32,10 @@ class WalksController extends ChangeNotifier {
   WalksController({
     this.initialRole,
     OfflineWalkSyncService? offlineSyncService,
-    OfflineWalkCacheRepository? cacheRepository,
+    WalksRepository? repository,
   }) : _offlineSyncService =
            offlineSyncService ?? OfflineWalkSyncService.instance,
-       _cacheRepository = cacheRepository ?? OfflineWalkCacheRepository();
+       _repository = repository ?? WalksRepository();
 
   WalksState get state => _state;
 
@@ -60,51 +57,16 @@ class WalksController extends ChangeNotifier {
     }
 
     try {
-      final results = await Future.wait<dynamic>([
-        StorageService.obtenerBaseUrl(),
-        SessionService.obtenerRol(),
-        PaseosService.obtenerMisPaseos(),
-      ]);
+      final result = await _repository.getMine(initialRole: initialRole);
 
       if (_disposed) return;
-
-      final baseUrl = results[0]?.toString();
-
-      final savedRole = results[1]?.toString().trim();
-
-      final role = savedRole != null && savedRole.isNotEmpty
-          ? savedRole
-          : initialRole ?? '';
-
-      final response = _asMap(results[2]);
-
-      if (response['success'] != true) {
-        throw Exception(
-          _responseMessage(
-            response,
-            fallback: 'No se pudieron cargar tus paseos.',
-          ),
-        );
-      }
-
-      final rawWalks = _normalizeList(response['data']);
-
-      try {
-        await _cacheRepository.saveWalkList(rawWalks);
-      } catch (_) {
-        // Un fallo del caché no debe ocultar datos recibidos de la API.
-      }
-
-      final walks = rawWalks
-          .map((map) => HomeWalk.fromMap(map, baseUrl: baseUrl))
-          .toList(growable: false);
 
       _setState(
         WalksState(
           loading: false,
-          baseUrl: baseUrl,
-          role: role,
-          walks: walks,
+          baseUrl: result.baseUrl,
+          role: result.role,
+          walks: result.walks,
           selectedStatus: _state.selectedStatus,
           searchQuery: _state.searchQuery,
         ),
@@ -113,26 +75,17 @@ class WalksController extends ChangeNotifier {
       if (_disposed) return;
 
       try {
-        final cachedWalks = await _cacheRepository.getWalkList();
+        final cached = await _repository.getCached(initialRole: initialRole);
 
         if (_disposed) return;
 
-        if (cachedWalks.isNotEmpty) {
-          final baseUrl = await StorageService.obtenerBaseUrl();
-          final savedRole = await SessionService.obtenerRol();
-          final role = savedRole?.trim().isNotEmpty == true
-              ? savedRole!.trim()
-              : initialRole ?? _state.role;
-          final walks = cachedWalks
-              .map((map) => HomeWalk.fromMap(map, baseUrl: baseUrl))
-              .toList(growable: false);
-
+        if (cached != null) {
           _setState(
             WalksState(
               loading: false,
-              baseUrl: baseUrl,
-              role: role,
-              walks: walks,
+              baseUrl: cached.baseUrl,
+              role: cached.role,
+              walks: cached.walks,
               selectedStatus: _state.selectedStatus,
               searchQuery: _state.searchQuery,
             ),
@@ -191,7 +144,7 @@ class WalksController extends ChangeNotifier {
 
     return _executeAction(
       walkId: id,
-      action: () => PaseosService.aceptarPaseo(id),
+      action: () => _repository.accept(id),
       successMessage: 'Paseo aceptado correctamente.',
     );
   }
@@ -210,7 +163,7 @@ class WalksController extends ChangeNotifier {
 
     return _executeAction(
       walkId: id,
-      action: () => PaseosService.rechazarPaseo(id),
+      action: () => _repository.reject(id),
       successMessage: 'Paseo rechazado correctamente.',
     );
   }
@@ -387,43 +340,6 @@ class WalksController extends ChangeNotifier {
 
       return WalkActionResult(success: false, message: message);
     }
-  }
-
-  List<Map<String, dynamic>> _normalizeList(dynamic value) {
-    if (value is Map) {
-      final nested =
-          value['data'] ??
-          value['paseos'] ??
-          value['items'] ??
-          value['resultado'] ??
-          value['result'] ??
-          value['value'];
-
-      if (nested != null && nested != value) {
-        return _normalizeList(nested);
-      }
-    }
-
-    if (value is! List) {
-      return const [];
-    }
-
-    return value
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList(growable: false);
-  }
-
-  Map<String, dynamic> _asMap(dynamic value) {
-    if (value is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(value);
-    }
-
-    if (value is Map) {
-      return Map<String, dynamic>.from(value);
-    }
-
-    return <String, dynamic>{};
   }
 
   String _responseMessage(

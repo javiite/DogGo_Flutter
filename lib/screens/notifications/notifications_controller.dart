@@ -1,19 +1,19 @@
 import 'package:flutter/foundation.dart';
 
-import '../../services/notificaciones_service.dart';
 import 'models/app_notification.dart';
+import 'notifications_repository.dart';
 import 'notifications_state.dart';
 
 class NotificationsController extends ChangeNotifier {
-  final NotificacionesService _service;
+  final NotificationsRepository _repository;
 
   NotificationsState _state = const NotificationsState();
 
   bool _disposed = false;
   bool _loadInProgress = false;
 
-  NotificationsController({NotificacionesService? service})
-    : _service = service ?? NotificacionesService();
+  NotificationsController({NotificationsRepository? repository})
+    : _repository = repository ?? NotificationsRepository();
 
   NotificationsState get state => _state;
 
@@ -41,18 +41,7 @@ class NotificationsController extends ChangeNotifier {
     );
 
     try {
-      final response = await _service.obtenerNotificaciones();
-
-      final notifications = response.map(AppNotification.fromJson).toList();
-
-      notifications.sort((first, second) {
-        final firstDate =
-            first.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final secondDate =
-            second.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-
-        return secondDate.compareTo(firstDate);
-      });
+      final notifications = await _repository.getAll();
 
       if (_disposed) {
         return;
@@ -101,7 +90,7 @@ class NotificationsController extends ChangeNotifier {
     _setState(_state.copyWith(actingNotificationId: id, clearError: true));
 
     try {
-      await _service.marcarComoLeida(id);
+      await _repository.markAsRead(id);
 
       if (_disposed) {
         return;
@@ -135,7 +124,7 @@ class NotificationsController extends ChangeNotifier {
     _setState(_state.copyWith(markingAll: true, clearError: true));
 
     try {
-      await _service.marcarTodasComoLeidas();
+      await _repository.markAllAsRead();
 
       if (_disposed) {
         return;

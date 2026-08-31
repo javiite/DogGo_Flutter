@@ -1,32 +1,32 @@
 import 'package:flutter/material.dart';
 
-import '../shared/widgets/doggo_empty_view.dart';
-import '../shared/widgets/doggo_error_view.dart';
-import '../shared/widgets/doggo_loading_view.dart';
-import '../shared/widgets/doggo_network_image.dart';
-import '../shared/widgets/doggo_screen_scaffold.dart';
-import '../shared/widgets/doggo_search_field.dart';
-import '../shared/widgets/doggo_status_chip.dart';
-import '../theme/doggo_radius.dart';
-import '../theme/doggo_spacing.dart';
-import '../theme/doggo_theme.dart';
-import '../services/app_preferences_service.dart';
-import 'crear_paseo_screen.dart';
-import 'detalle_paseador_screen.dart';
-import 'walkers/models/walker.dart';
-import 'walkers/walkers_controller.dart';
-import 'walkers/walkers_state.dart';
+import '../../services/app_preferences_service.dart';
+import '../../shared/widgets/doggo_empty_view.dart';
+import '../../shared/widgets/doggo_error_view.dart';
+import '../../shared/widgets/doggo_loading_view.dart';
+import '../../shared/widgets/doggo_network_image.dart';
+import '../../shared/widgets/doggo_screen_scaffold.dart';
+import '../../shared/widgets/doggo_search_field.dart';
+import '../../shared/widgets/doggo_status_chip.dart';
+import '../../theme/doggo_radius.dart';
+import '../../theme/doggo_spacing.dart';
+import '../../theme/doggo_theme.dart';
+import '../crear_paseo_screen.dart';
+import '../detalle_paseador_screen.dart';
+import 'models/walker.dart';
+import 'walkers_controller.dart';
+import 'walkers_state.dart';
 
-class PaseadoresScreen extends StatefulWidget {
+class WalkersScreen extends StatefulWidget {
   final int? initialPetId;
 
-  const PaseadoresScreen({super.key, this.initialPetId});
+  const WalkersScreen({super.key, this.initialPetId});
 
   @override
-  State<PaseadoresScreen> createState() => _PaseadoresScreenState();
+  State<WalkersScreen> createState() => _WalkersScreenState();
 }
 
-class _PaseadoresScreenState extends State<PaseadoresScreen> {
+class _WalkersScreenState extends State<WalkersScreen> {
   late final WalkersController _controller;
 
   final TextEditingController _searchController = TextEditingController();

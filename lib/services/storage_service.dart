@@ -30,6 +30,12 @@ class StorageService {
   static const String _keyTrackingUltimoEnvio = 'doggo_tracking_ultimo_envio';
 
   static Future<void> guardarBaseUrl(String baseUrl) async {
+    if (!AppEnvironment.allowsCustomApiBaseUrl) {
+      throw StateError(
+        'El servidor de producción está definido por la compilación.',
+      );
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final limpia = _limpiarUrl(baseUrl);
     await prefs.setString(_keyBaseUrl, limpia);
@@ -46,6 +52,10 @@ class StorageService {
   }
 
   static Future<void> limpiarBaseUrl() async {
+    if (!AppEnvironment.allowsCustomApiBaseUrl) {
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyBaseUrl);
   }

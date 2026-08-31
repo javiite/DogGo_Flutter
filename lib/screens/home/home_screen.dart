@@ -2,44 +2,44 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../core/navigation/app_routes.dart';
-import '../services/session_service.dart';
-import '../services/walk_reminder_service.dart';
-import '../theme/doggo_theme.dart';
-import 'chat_paseo_screen.dart';
-import 'availability/availability_screen.dart';
-import 'configuracion_screen.dart';
-import 'detalle_perro_screen.dart';
-import 'detalle_paseo_screen.dart';
-import 'home/home_controller.dart';
-import 'home/home_state.dart';
-import 'home/models/home_activity_item.dart';
-import 'home/models/home_pet.dart';
-import 'home/models/home_walk.dart';
-import 'home/models/home_walk_status.dart';
-import 'home/sections/home_activity_section.dart';
-import 'home/sections/home_agenda_section.dart';
-import 'home/sections/home_explore_section.dart';
-import 'home/sections/home_explore_tab.dart';
-import 'home/sections/home_header_section.dart';
-import 'home/sections/home_pets_section.dart';
-import 'home/sections/home_shortcuts_section.dart';
-import 'home/sections/home_summary_section.dart';
-import 'home/sections/home_walk_section.dart';
-import 'home/sections/home_walker_panel_section.dart';
-import 'home/sections/home_walkers_tab.dart';
-import 'home/widgets/home_bottom_navigation.dart';
-import 'home/widgets/home_top_bar.dart';
-import 'mapa_paseo_screen.dart';
-import 'mis_perros_screen.dart';
-import 'mis_paseos_screen.dart';
-import 'paseadores_screen.dart';
-import 'programacion_paseos_screen.dart';
-import 'registrar_perro_screen.dart';
-import 'notificaciones_screen.dart';
-import 'perfil_screen.dart';
-import 'routes/saved_routes_screen.dart';
-import 'onboarding/contextual_onboarding.dart';
+import '../../core/navigation/app_routes.dart';
+import '../../services/session_service.dart';
+import '../../services/walk_reminder_service.dart';
+import '../../theme/doggo_theme.dart';
+import '../availability/availability_screen.dart';
+import '../chat_paseo_screen.dart';
+import '../configuracion_screen.dart';
+import '../detalle_paseo_screen.dart';
+import '../detalle_perro_screen.dart';
+import '../mapa_paseo_screen.dart';
+import '../notifications/notifications_screen.dart';
+import '../onboarding/contextual_onboarding.dart';
+import '../perfil_screen.dart';
+import '../pets/pets_screen.dart';
+import '../programacion_paseos_screen.dart';
+import '../registrar_perro_screen.dart';
+import '../routes/saved_routes_screen.dart';
+import '../walkers/walkers_screen.dart';
+import '../walks/walks_screen.dart';
+import 'home_controller.dart';
+import 'home_state.dart';
+import 'models/home_activity_item.dart';
+import 'models/home_pet.dart';
+import 'models/home_walk.dart';
+import 'models/home_walk_status.dart';
+import 'sections/home_activity_section.dart';
+import 'sections/home_agenda_section.dart';
+import 'sections/home_explore_section.dart';
+import 'sections/home_explore_tab.dart';
+import 'sections/home_header_section.dart';
+import 'sections/home_pets_section.dart';
+import 'sections/home_shortcuts_section.dart';
+import 'sections/home_summary_section.dart';
+import 'sections/home_walk_section.dart';
+import 'sections/home_walker_panel_section.dart';
+import 'sections/home_walkers_tab.dart';
+import 'widgets/home_bottom_navigation.dart';
+import 'widgets/home_top_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -139,14 +139,14 @@ class _HomeScreenState extends State<HomeScreen> {
             onStepAction: (stepIndex) {
               if (!mounted) return;
               if (owner && stepIndex == 0) {
-                _open(const MisPerrosScreen());
+                _open(const PetsScreen());
                 return;
               }
               if (owner && stepIndex == 2) {
                 setState(() => _navigationIndex = 3);
                 return;
               }
-              _open(const MisPaseosScreen());
+              _open(const WalksScreen());
             },
           );
         });
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNotifications() async {
-    await _open(const NotificacionesScreen());
+    await _open(const NotificationsScreen());
 
     if (mounted) {
       await _controller.loadNotifications(silent: true);
@@ -185,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _open(
         ProgramacionPaseosScreen(
           programacionId: programacionId,
-          rol: _state.role,
+          rol: _state.roleLabel,
         ),
       );
       return;
@@ -201,7 +201,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     await _open(
-      DetallePaseoScreen(paseoId: id, paseo: walk.rawData, rol: _state.role),
+      DetallePaseoScreen(
+        paseoId: id,
+        paseo: walk.rawData,
+        rol: _state.roleLabel,
+      ),
     );
   }
 
@@ -267,12 +271,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (referenceId != null && referenceId > 0) {
-      await _open(DetallePaseoScreen(paseoId: referenceId, rol: _state.role));
+      await _open(
+        DetallePaseoScreen(paseoId: referenceId, rol: _state.roleLabel),
+      );
 
       return;
     }
 
-    await _open(const MisPaseosScreen());
+    await _open(const WalksScreen());
   }
 
   Future<void> _closeSession() async {
@@ -418,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       title: 'Mis paseos',
                       onTap: () {
                         Navigator.pop(sheetContext);
-                        _open(const MisPaseosScreen());
+                        _open(const WalksScreen());
                       },
                     ),
                     if (_state.isOwner || _state.isAdmin)
@@ -427,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         title: 'Mis mascotas',
                         onTap: () {
                           Navigator.pop(sheetContext);
-                          _open(const MisPerrosScreen());
+                          _open(const PetsScreen());
                         },
                       ),
                     const Divider(height: 18),
@@ -565,7 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 toolbarHeight: 78,
                 titleSpacing: 0,
                 title: HomeTopBar(
-                  role: _state.role,
+                  role: _state.roleLabel,
                   isWalker: _state.isWalker,
                   unreadNotifications: _state.unreadNotifications,
                   onNotificationsTap: _openNotifications,
@@ -604,7 +610,7 @@ class _HomeScreenState extends State<HomeScreen> {
           walks: _state.upcomingWalks,
           onWalkTap: _openWalkDetails,
           onSeeAll: () {
-            _open(const MisPaseosScreen());
+            _open(const WalksScreen());
           },
           onRetry: _controller.loadWalks,
         );
@@ -625,7 +631,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _open(const PerfilScreen());
             },
             onWalksTap: () {
-              _open(const MisPaseosScreen());
+              _open(const WalksScreen());
             },
           );
         }
@@ -637,13 +643,13 @@ class _HomeScreenState extends State<HomeScreen> {
           isWalker: _state.isWalker,
           onWalkers: _openWalkersTab,
           onPets: () {
-            _open(const MisPerrosScreen());
+            _open(const PetsScreen());
           },
           onAvailability: () {
             _open(const AvailabilityScreen());
           },
           onWalks: () {
-            _open(const MisPaseosScreen());
+            _open(const WalksScreen());
           },
           onProfile: () {
             _open(const PerfilScreen());
@@ -685,7 +691,7 @@ class _HomeScreenState extends State<HomeScreen> {
               errorMessage: _state.petsError,
               pets: _state.pets.take(6).map(_petItem).toList(growable: false),
               onSeeAll: () {
-                _open(const MisPerrosScreen());
+                _open(const PetsScreen());
               },
               onAddPet: () {
                 _open(const RegistrarPerroScreen());
@@ -708,7 +714,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _setNavigationIndex(1);
             },
             onWalks: () {
-              _open(const MisPaseosScreen());
+              _open(const WalksScreen());
             },
             onExplore: () {
               _setNavigationIndex(3);
@@ -830,7 +836,7 @@ class _HomeScreenState extends State<HomeScreen> {
         } else if (_state.isWalker) {
           _setNavigationIndex(2);
         } else {
-          _open(const MisPaseosScreen());
+          _open(const WalksScreen());
         }
       },
       onRetry: _controller.loadWalks,
@@ -862,7 +868,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _open(DetallePerroScreen(perro: pet.rawData));
       },
       onRequestWalk: () {
-        _open(PaseadoresScreen(initialPetId: pet.id));
+        _open(WalkersScreen(initialPetId: pet.id));
       },
     );
   }

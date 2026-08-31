@@ -7,8 +7,8 @@ import '../../shared/widgets/doggo_screen_scaffold.dart';
 import '../../theme/doggo_theme.dart';
 import '../calendario_paseos_screen.dart';
 import '../detalle_paseo_screen.dart';
-import '../mis_paseos_screen.dart';
-import '../paseadores_screen.dart';
+import '../walkers/walkers_screen.dart';
+import '../walks/walks_screen.dart';
 import 'walk_planning_screen.dart';
 
 class PlanningHubScreen extends StatefulWidget {
@@ -113,7 +113,7 @@ class _PlanningHubScreenState extends State<PlanningHubScreen> {
                     title: 'Crear paseos semanales',
                     subtitle:
                         'Elige paseador y mascotas; agrega 4 u 8 semanas con un toque.',
-                    onTap: () => _push(const PaseadoresScreen()),
+                    onTap: () => _push(const WalkersScreen()),
                   ),
                   const SizedBox(height: 12),
                   _ActionCard(
@@ -121,7 +121,7 @@ class _PlanningHubScreenState extends State<PlanningHubScreen> {
                     title: 'Repetir un paseo',
                     subtitle:
                         'Abre un paseo finalizado y usa “Repetir paseo” para recuperar sus datos.',
-                    onTap: () => _push(const MisPaseosScreen()),
+                    onTap: () => _push(const WalksScreen()),
                   ),
                   const SizedBox(height: 24),
                   Text('Próximos paseos', style: DogGoTheme.title(size: 20)),

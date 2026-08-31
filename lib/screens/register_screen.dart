@@ -148,10 +148,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      if (result['success'] == true) {
-        _showMessage(
-          result['message']?.toString() ?? 'Cuenta creada. Revisa tu correo.',
-        );
+      if (result.success) {
+        _showMessage(result.message);
 
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
@@ -170,8 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
 
       setState(() {
-        _generalError =
-            result['message']?.toString() ?? 'No se pudo crear la cuenta.';
+        _generalError = result.message;
       });
     } on ApiException catch (error) {
       if (!mounted) {

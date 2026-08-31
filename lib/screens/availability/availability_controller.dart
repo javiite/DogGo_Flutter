@@ -20,7 +20,7 @@ class AvailabilityController extends ChangeNotifier {
         desdeUtc: now.subtract(const Duration(days: 7)),
         hastaUtc: now.add(const Duration(days: 60)),
       );
-      final data = WalkerAvailability.fromMap(map);
+      final data = EditableWalkerAvailability.fromMap(map);
       _set(
         _state.copyWith(
           loading: false,

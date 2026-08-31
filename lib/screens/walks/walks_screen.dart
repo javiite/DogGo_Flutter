@@ -1,42 +1,37 @@
 import 'package:flutter/material.dart';
 
-import '../shared/widgets/doggo_empty_view.dart';
-import '../shared/widgets/doggo_error_view.dart';
-import '../shared/widgets/doggo_loading_view.dart';
-import '../shared/widgets/doggo_screen_scaffold.dart';
-import '../shared/widgets/doggo_search_field.dart';
-import '../theme/doggo_radius.dart';
-import '../theme/doggo_spacing.dart';
-import '../theme/doggo_theme.dart';
-import '../theme/doggo_icons.dart';
-import 'calendario_paseos_screen.dart';
-import 'chat_paseo_screen.dart';
-import 'detalle_paseo_screen.dart';
-import 'home/models/home_walk.dart';
-import 'home/models/home_walk_status.dart';
-import 'mapa_paseo_screen.dart';
-import 'programacion_paseos_screen.dart';
-import 'walks/walks_controller.dart';
-import 'walks/walks_state.dart';
-import 'home/widgets/home_walk_pet_avatar.dart';
+import '../../shared/widgets/doggo_empty_view.dart';
+import '../../shared/widgets/doggo_error_view.dart';
+import '../../shared/widgets/doggo_loading_view.dart';
+import '../../shared/widgets/doggo_screen_scaffold.dart';
+import '../../shared/widgets/doggo_search_field.dart';
+import '../../theme/doggo_icons.dart';
+import '../../theme/doggo_radius.dart';
+import '../../theme/doggo_spacing.dart';
+import '../../theme/doggo_theme.dart';
+import '../calendario_paseos_screen.dart';
+import '../chat_paseo_screen.dart';
+import '../detalle_paseo_screen.dart';
+import '../home/models/home_walk.dart';
+import '../home/models/home_walk_status.dart';
+import '../home/widgets/home_walk_pet_avatar.dart';
+import '../mapa_paseo_screen.dart';
+import '../programacion_paseos_screen.dart';
+import 'walks_controller.dart';
+import 'walks_state.dart';
 
-class MisPaseosScreen extends StatefulWidget {
+class WalksScreen extends StatefulWidget {
   final int? usuarioId;
   final String? rol;
   final String? filtroInicial;
 
-  const MisPaseosScreen({
-    super.key,
-    this.usuarioId,
-    this.rol,
-    this.filtroInicial,
-  });
+  const WalksScreen({super.key, this.usuarioId, this.rol, this.filtroInicial});
 
   @override
-  State<MisPaseosScreen> createState() => _MisPaseosScreenState();
+  State<WalksScreen> createState() => _WalksScreenState();
 }
 
-class _MisPaseosScreenState extends State<MisPaseosScreen> {
+class _WalksScreenState extends State<WalksScreen> {
   late final WalksController _controller;
 
   final TextEditingController _searchController = TextEditingController();
@@ -117,7 +112,7 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
           paseos: state.walks
               .map((walk) => walk.rawData)
               .toList(growable: false),
-          rol: state.role,
+          rol: state.roleLabel,
         ),
       ),
     );
@@ -135,11 +130,11 @@ class _MisPaseosScreenState extends State<MisPaseosScreen> {
         builder: (_) => programacionId != null && programacionId > 0
             ? ProgramacionPaseosScreen(
                 programacionId: programacionId,
-                rol: _controller.state.role,
+                rol: _controller.state.roleLabel,
               )
             : DetallePaseoScreen(
                 paseo: walk.rawData,
-                rol: _controller.state.role,
+                rol: _controller.state.roleLabel,
                 onPaseoActualizado: _controller.refresh,
               ),
       ),

@@ -172,12 +172,10 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
         return;
       }
 
-      if (result['success'] == true) {
+      if (result.success) {
         setState(() {
           _codeRequested = true;
-          _successMessage =
-              result['message']?.toString() ??
-              'Enviamos un código a tu correo.';
+          _successMessage = result.message;
         });
 
         await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -190,8 +188,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
       }
 
       setState(() {
-        _generalError =
-            result['message']?.toString() ?? 'No se pudo enviar el código.';
+        _generalError = result.message;
       });
     } on ApiException catch (error) {
       if (!mounted) {
@@ -242,11 +239,8 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
         return;
       }
 
-      if (result['success'] == true) {
-        _showMessage(
-          result['message']?.toString() ??
-              'Contraseña actualizada correctamente.',
-        );
+      if (result.success) {
+        _showMessage(result.message);
 
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
@@ -264,9 +258,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
       }
 
       setState(() {
-        _generalError =
-            result['message']?.toString() ??
-            'No se pudo actualizar la contraseña.';
+        _generalError = result.message;
       });
     } on ApiException catch (error) {
       if (!mounted) {

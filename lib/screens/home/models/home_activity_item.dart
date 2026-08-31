@@ -1,3 +1,5 @@
+import '../../notifications/models/app_notification.dart';
+
 enum HomeActivityType {
   walkRequested,
   walkAccepted,
@@ -62,9 +64,7 @@ class HomeActivityItem {
     final dateValue = _firstValue(map, const ['fechaCreacion']);
 
     return HomeActivityItem(
-      id: _toInt(
-        _firstValue(map, const ['id']),
-      ),
+      id: _toInt(_firstValue(map, const ['id'])),
       type: _typeFromValue('$typeValue $titleValue $descriptionValue'),
       title: titleValue?.toString().trim().isNotEmpty == true
           ? titleValue.toString().trim()
@@ -73,10 +73,22 @@ class HomeActivityItem {
           ? descriptionValue.toString().trim()
           : 'Tienes una nueva actualización.',
       occurredAt: _toDateTime(dateValue),
-      referenceId: _toInt(
-        _firstValue(map, const ['referenciaId']),
-      ),
+      referenceId: _toInt(_firstValue(map, const ['referenciaId'])),
       read: _toBool(_firstValue(map, const ['leida'])),
+    );
+  }
+
+  factory HomeActivityItem.fromNotification(AppNotification notification) {
+    return HomeActivityItem(
+      id: notification.id,
+      type: _typeFromValue(
+        '${notification.type} ${notification.title} ${notification.message}',
+      ),
+      title: notification.title,
+      description: notification.message,
+      occurredAt: notification.createdAt,
+      referenceId: notification.referenceId,
+      read: notification.isRead,
     );
   }
 

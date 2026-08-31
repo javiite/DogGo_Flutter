@@ -1,3 +1,4 @@
+import 'package:doggo_flutter/core/session/user_role.dart';
 import 'package:doggo_flutter/screens/home/home_state.dart';
 import 'package:doggo_flutter/screens/home/models/home_pet.dart';
 import 'package:doggo_flutter/screens/home/models/home_walk.dart';
@@ -7,15 +8,16 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('roles del Home', () {
     test('reconoce las variantes oficiales de dueño', () {
-      expect(const HomeState(role: 'Dueño').isOwner, isTrue);
-      expect(const HomeState(role: 'Duenio').isOwner, isTrue);
-      expect(const HomeState(role: 'Paseador').isOwner, isFalse);
+      expect(UserRoleCodec.parse('Dueño'), UserRole.owner);
+      expect(UserRoleCodec.parse('Duenio'), UserRole.owner);
+      expect(const HomeState(role: UserRole.owner).isOwner, isTrue);
+      expect(const HomeState(role: UserRole.walker).isOwner, isFalse);
     });
 
     test('reconoce roles administrativos y de paseador', () {
-      expect(const HomeState(role: 'Paseador').isWalker, isTrue);
-      expect(const HomeState(role: 'Administrador').isAdmin, isTrue);
-      expect(const HomeState(role: 'SuperAdmin').isAdmin, isTrue);
+      expect(const HomeState(role: UserRole.walker).isWalker, isTrue);
+      expect(const HomeState(role: UserRole.admin).isAdmin, isTrue);
+      expect(UserRoleCodec.parse('SuperAdmin'), UserRole.admin);
     });
   });
 

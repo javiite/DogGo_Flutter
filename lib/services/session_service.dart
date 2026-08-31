@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../core/session/authenticated_session.dart';
+import '../core/session/user_role.dart';
 import 'storage_service.dart';
 import 'background_tracking_service.dart';
 
@@ -157,26 +159,18 @@ class SessionService {
   }
 
   static Future<void> guardarSesionDesdeLogin(Map<String, dynamic> data) async {
-    final token = data['token'];
+    await guardarSesionAutenticada(AuthenticatedSession.fromJson(data));
+  }
 
-    if (token == null || token.toString().trim().isEmpty) {
-      return;
-    }
-
-    final usuarioId = _intSeguro(data['usuarioId']);
-
-    final rol = data['rol'];
-
-    final nombre = data['nombre'];
-
-    final email = data['email'];
-
+  static Future<void> guardarSesionAutenticada(
+    AuthenticatedSession session,
+  ) async {
     await guardarSesion(
-      token: token.toString(),
-      usuarioId: usuarioId,
-      rol: rol?.toString(),
-      nombre: nombre?.toString(),
-      email: email?.toString(),
+      token: session.token,
+      usuarioId: session.userId,
+      rol: session.role.label,
+      nombre: session.name,
+      email: session.email,
     );
   }
 
@@ -194,55 +188,19 @@ class SessionService {
   }
 
   static String normalizarRol(String? rol) {
-    final limpio = rol?.trim();
-
-    if (limpio == null || limpio.isEmpty) {
-      return 'Sin rol';
-    }
-
-    final normalizado = limpio.toLowerCase();
-
-    if (normalizado == 'duenio' ||
-        normalizado == 'dueño' ||
-        normalizado == 'owner' ||
-        normalizado == 'cliente') {
-      return 'Dueño';
-    }
-
-    if (normalizado == 'paseador' ||
-        normalizado == 'walker' ||
-        normalizado == 'dogwalker') {
-      return 'Paseador';
-    }
-
-    if (normalizado == 'admin' || normalizado == 'administrador') {
-      return 'Administrador';
-    }
-
-    return limpio;
+    return UserRoleCodec.parse(rol).label;
   }
 
   static bool esPaseadorRol(String? rol) {
-    final normalizado = rol?.trim().toLowerCase() ?? '';
-
-    return normalizado == 'paseador' ||
-        normalizado == 'walker' ||
-        normalizado == 'dogwalker';
+    return UserRoleCodec.parse(rol).isWalker;
   }
 
   static bool esDuenioRol(String? rol) {
-    final normalizado = rol?.trim().toLowerCase() ?? '';
-
-    return normalizado == 'duenio' ||
-        normalizado == 'dueño' ||
-        normalizado == 'owner' ||
-        normalizado == 'cliente';
+    return UserRoleCodec.parse(rol).isOwner;
   }
 
   static bool esAdminRol(String? rol) {
-    final normalizado = rol?.trim().toLowerCase() ?? '';
-
-    return normalizado == 'admin' || normalizado == 'administrador';
+    return UserRoleCodec.parse(rol).isAdmin;
   }
 
   static Future<bool> esPaseador() async {

@@ -86,7 +86,7 @@ class WalkerCalendarBlock {
   }
 }
 
-class WalkerAvailability {
+class EditableWalkerAvailability {
   final int walkerId;
   final bool available;
   final String timeZone;
@@ -94,7 +94,7 @@ class WalkerAvailability {
   final List<WalkerCalendarBlock> blocks;
   final List<WalkerCalendarBlock> occupations;
 
-  const WalkerAvailability({
+  const EditableWalkerAvailability({
     required this.walkerId,
     required this.available,
     required this.timeZone,
@@ -103,8 +103,8 @@ class WalkerAvailability {
     required this.occupations,
   });
 
-  factory WalkerAvailability.fromMap(Map<String, dynamic> map) {
-    return WalkerAvailability(
+  factory EditableWalkerAvailability.fromMap(Map<String, dynamic> map) {
+    return EditableWalkerAvailability(
       walkerId: int.tryParse('${map['paseadorId']}') ?? 0,
       available: _bool(map['disponible'], true),
       timeZone: map['zonaHoraria']?.toString() ?? 'America/Mexico_City',

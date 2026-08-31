@@ -1,3 +1,4 @@
+import '../core/session/user_role.dart';
 import 'api_service.dart';
 import 'background_tracking_service.dart';
 import 'session_service.dart';
@@ -5,32 +6,28 @@ import 'session_service.dart';
 enum DogGoRoleMode { owner, walker }
 
 extension DogGoRoleModeData on DogGoRoleMode {
-  String get apiValue {
+  UserRole get userRole {
     return switch (this) {
-      DogGoRoleMode.owner => 'Duenio',
-      DogGoRoleMode.walker => 'Paseador',
+      DogGoRoleMode.owner => UserRole.owner,
+      DogGoRoleMode.walker => UserRole.walker,
     };
   }
 
-  String get label {
-    return switch (this) {
-      DogGoRoleMode.owner => 'Dueño',
-      DogGoRoleMode.walker => 'Paseador',
-    };
-  }
+  String get apiValue => userRole.apiValue;
+  String get label => userRole.label;
 }
 
 class RoleSwitchResult {
   final bool success;
   final String message;
-  final String role;
+  final UserRole role;
   final bool profileCreated;
   final bool requiresProfileCompletion;
 
   const RoleSwitchResult({
     required this.success,
     required this.message,
-    this.role = '',
+    this.role = UserRole.unknown,
     this.profileCreated = false,
     this.requiresProfileCompletion = false,
   });
@@ -90,7 +87,7 @@ abstract final class RoleSwitchService {
       message:
           _firstText([body['message'], body['mensaje']]) ??
           'Modo ${mode.label} activado.',
-      role: SessionService.normalizarRol(savedRole),
+      role: UserRoleCodec.parse(savedRole),
       profileCreated: _asBool(data['perfilCreado']),
       requiresProfileCompletion: _asBool(data['requiereCompletarPerfil']),
     );

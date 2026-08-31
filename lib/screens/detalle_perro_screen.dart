@@ -16,7 +16,7 @@ import 'pets/pet_detail_controller.dart';
 import 'pets/pet_detail_state.dart';
 import 'pets/widgets/pet_gallery_section.dart';
 import 'pets/widgets/pet_walk_center.dart';
-import 'paseadores_screen.dart';
+import 'walkers/walkers_screen.dart';
 import 'detalle_paseo_screen.dart';
 import 'walks/models/walk_detail.dart';
 import 'onboarding/contextual_onboarding.dart';
@@ -106,7 +106,7 @@ class _DetallePerroScreenState extends State<DetallePerroScreen> {
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => PaseadoresScreen(initialPetId: pet.id),
+        builder: (_) => WalkersScreen(initialPetId: pet.id),
       ),
     );
   }

@@ -24,7 +24,7 @@ flowchart LR
 
 - Registro, confirmación de correo e inicio de sesión.
 - Recuperación y cambio de contraseña.
-- Configuración de la dirección de la API.
+- Configuración de la dirección de la API en desarrollo.
 - Perfil general, fotografía y datos de contacto.
 - Perfil de dueño y perfil profesional de paseador.
 - Cambio entre los modos Dueño y Paseador.
@@ -37,6 +37,7 @@ flowchart LR
 - Búsqueda y detalle de paseadores.
 - Selección de mascotas, fecha, hora, ubicación y ruta para solicitar un paseo.
 - Paseos simples, múltiples y programados.
+- Centro DogGo 360 con cuidados, logros, recuerdos y responsabilidades familiares.
 
 ### Operación del paseo
 
@@ -46,7 +47,11 @@ flowchart LR
 - Ubicación durante el paseo y visualización de la ruta.
 - Rutas guardadas y planeación sobre mapas.
 - Chat, notificaciones y calificaciones.
+- Centro de conversaciones para volver al chat de cada paseo sin depender de una notificación.
 - Disponibilidad semanal y bloqueos de horario del paseador.
+- PIN de recogida, confirmaciones, eventos del servicio y reporte final.
+- Planificación avanzada con checklist, instrucciones, encuentro previo, reprogramación y avisos de llegada.
+- Preferencias de paseador, matching, opción suplente e indicadores de confianza.
 
 ### Trabajo sin conexión
 
@@ -62,7 +67,8 @@ Al recuperar conectividad, el servicio offline intenta enviar el trabajo pendien
 
 - Flutter y Dart 3.11.
 - `http` para la API REST.
-- `shared_preferences` para configuración y sesión local actual.
+- `flutter_secure_storage` para proteger el JWT en Android Keystore y iOS Keychain.
+- `shared_preferences` para preferencias no sensibles y configuración local de desarrollo.
 - `drift` y `drift_flutter` para persistencia offline.
 - `connectivity_plus` para detectar cambios de red.
 - `geolocator` y `flutter_background_service` para ubicación durante paseos.
@@ -70,6 +76,7 @@ Al recuperar conectividad, el servicio offline intenta enviar el trabajo pendien
 - `image_picker` para perfiles, mascotas y evidencias.
 - `permission_handler` para permisos del dispositivo.
 - `flutter_local_notifications` para notificaciones locales.
+- `phosphoricons_flutter` para un sistema visual de iconos consistente.
 
 ## Organización del código
 
@@ -88,15 +95,29 @@ lib/
 │   ├── navigation/            Rutas de navegación
 │   ├── offline/               Cola, caché y sincronización
 │   ├── permissions/           Modelo de permisos
-│   └── session/               Estado global de sesión
-├── screens/                   Pantallas, controllers, state y modelos por función
+│   └── session/               Sesión autenticada y rol tipado del usuario
+├── screens/
+│   ├── home/                  Home, estado, controller y repositorios de resumen
+│   ├── pets/                  Lista, detalle, formularios y modelos de mascotas
+│   ├── walks/                 Agenda, solicitudes, detalle y operación del paseo
+│   ├── walkers/               Búsqueda, perfiles, confianza y disponibilidad
+│   ├── chat/                  Conversaciones y chat asociado al paseo
+│   ├── notifications/         Avisos con modelos y repositorio tipados
+│   ├── availability/          Edición de horarios y bloqueos del paseador
+│   ├── profile/               Perfil general, dueño y paseador
+│   ├── tracking/              Seguimiento, recorrido y evidencias
+│   └── advanced/              DogGo 360, cuidados, logros y familia
 ├── services/                  API, auth, paseos, tracking, chat y almacenamiento
 ├── shared/widgets/            Estados de carga, error, vacío y sincronización
 ├── theme/                     Colores, espaciado y estilos
 └── widgets/                   Componentes visuales reutilizables
 ```
 
-La interfaz nueva agrupa cada función con modelos, estado y controller. Algunos servicios siguen siendo compartidos para mantener en un solo lugar los endpoints, la sesión y el manejo de errores.
+La interfaz activa agrupa las vistas principales con sus modelos, estado,
+controller y repositorio por función. La navegación ya apunta a esta estructura;
+los archivos de pantallas sustituidos y las clases públicas duplicadas fueron
+retirados. Algunos servicios siguen siendo compartidos para mantener en un solo
+lugar los endpoints, la sesión, el almacenamiento y el manejo de errores.
 
 ## Requisitos
 
@@ -155,7 +176,18 @@ http://10.0.2.2:5230
 
 También se puede usar la IP LAN del equipo, por ejemplo `http://192.168.x.x:5230`. La API debe escuchar en una interfaz accesible y el firewall debe permitir el puerto. La dirección se puede modificar desde la configuración de la aplicación.
 
-En producción siempre debe utilizarse una URL HTTPS real.
+En desarrollo la aplicación permite guardar una dirección distinta para alternar
+entre loopback, emulador, IP LAN y staging. Las compilaciones `release` ignoran
+esa preferencia local, ocultan el editor del servidor y exigen una URL HTTPS fija
+incluida al compilar:
+
+```powershell
+flutter build apk --release --dart-define=DOGGO_API_BASE_URL=https://api.doggo.example
+```
+
+La aplicación falla de forma explícita durante el arranque si la variable no
+existe o no es una dirección HTTPS válida. Esto evita que una sesión productiva
+envíe su JWT a un servidor configurado manualmente.
 
 ## Ejecución y validación
 
@@ -189,7 +221,10 @@ La aplicación debe solicitar cada permiso únicamente cuando la función lo req
 - Los datos offline deben eliminarse cuando ya no sean necesarios o al cerrar/eliminar la cuenta según la política definitiva.
 - La URL de producción debe usar HTTPS y certificados válidos.
 
-Actualmente el JWT se almacena con `shared_preferences`. Esto es suficiente para el entorno local actual, pero antes de una distribución productiva debe migrarse a almacenamiento seguro del sistema, como Android Keystore y iOS Keychain mediante un paquete especializado.
+El JWT se almacena mediante `flutter_secure_storage`, respaldado por Android
+Keystore y iOS Keychain. Si existe una sesión de una versión anterior, la
+aplicación migra el token desde `shared_preferences` y elimina la copia antigua.
+Las preferencias normales quedan reservadas para datos no sensibles.
 
 Android permite tráfico HTTP sin cifrar para facilitar el desarrollo local. Esa excepción debe restringirse o eliminarse en la variante de producción.
 
@@ -201,6 +236,6 @@ Android permite tráfico HTTP sin cifrar para facilitar el desarrollo local. Esa
 
 ## Estado actual
 
-La aplicación ya integra los flujos principales de dueño y paseador, perfiles, mascotas, disponibilidad, paseos, evidencias, mapas, chat, notificaciones, calificaciones y recuperación offline. El README anterior describía una auditoría de mayo de 2026 y afirmaba una certificación que no representaba el estado completo del producto; esta versión documenta el código vigente.
+La aplicación ya integra los flujos principales de dueño y paseador, perfiles, mascotas, disponibilidad, paseos, planificación avanzada, evidencias, mapas, conversaciones, notificaciones, calificaciones, DogGo 360 y recuperación offline. La estructura activa fue consolidada por funciones y la auditoría de dependencias no deja pantallas Dart huérfanas dentro de `lib`.
 
-Antes de distribuirla públicamente quedan las pruebas funcionales finales en Android e iOS, protección segura del token, endurecimiento de red para producción, validación de consumo de batería y ubicación en segundo plano, configuración de firma y tiendas, observabilidad y revisión legal de privacidad.
+Antes de distribuirla públicamente quedan las pruebas funcionales finales en Android e iOS, endurecimiento de red para producción, validación de consumo de batería y ubicación en segundo plano, configuración de firma y tiendas, observabilidad y revisión legal de privacidad.

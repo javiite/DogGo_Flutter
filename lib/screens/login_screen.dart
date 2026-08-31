@@ -20,11 +20,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController =
-      TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
-  final TextEditingController _passwordController =
-      TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
@@ -82,9 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(
-      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-    ).hasMatch(email);
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
 
   Future<void> _login() async {
@@ -109,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      if (result['success'] == true) {
+      if (result.success) {
         Navigator.pushNamedAndRemoveUntil(
           context,
           AppRoutes.home,
@@ -119,17 +115,12 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final statusCode = result['statusCode'];
+      final statusCode = result.statusCode;
 
       setState(() {
         _generalError = _loginMessage(
-          statusCode: statusCode is int
-              ? statusCode
-              : int.tryParse(
-                  statusCode?.toString() ?? '',
-                ),
-          serverMessage:
-              result['message']?.toString(),
+          statusCode: statusCode,
+          serverMessage: result.message,
         );
       });
     } on ApiException catch (error) {
@@ -146,9 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       setState(() {
-        _generalError = error
-            .toString()
-            .replaceFirst('Exception: ', '');
+        _generalError = error.toString().replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) {
@@ -189,25 +178,19 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _openRecovery() async {
     await Navigator.push(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            const RecuperarPasswordScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const RecuperarPasswordScreen()),
     );
   }
 
   Future<void> _openRegister() async {
     await Navigator.push(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => const RegisterScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const RegisterScreen()),
     );
   }
 
   void _clearEmailError(String value) {
-    if (_emailError == null &&
-        _generalError == null) {
+    if (_emailError == null && _generalError == null) {
       return;
     }
 
@@ -218,8 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _clearPasswordError(String value) {
-    if (_passwordError == null &&
-        _generalError == null) {
+    if (_passwordError == null && _generalError == null) {
       return;
     }
 
@@ -246,10 +228,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior
-                            .onDrag,
-                    physics:
-                        const BouncingScrollPhysics(),
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(
                       DogGoSpacing.screenHorizontal,
                       DogGoSpacing.md,
@@ -258,33 +238,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: 430,
-                        ),
+                        constraints: const BoxConstraints(maxWidth: 430),
                         child: _LoginCard(
-                          emailController:
-                              _emailController,
-                          passwordController:
-                              _passwordController,
+                          emailController: _emailController,
+                          passwordController: _passwordController,
                           emailFocus: _emailFocus,
-                          passwordFocus:
-                              _passwordFocus,
-                          hidePassword:
-                              _hidePassword,
+                          passwordFocus: _passwordFocus,
+                          hidePassword: _hidePassword,
                           loading: _loading,
                           emailError: _emailError,
-                          passwordError:
-                              _passwordError,
-                          generalError:
-                              _generalError,
-                          onEmailChanged:
-                              _clearEmailError,
-                          onPasswordChanged:
-                              _clearPasswordError,
+                          passwordError: _passwordError,
+                          generalError: _generalError,
+                          onEmailChanged: _clearEmailError,
+                          onPasswordChanged: _clearPasswordError,
                           onTogglePassword: () {
                             setState(() {
-                              _hidePassword =
-                                  !_hidePassword;
+                              _hidePassword = !_hidePassword;
                             });
                           },
                           onLogin: _login,
@@ -305,25 +274,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        18,
-        10,
-        18,
-        4,
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
       child: Row(
         children: [
           const DogGoLogo(size: 48),
           const Spacer(),
           if (Navigator.canPop(context))
             TextButton.icon(
-              onPressed: _loading
-                  ? null
-                  : () => Navigator.maybePop(context),
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-                size: 18,
-              ),
+              onPressed: _loading ? null : () => Navigator.maybePop(context),
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
               label: const Text('Volver'),
             ),
         ],
@@ -374,17 +333,10 @@ class _LoginCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        22,
-        25,
-        22,
-        22,
-      ),
+      padding: const EdgeInsets.fromLTRB(22, 25, 22, 22),
       decoration: BoxDecoration(
         color: DogGoTheme.card,
-        borderRadius: BorderRadius.circular(
-          DogGoRadius.extraLarge,
-        ),
+        borderRadius: BorderRadius.circular(DogGoRadius.extraLarge),
         border: Border.all(color: DogGoTheme.border),
         boxShadow: DogGoTheme.softShadow(),
       ),
@@ -398,15 +350,10 @@ class _LoginCard extends StatelessWidget {
               color: DogGoTheme.tealLight,
               shape: BoxShape.circle,
             ),
-            child: const Center(
-              child: DogGoLogo(size: 58),
-            ),
+            child: const Center(child: DogGoLogo(size: 58)),
           ),
           const SizedBox(height: DogGoSpacing.md),
-          Text(
-            'BIENVENIDO DE VUELTA',
-            style: DogGoTheme.label(size: 10.5),
-          ),
+          Text('BIENVENIDO DE VUELTA', style: DogGoTheme.label(size: 10.5)),
           const SizedBox(height: DogGoSpacing.sm),
           Text(
             'Iniciar sesión',
@@ -426,10 +373,7 @@ class _LoginCard extends StatelessWidget {
             enabled: !loading,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
-            autofillHints: const [
-              AutofillHints.email,
-              AutofillHints.username,
-            ],
+            autofillHints: const [AutofillHints.email, AutofillHints.username],
             autocorrect: false,
             enableSuggestions: false,
             onChanged: onEmailChanged,
@@ -440,8 +384,7 @@ class _LoginCard extends StatelessWidget {
               labelText: 'Correo electrónico',
               hintText: 'correo@ejemplo.com',
               errorText: emailError,
-              prefixIcon:
-                  const Icon(Icons.email_outlined),
+              prefixIcon: const Icon(Icons.email_outlined),
             ),
           ),
           const SizedBox(height: DogGoSpacing.fieldGap),
@@ -451,9 +394,7 @@ class _LoginCard extends StatelessWidget {
             enabled: !loading,
             obscureText: hidePassword,
             textInputAction: TextInputAction.done,
-            autofillHints: const [
-              AutofillHints.password,
-            ],
+            autofillHints: const [AutofillHints.password],
             autocorrect: false,
             enableSuggestions: false,
             onChanged: onPasswordChanged,
@@ -461,11 +402,9 @@ class _LoginCard extends StatelessWidget {
             decoration: InputDecoration(
               labelText: 'Contraseña',
               errorText: passwordError,
-              prefixIcon:
-                  const Icon(Icons.lock_outline_rounded),
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
               suffixIcon: IconButton(
-                onPressed:
-                    loading ? null : onTogglePassword,
+                onPressed: loading ? null : onTogglePassword,
                 tooltip: hidePassword
                     ? 'Mostrar contraseña'
                     : 'Ocultar contraseña',
@@ -501,37 +440,25 @@ class _LoginCard extends StatelessWidget {
           const SizedBox(height: DogGoSpacing.sm),
           TextButton(
             onPressed: loading ? null : onRecovery,
-            child: const Text(
-              '¿Olvidaste tu contraseña?',
-            ),
+            child: const Text('¿Olvidaste tu contraseña?'),
           ),
           const SizedBox(height: DogGoSpacing.sm),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(
-              DogGoSpacing.md,
-            ),
+            padding: const EdgeInsets.all(DogGoSpacing.md),
             decoration: BoxDecoration(
               color: DogGoTheme.cream,
-              borderRadius: BorderRadius.circular(
-                DogGoRadius.large,
-              ),
-              border: Border.all(
-                color: DogGoTheme.border,
-              ),
+              borderRadius: BorderRadius.circular(DogGoRadius.large),
+              border: Border.all(color: DogGoTheme.border),
             ),
             child: Column(
               children: [
-                Text(
-                  '¿No tienes cuenta?',
-                  style: DogGoTheme.title(size: 16),
-                ),
+                Text('¿No tienes cuenta?', style: DogGoTheme.title(size: 16)),
                 const SizedBox(height: DogGoSpacing.sm),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed:
-                        loading ? null : onRegister,
+                    onPressed: loading ? null : onRegister,
                     child: const Text('Crear cuenta'),
                   ),
                 ),
@@ -547,9 +474,7 @@ class _LoginCard extends StatelessWidget {
 class _LoginError extends StatelessWidget {
   final String message;
 
-  const _LoginError({
-    required this.message,
-  });
+  const _LoginError({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -558,18 +483,11 @@ class _LoginError extends StatelessWidget {
       label: message,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(
-          DogGoSpacing.md,
-        ),
+        padding: const EdgeInsets.all(DogGoSpacing.md),
         decoration: BoxDecoration(
           color: DogGoTheme.redLight,
-          borderRadius: BorderRadius.circular(
-            DogGoRadius.medium,
-          ),
-          border: Border.all(
-            color:
-                DogGoTheme.red.withValues(alpha: .20),
-          ),
+          borderRadius: BorderRadius.circular(DogGoRadius.medium),
+          border: Border.all(color: DogGoTheme.red.withValues(alpha: .20)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

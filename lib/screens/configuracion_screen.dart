@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/app_environment.dart';
 import '../core/permissions/app_permission.dart';
 import '../shared/widgets/doggo_screen_scaffold.dart';
 import '../services/app_preferences_service.dart';
@@ -342,8 +343,10 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
                       const SizedBox(height: 14),
                       _buildError(state.error!),
                     ],
-                    const SizedBox(height: 16),
-                    _buildServerSection(state),
+                    if (AppEnvironment.allowsCustomApiBaseUrl) ...[
+                      const SizedBox(height: 16),
+                      _buildServerSection(state),
+                    ],
                     const SizedBox(height: 16),
                     _buildPermissionsSection(state),
                     const SizedBox(height: 16),

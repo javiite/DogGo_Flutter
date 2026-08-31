@@ -1,18 +1,21 @@
 import 'package:flutter/foundation.dart';
 
 import '../../core/errors/api_exception.dart';
-import '../../services/paseadores_service.dart';
-import '../../services/storage_service.dart';
 import 'models/walker.dart';
+import 'walkers_repository.dart';
 import 'walkers_state.dart';
 
 class WalkersController extends ChangeNotifier {
+  final WalkersRepository _repository;
   WalkersState _state = const WalkersState();
 
   bool _disposed = false;
   bool _requestInProgress = false;
 
   WalkersState get state => _state;
+
+  WalkersController({WalkersRepository? repository})
+    : _repository = repository ?? WalkersRepository();
 
   Future<void> initialize() {
     return loadWalkers();
@@ -30,26 +33,11 @@ class WalkersController extends ChangeNotifier {
     _setState(_state.copyWith(loading: true, clearError: true));
 
     try {
-      final results = await Future.wait<dynamic>([
-        StorageService.obtenerBaseUrl(),
-        PaseadoresService.obtenerPaseadores(),
-      ]);
+      final result = await _repository.getAll();
 
       if (_disposed) return;
 
-      final baseUrl = results[0]?.toString();
-      final response = _asMap(results[1]);
-
-      if (response['success'] != true) {
-        throw Exception(
-          _responseMessage(
-            response,
-            fallback: 'No se pudieron cargar los paseadores.',
-          ),
-        );
-      }
-
-      final walkers = Walker.listFrom(response['data']);
+      final walkers = result.walkers;
 
       var selectedZone = _state.selectedZone;
 
@@ -65,7 +53,7 @@ class WalkersController extends ChangeNotifier {
       _setState(
         WalkersState(
           loading: false,
-          baseUrl: baseUrl,
+          baseUrl: result.baseUrl,
           walkers: walkers,
           searchQuery: _state.searchQuery,
           selectedZone: selectedZone,
@@ -130,34 +118,6 @@ class WalkersController extends ChangeNotifier {
     }
 
     return null;
-  }
-
-  Map<String, dynamic> _asMap(dynamic value) {
-    if (value is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(value);
-    }
-
-    if (value is Map) {
-      return Map<String, dynamic>.from(value);
-    }
-
-    return <String, dynamic>{};
-  }
-
-  String _responseMessage(
-    Map<String, dynamic> response, {
-    required String fallback,
-  }) {
-    final value =
-        response['message'] ?? response['mensaje'] ?? response['error'];
-
-    final message = value?.toString().trim();
-
-    if (message == null || message.isEmpty) {
-      return fallback;
-    }
-
-    return message;
   }
 
   String _cleanError(Object error) {

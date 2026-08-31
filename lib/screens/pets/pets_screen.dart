@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 
-import '../shared/widgets/doggo_empty_view.dart';
-import '../shared/widgets/doggo_error_view.dart';
-import '../shared/widgets/doggo_loading_view.dart';
-import '../shared/widgets/doggo_network_image.dart';
-import '../shared/widgets/doggo_search_field.dart';
-import '../shared/widgets/doggo_screen_scaffold.dart';
-import '../shared/widgets/doggo_status_chip.dart';
-import '../theme/doggo_radius.dart';
-import '../theme/doggo_spacing.dart';
-import '../theme/doggo_theme.dart';
-import 'detalle_perro_screen.dart';
-import 'editar_perro_screen.dart';
-import 'pets/models/pet.dart';
-import 'pets/pets_controller.dart';
-import 'pets/pets_state.dart';
-import 'paseadores_screen.dart';
-import 'registrar_perro_screen.dart';
+import '../../shared/widgets/doggo_empty_view.dart';
+import '../../shared/widgets/doggo_error_view.dart';
+import '../../shared/widgets/doggo_loading_view.dart';
+import '../../shared/widgets/doggo_network_image.dart';
+import '../../shared/widgets/doggo_screen_scaffold.dart';
+import '../../shared/widgets/doggo_search_field.dart';
+import '../../shared/widgets/doggo_status_chip.dart';
+import '../../theme/doggo_radius.dart';
+import '../../theme/doggo_spacing.dart';
+import '../../theme/doggo_theme.dart';
+import '../detalle_perro_screen.dart';
+import '../editar_perro_screen.dart';
+import '../registrar_perro_screen.dart';
+import '../walkers/walkers_screen.dart';
+import 'models/pet.dart';
+import 'pets_controller.dart';
+import 'pets_state.dart';
 
-class MisPerrosScreen extends StatefulWidget {
-  const MisPerrosScreen({super.key});
+class PetsScreen extends StatefulWidget {
+  const PetsScreen({super.key});
 
   @override
-  State<MisPerrosScreen> createState() => _MisPerrosScreenState();
+  State<PetsScreen> createState() => _PetsScreenState();
 }
 
-class _MisPerrosScreenState extends State<MisPerrosScreen> {
+class _PetsScreenState extends State<PetsScreen> {
   late final PetsController _controller;
   final TextEditingController _searchController = TextEditingController();
 
@@ -113,7 +113,7 @@ class _MisPerrosScreenState extends State<MisPerrosScreen> {
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => PaseadoresScreen(initialPetId: pet.id),
+        builder: (_) => WalkersScreen(initialPetId: pet.id),
       ),
     );
   }

@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 
-import '../shared/widgets/doggo_screen_scaffold.dart';
-import 'chat_paseo_screen.dart';
-import 'detalle_paseo_screen.dart';
-import 'mis_paseos_screen.dart';
-import 'programacion_paseos_screen.dart';
-import 'perfil_screen.dart';
-import 'notifications/models/app_notification.dart';
-import 'notifications/notifications_controller.dart';
-import 'notifications/notifications_state.dart';
+import '../../shared/widgets/doggo_screen_scaffold.dart';
+import '../chat_paseo_screen.dart';
+import '../detalle_paseo_screen.dart';
+import '../perfil_screen.dart';
+import '../programacion_paseos_screen.dart';
+import '../walks/walks_screen.dart';
+import 'models/app_notification.dart';
+import 'notifications_controller.dart';
+import 'notifications_state.dart';
 
-class NotificacionesScreen extends StatefulWidget {
-  const NotificacionesScreen({super.key});
+class NotificationsScreen extends StatefulWidget {
+  const NotificationsScreen({super.key});
 
   @override
-  State<NotificacionesScreen> createState() {
-    return _NotificacionesScreenState();
+  State<NotificationsScreen> createState() {
+    return _NotificationsScreenState();
   }
 }
 
-class _NotificacionesScreenState extends State<NotificacionesScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen> {
   late final NotificationsController _controller;
 
   bool _openingNotification = false;
@@ -113,7 +113,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       } else if (notification.opensWalks) {
         await Navigator.push(
           context,
-          MaterialPageRoute<void>(builder: (_) => const MisPaseosScreen()),
+          MaterialPageRoute<void>(builder: (_) => const WalksScreen()),
         );
       } else if (notification.opensProfile) {
         await Navigator.push(

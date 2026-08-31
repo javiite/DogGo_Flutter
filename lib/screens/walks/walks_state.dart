@@ -1,3 +1,4 @@
+import '../../core/session/user_role.dart';
 import '../home/models/home_walk.dart';
 import '../home/models/home_walk_status.dart';
 
@@ -5,7 +6,7 @@ class WalksState {
   final bool loading;
   final String? error;
   final String? baseUrl;
-  final String role;
+  final UserRole role;
   final List<HomeWalk> walks;
   final HomeWalkStatus? selectedStatus;
   final String searchQuery;
@@ -15,27 +16,16 @@ class WalksState {
     this.loading = true,
     this.error,
     this.baseUrl,
-    this.role = '',
+    this.role = UserRole.unknown,
     this.walks = const [],
     this.selectedStatus,
     this.searchQuery = '',
     this.actionWalkId,
   });
 
-  bool get isOwner {
-    final value = _normalize(role);
-
-    return value == 'dueno' ||
-        value == 'duenio' ||
-        value == 'owner' ||
-        value == 'cliente';
-  }
-
-  bool get isWalker {
-    final value = _normalize(role);
-
-    return value == 'paseador' || value == 'walker' || value == 'dogwalker';
-  }
+  bool get isOwner => role.isOwner;
+  bool get isWalker => role.isWalker;
+  String get roleLabel => role.label;
 
   bool get isEmpty => !loading && walks.isEmpty;
 
@@ -168,7 +158,7 @@ class WalksState {
     String? error,
     bool clearError = false,
     String? baseUrl,
-    String? role,
+    UserRole? role,
     List<HomeWalk>? walks,
     HomeWalkStatus? selectedStatus,
     bool clearSelectedStatus = false,
@@ -188,19 +178,5 @@ class WalksState {
       searchQuery: searchQuery ?? this.searchQuery,
       actionWalkId: clearActionWalk ? null : actionWalkId ?? this.actionWalkId,
     );
-  }
-
-  static String _normalize(String value) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replaceAll('á', 'a')
-        .replaceAll('é', 'e')
-        .replaceAll('í', 'i')
-        .replaceAll('ó', 'o')
-        .replaceAll('ú', 'u')
-        .replaceAll('ü', 'u')
-        .replaceAll('ñ', 'n')
-        .replaceAll(RegExp(r'[\s_\-]'), '');
   }
 }

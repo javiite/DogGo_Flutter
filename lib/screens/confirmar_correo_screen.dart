@@ -119,10 +119,8 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
         return;
       }
 
-      if (result['success'] == true) {
-        _showMessage(
-          result['message']?.toString() ?? 'Correo confirmado correctamente.',
-        );
+      if (result.success) {
+        _showMessage(result.message);
 
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
@@ -140,8 +138,7 @@ class _ConfirmarCorreoScreenState extends State<ConfirmarCorreoScreen> {
       }
 
       setState(() {
-        _generalError =
-            result['message']?.toString() ?? 'No se pudo confirmar el correo.';
+        _generalError = result.message;
       });
     } on ApiException catch (error) {
       if (!mounted) {

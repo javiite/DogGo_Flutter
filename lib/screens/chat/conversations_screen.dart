@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../services/api_service.dart';
-import '../services/chat_service.dart';
-import '../shared/widgets/doggo_empty_view.dart';
-import '../shared/widgets/doggo_error_view.dart';
-import '../shared/widgets/doggo_loading_view.dart';
-import '../shared/widgets/doggo_network_image.dart';
-import '../shared/widgets/doggo_screen_scaffold.dart';
-import '../theme/doggo_radius.dart';
-import '../theme/doggo_spacing.dart';
-import '../theme/doggo_theme.dart';
-import 'chat/models/conversation_summary.dart';
-import 'chat_paseo_screen.dart';
+import '../../shared/widgets/doggo_empty_view.dart';
+import '../../shared/widgets/doggo_error_view.dart';
+import '../../shared/widgets/doggo_loading_view.dart';
+import '../../shared/widgets/doggo_network_image.dart';
+import '../../shared/widgets/doggo_screen_scaffold.dart';
+import '../../theme/doggo_radius.dart';
+import '../../theme/doggo_spacing.dart';
+import '../../theme/doggo_theme.dart';
+import '../chat_paseo_screen.dart';
+import 'chat_repository.dart';
+import 'models/conversation_summary.dart';
 
 enum _ConversationFilter { all, active, previous }
 
@@ -23,7 +22,7 @@ class ConversationsScreen extends StatefulWidget {
 }
 
 class _ConversationsScreenState extends State<ConversationsScreen> {
-  final ChatService _service = ChatService();
+  final ChatRepository _repository = ChatRepository();
   List<ConversationSummary> _items = const [];
   _ConversationFilter _filter = _ConversationFilter.all;
   bool _loading = true;
@@ -44,16 +43,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     }
 
     try {
-      final results = await Future.wait<dynamic>([
-        _service.obtenerConversaciones(),
-        ApiService.obtenerBaseUrl(),
-      ]);
-      final data = results[0] as List<Map<String, dynamic>>;
-      final baseUrl = results[1] as String;
-      final items = data
-          .map((item) => ConversationSummary.fromJson(item, baseUrl: baseUrl))
-          .where((item) => item.walkId > 0)
-          .toList();
+      final items = await _repository.getConversations();
 
       if (!mounted) return;
       setState(() {

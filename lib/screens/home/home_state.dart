@@ -1,3 +1,5 @@
+import '../../core/session/user_role.dart';
+import '../notifications/models/app_notification.dart';
 import 'models/home_activity_item.dart';
 import 'models/home_pet.dart';
 import 'models/home_summary.dart';
@@ -11,7 +13,7 @@ class HomeState {
   final bool notificationsLoading;
 
   final String userName;
-  final String role;
+  final UserRole role;
   final String? baseUrl;
   final String? userPhotoUrl;
 
@@ -20,7 +22,7 @@ class HomeState {
 
   final List<HomePet> pets;
   final List<HomeWalk> walks;
-  final List<Map<String, dynamic>> notifications;
+  final List<AppNotification> notifications;
 
   const HomeState({
     this.initialLoading = true,
@@ -28,7 +30,7 @@ class HomeState {
     this.walksLoading = false,
     this.notificationsLoading = false,
     this.userName = 'Usuario',
-    this.role = 'Usuario',
+    this.role = UserRole.unknown,
     this.baseUrl,
     this.userPhotoUrl,
     this.petsError,
@@ -38,36 +40,21 @@ class HomeState {
     this.notifications = const [],
   });
 
-  bool get isWalker {
-    final normalized = _normalize(role);
-
-    return normalized == 'paseador';
-  }
-
-  bool get isOwner {
-    final normalized = _normalize(role);
-
-    return normalized == 'dueno' || normalized == 'duenio';
-  }
-
-  bool get isAdmin {
-    final normalized = _normalize(role);
-
-    return normalized == 'admin' ||
-        normalized == 'administrador' ||
-        normalized == 'superadmin';
-  }
+  bool get isWalker => role.isWalker;
+  bool get isOwner => role.isOwner;
+  bool get isAdmin => role.isAdmin;
+  String get roleLabel => role.label;
 
   int get unreadNotifications {
     return notifications.where((notification) {
-      final value = firstValue(notification, const ['leida']);
-
-      return !_toBool(value);
+      return !notification.isRead;
     }).length;
   }
 
   List<HomeActivityItem> get recentActivities {
-    final activities = notifications.map(HomeActivityItem.fromMap).toList();
+    final activities = notifications
+        .map(HomeActivityItem.fromNotification)
+        .toList();
 
     activities.sort((a, b) {
       final dateA = a.occurredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -234,7 +221,7 @@ class HomeState {
     bool? walksLoading,
     bool? notificationsLoading,
     String? userName,
-    String? role,
+    UserRole? role,
     String? baseUrl,
     bool clearBaseUrl = false,
     String? userPhotoUrl,
@@ -245,7 +232,7 @@ class HomeState {
     bool clearWalksError = false,
     List<HomePet>? pets,
     List<HomeWalk>? walks,
-    List<Map<String, dynamic>>? notifications,
+    List<AppNotification>? notifications,
   }) {
     return HomeState(
       initialLoading: initialLoading ?? this.initialLoading,
@@ -323,36 +310,5 @@ class HomeState {
         .map(safeMap)
         .where((item) => item.isNotEmpty)
         .toList(growable: false);
-  }
-
-  static bool _toBool(dynamic value) {
-    if (value is bool) {
-      return value;
-    }
-
-    if (value is num) {
-      return value != 0;
-    }
-
-    final normalized = value?.toString().trim().toLowerCase() ?? '';
-
-    return normalized == 'true' ||
-        normalized == '1' ||
-        normalized == 'si' ||
-        normalized == 'sí';
-  }
-
-  static String _normalize(String value) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replaceAll('á', 'a')
-        .replaceAll('é', 'e')
-        .replaceAll('í', 'i')
-        .replaceAll('ó', 'o')
-        .replaceAll('ú', 'u')
-        .replaceAll('ü', 'u')
-        .replaceAll('ñ', 'n')
-        .replaceAll(RegExp(r'[\s_\-]'), '');
   }
 }
